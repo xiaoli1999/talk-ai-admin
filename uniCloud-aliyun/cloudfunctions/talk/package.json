@@ -1,0 +1,7 @@
+{
+  "name": "talk",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

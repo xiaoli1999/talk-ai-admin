@@ -1,0 +1,7 @@
+{
+  "name": "basci",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}
