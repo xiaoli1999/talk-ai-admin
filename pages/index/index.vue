@@ -36,7 +36,7 @@
 	const getList = async () => {
 		const start = (listParams.pageNo - 1) * listParams.pageSize
 		loading.value = true
-		const { result: { data, count } } = await db.collection('users').skip(start).limit(listParams.pageSize).orderBy('_id desc').get({ getCount:true })
+		const { result: { data, count } } = await db.collection('users').skip(start).limit(listParams.pageSize).orderBy('last_login_date desc').get({ getCount:true })
 		loading.value = false
 		
 		if (!data) return 

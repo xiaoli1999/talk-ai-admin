@@ -6,8 +6,7 @@
 					<uni-th width="40">头像</uni-th>
 					<uni-th width="60">昵称</uni-th>
 					<uni-th width="80">内容</uni-th>
-					<uni-th width="80">登录时间</uni-th>
-					<uni-th width="80">注册时间</uni-th>
+					<uni-th width="80">对话时间</uni-th>
 				</uni-tr>
 				<uni-tr v-for="(item, index) in list" :key="index">
 					<uni-td align="center">
@@ -16,8 +15,7 @@
 					</uni-td>
 					<uni-td >{{ item.nickname }}</uni-td>
 					<uni-td >{{ item.content }}</uni-td>
-					<uni-td align="center">{{ dayjs(item.last_login_date).format('YYYY-MM-DD HH:mm:ss')  }}</uni-td>
-					<uni-td align="center">{{ dayjs(item.register_date).format('YYYY-MM-DD HH:mm:ss') }}</uni-td>
+					<uni-td align="center">{{ dayjs(item.create_time).format('YYYY-MM-DD HH:mm:ss')  }}</uni-td>
 				</uni-tr>
 			</uni-table>
 		</view>
@@ -38,7 +36,7 @@
 	const getList = async () => {
 		const start = (listParams.pageNo - 1) * listParams.pageSize
 		loading.value = true
-		const { result: { data, count } } = await db.collection('chats').skip(start).limit(listParams.pageSize).orderBy('_id desc').get({ getCount:true })
+		const { result: { data, count } } = await db.collection('chats').skip(start).limit(listParams.pageSize).orderBy('id desc').get({ getCount:true })
 		loading.value = false
 		
 		if (!data) return 
