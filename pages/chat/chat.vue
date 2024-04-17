@@ -1,59 +1,63 @@
 <template>
-	<view class="home">
-		<view class="table-wrap">
-			<uni-table class="table" :loading="loading" border stripe emptyText="暂无更多数据">
-				<uni-tr>
-					<uni-th width="40">头像</uni-th>
-					<uni-th width="60">昵称</uni-th>
-					<uni-th width="80">内容</uni-th>
-					<uni-th width="80">对话时间</uni-th>
-				</uni-tr>
-				<uni-tr v-for="(item, index) in list" :key="index">
-					<uni-td align="center">
-						<image v-if="item.avatar" :src="item.avatar" mode="widthFix" style="width: 40px;border-radius: 50%;"></image>
-						<view v-else style="width: 40px;height: 40px; border-radius: 50%;"></view>
-					</uni-td>
-					<uni-td >{{ item.nickname }}</uni-td>
-					<uni-td >{{ item.content }}</uni-td>
-					<uni-td align="center">{{ dayjs(item.create_time).format('YYYY-MM-DD HH:mm:ss')  }}</uni-td>
-				</uni-tr>
-			</uni-table>
-		</view>
-		<uni-pagination v-model="listParams.pageNo" :pageSize="listParams.pageSize" :total="listParams.total" title="标题文字"  @change="changePage" />
-	</view>
+    <el-scrollbar v-loading="loading" class="chat page">
+        <el-table :data="list" border>
+            <el-table-column prop="avatar" label="头像" align="center" min-width="30px">
+                <template #default="{ row }">
+                    <div style="display: flex;justify-content: center">
+                        <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" fit="contain" style="width: 30px;border-radius: 50%;" />
+                    </div>
+
+                </template>
+            </el-table-column>
+            <el-table-column prop="nickname" label="昵称" align="center" min-width="80px" />
+            <el-table-column prop="content" label="内容" align="center" min-width="160px" />
+            <el-table-column prop="create_time" label="对话时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+        </el-table>
+        <view class="pagination">
+            <el-pagination
+                    v-model:currentPage="listParams.pageNo"
+                    v-model:page-size="listParams.pageSize"
+                    :total="listParams.total"
+                    @size-change="changePage(1, $event)"
+                    @current-change="changePage" :page-sizes="[10, 20, 50, 100, 200, 500]"
+                    :layout="'total, sizes, prev, pager, next'"
+                    small
+            />
+        </view>
+    </el-scrollbar>
 </template>
 
 <script setup>
-	import { onMounted, reactive, ref } from 'vue'
-	import dayjs from 'dayjs'
-	
-	const db = uniCloud.database()
+import { onMounted, reactive, ref } from 'vue'
+import { dayjs } from 'element-plus'
 
-	const loading = ref(false)
-	const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
-	const list = ref([])
-	
-	const getList = async () => {
-		const start = (listParams.pageNo - 1) * listParams.pageSize
-		loading.value = true
-		const { result: { data, count } } = await db.collection('chats').skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-		loading.value = false
-		
-		if (!data) return 
-		list.value = data || []
-		listParams.total = count
-		
-	}
-	
-	const changePage = async (e) => {
-		await getList()
-	}
-	
-	onMounted(async () => await getList())
+const db = uniCloud.database()
+
+const loading = ref(false)
+const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
+const list = ref([])
+
+const getList = async () => {
+    const start = (listParams.pageNo - 1) * listParams.pageSize
+    loading.value = true
+    const { result: { data, count } } = await db.collection('chats').skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+    loading.value = false
+
+    if (!data) return
+    list.value = data || []
+    listParams.total = count
+
+}
+
+const changePage = async (e) => {
+    await getList()
+}
+
+onMounted(async () => await getList())
 </script>
 
 <style lang="scss" scoped>
-.home {
-	
+.chat {
+
 }
 </style>
