@@ -13,8 +13,13 @@ app.$mount()
 
 // #ifdef VUE3
 import { createSSRApp } from 'vue'
+// 引入element plus
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+
 export function createApp() {
   const app = createSSRApp(App)
+  app.use(ElementPlus, { size: 'small', zIndex: 1000 })
   return {
     app
   }

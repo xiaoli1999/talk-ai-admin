@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "dayjs": "^1.11.10"
+    "dayjs": "^1.11.10",
+    "element-plus": "^2.7.0"
   }
 }
