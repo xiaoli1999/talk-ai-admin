@@ -1,13 +1,32 @@
 <script>
 	export default {
-		onLaunch: function() {
-			console.log('App Launch')
+		globalData: {
+			isShow: false,
+			isAdmain: false
 		},
-		onShow: function() {
-			console.log('App Show')
+		onLaunch: function({ query }) {
+			if (!query || !query.name) query = uni.getStorageSync('globalData') || {}
+			if (!['tongyao', 'xiaoli'].includes(query.name)) return uni.redirectTo({ url: "pages/error/error"});
+			
+			this.globalData.isShow = true
+			
+			if (query.name === 'xiaoli') {
+				this.globalData.isAdmain = true
+			} else {
+				uni.switchTab({ url: `/pages/${ query.path }/${ query.path }` })
+				uni.hideTabBar()
+			}
+			
+			uni.setStorageSync('globalData', query)
+		},
+		onShow: function(e) {
+			
 		},
 		onHide: function() {
-			console.log('App Hide')
+	
+		},
+		onPageNotFound() {
+			uni.redirectTo({ url: "/pages/error/error"});
 		}
 	}
 </script>
