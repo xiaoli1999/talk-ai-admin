@@ -41,6 +41,14 @@
 				"navigationBarTitleText" : "404",
 				"enablePullDownRefresh" : false
 			}
+		},
+		{
+			"path" : "pages/copy/copy",
+			"style" : 
+			{
+				"navigationBarTitleText" : "",
+				"enablePullDownRefresh" : false
+			}
 		}
 	],
 	"globalStyle": {
