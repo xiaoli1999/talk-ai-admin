@@ -1,5 +1,5 @@
 <template>
-    <el-scrollbar v-loading="loading" class="chat page">
+    <el-scrollbar v-loading="loading" class="copy page">
         <el-table :data="list" border>
             <el-table-column prop="user_avatar" label="头像" align="center" min-width="30px">
                 <template #default="{ row }">
@@ -57,7 +57,7 @@ onMounted(async () => await getList())
 </script>
 
 <style lang="scss" scoped>
-.chat {
+.copy {
 
 }
 </style>
