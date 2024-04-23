@@ -4,17 +4,43 @@
             <el-button type="primary" @click="openWorkDialog(null)">新增</el-button>
         </view>
         <el-table :data="list" border>
+            <el-table-column prop="sort" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="30px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
                         <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" fit="contain" style="width: 30px;border-radius: 50%;" />
                     </div>
-
                 </template>
             </el-table-column>
             <el-table-column prop="name" label="名称" align="center" min-width="80px" />
-            <el-table-column prop="content" label="内容" align="center" min-width="160px" />
-            <el-table-column prop="create_time" label="对话时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
+                <template #default="{ row }">
+                    <div>
+                        {{ row.category_id }}
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="desc" label="简介" align="center" min-width="120px" />
+            <el-table-column prop="prompt" label="提示词" align="center" min-width="120px" />
+            <el-table-column prop="guide_list" label="引导语" align="center" min-width="120px">
+                <template #default="{ row }">
+                    <div style="text-align: left">
+                        <div v-for="(item, index) in row.guide_list" :key="index">{{ item }}</div>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="show" label="启用" align="center" width="120px">
+                <template #default="{ row }">
+                    <div>
+                        <el-tag v-if="row.show" type="primary">启用</el-tag>
+                        <el-tag v-if="row.show" type="info">禁用</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
+            <el-table-column prop="talk_count" label="对话次数" align="center" min-width="60px" />
+            <el-table-column prop="update_time" label="更新时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="create_time" label="注册时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             <el-table-column label="操作" align="center" min-width="180" fixed="right">
                 <template #default="{row}">
                     <el-button type="primary" @click="openWorkDialog(row)">修改</el-button>
