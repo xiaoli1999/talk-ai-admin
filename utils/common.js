@@ -70,41 +70,27 @@ export const createAvatarKey = () => {
  * @description 将扁平列表转化为tree结构形
  * @returns { Array } result 树形话后的列表
  */
-export const listToTree = (list, id="fatherId") => {
+export const listToTree = (list, fatherId="category_id") => {
 	let result = []
 	const map = {}
 
-	const childrenList = JSON.parse(JSON.stringify(list)).filter(i => i.category_id)
-
-	list = list.sort((a, b) => a.id - b.id)
+	list = list.sort((a, b) => a.sort - b.sort)
 
 	list.forEach(item => {
-	    item.children = []
-		map[item.id] = item
+		item.children = []
+		map[item._id] = item
 	})
 
 	for (const i of list) {
-	    if (!i[id]) {
-	        result.push(i)
-	    } else {
-	        if (map[i[id]]) {
-	            map[i[id]].children.push(i)
-	        }
-	    }
+		if (!i[fatherId] || i[fatherId] === 'null') {
+			result.push(i)
+		} else {
+			if (map[i[fatherId]]) {
+				map[i[fatherId]].children.push(i)
+			}
+		}
 
 	}
-
-	result.unshift({
-		id: 2222222,
-		title: '最新',
-		children: [...childrenList].sort((a, b) => b.id - a.id)
-	})
-
-	result.unshift({
-		id: 11111111,
-		title: '全部',
-		children: [...childrenList].sort((a, b) => b.hot_count - a.hot_count)
-	})
 
 	return result
 }

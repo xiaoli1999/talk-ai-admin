@@ -1,47 +1,47 @@
 <template>
     <el-scrollbar v-loading="loading" class="works page">
-        <view>
+        <view style="margin: 20px;">
             <el-button type="primary" @click="openWorkDialog(null)">新增</el-button>
         </view>
-        <el-table :data="list" border>
-            <el-table-column prop="sort" label="排序" align="center" width="60px" />
-            <el-table-column prop="avatar" label="头像" align="center" min-width="30px">
+        <el-table :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border>
+            <el-table-column label="" width="50px" align="center" />
+            <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
                         <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" fit="contain" style="width: 30px;border-radius: 50%;" />
                     </div>
                 </template>
             </el-table-column>
+            <el-table-column prop="sort" label="排序" align="center" width="60px" />
             <el-table-column prop="name" label="名称" align="center" min-width="80px" />
             <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
                 <template #default="{ row }">
                     <div>
-                        {{ row.category_id }}
+                        <el-tag>{{ categoryObj[row.category_id] || row.name }}</el-tag>
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="desc" label="简介" align="center" min-width="120px" />
-            <el-table-column prop="prompt" label="提示词" align="center" min-width="120px" />
-            <el-table-column prop="guide_list" label="引导语" align="center" min-width="120px">
+            <el-table-column prop="desc" label="简介" align="center" min-width="160px" />
+            <el-table-column prop="prompt" label="提示词" align="center" min-width="160px" />
+            <el-table-column prop="guide_list" label="引导语" align="center" min-width="160px">
                 <template #default="{ row }">
                     <div style="text-align: left">
                         <div v-for="(item, index) in row.guide_list" :key="index">{{ item }}</div>
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="show" label="启用" align="center" width="120px">
+            <el-table-column prop="show" label="启用" align="center" width="80px">
                 <template #default="{ row }">
                     <div>
-                        <el-tag v-if="row.show" type="primary">启用</el-tag>
-                        <el-tag v-if="row.show" type="info">禁用</el-tag>
+                        <el-switch v-model="row.show" :disabled="true" />
                     </div>
                 </template>
             </el-table-column>
             <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
-            <el-table-column prop="talk_count" label="对话次数" align="center" min-width="60px" />
-            <el-table-column prop="update_time" label="更新时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column prop="create_time" label="注册时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column label="操作" align="center" min-width="180" fixed="right">
+            <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
+            <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column label="操作" align="center" width="160" fixed="right">
                 <template #default="{row}">
                     <el-button type="primary" @click="openWorkDialog(row)">修改</el-button>
                     <el-button type="danger" @click="deleteWork(row._id)">删除</el-button>
@@ -66,8 +66,8 @@
                     <el-input v-model="workData.name" :maxlength="10" placeholder="请输入应用名称" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="分类" prop="category_id">
-                    <el-select v-model="workData.category_id" placeholder="请选择应用分类" :disabled="workData._id && workData.category_id === 'null'" clearable>
-                        <el-option v-for="item in []" :key="item._id" :label="item.name" :value="item._id" />
+                    <el-select v-model="workData.category_id" placeholder="请选择应用分类" :disabled="workData._id && workData.category_id === 'null' && workData.children.length" clearable>
+                        <el-option v-for="item in categoryList" :key="item._id" :label="item.name" :value="item._id" />
                         <el-option label="一级分类" value="null" />
                     </el-select>
                 </el-form-item>
@@ -109,7 +109,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from 'element-plus'
-import { createAvatarKey } from '../../utils/common'
+import {createAvatarKey, listToTree} from '../../utils/common'
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
@@ -118,6 +118,8 @@ const worksDb = db.collection('works')
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
 const list = ref([])
+const categoryList = ref([])
+const categoryObj = ref([])
 
 const workDataDefault = () => ({
     category_id: 'null',
@@ -151,8 +153,15 @@ const getList = async () => {
     loading.value = false
 
     if (!data) return
-    list.value = data || []
+    list.value = listToTree(data)
     listParams.total = count
+
+    categoryList.value = []
+    categoryObj.value = {}
+    list.value.forEach(i => {
+        categoryList.value.push({ _id: i._id, name: i.name })
+        categoryObj.value[i._id] = i.name
+    })
 
 }
 
@@ -162,7 +171,8 @@ const changePage = async (e) => {
 
 const openWorkDialog = (row) => {
     workShow.value = true
-    workData.value = row ? row : workDataDefault()
+    workData.value = row ? JSON.parse(JSON.stringify(row)) : workDataDefault()
+    setTimeout(() => workRef.value.clearValidate())
 }
 
 const uploadImg = (e) => {
@@ -199,6 +209,7 @@ const saveWork = async () => {
     const params = JSON.parse(JSON.stringify(workData.value))
     const id = params._id
     delete params._id
+    delete params.children
 
     /* 更新时间,多加10s */
     params.update_time = dayjs().add(10, 'second').valueOf()
@@ -215,7 +226,7 @@ const saveWork = async () => {
 
 const deleteWork = (id) => {
 
-    ElMessageBox.confirm('确定删除吗?', 'Warning', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
+    ElMessageBox.confirm('确定删除吗?', '删除应用', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
                 await worksDb.doc(id).remove();
                 ElMessage.success('删除成功')
