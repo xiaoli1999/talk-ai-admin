@@ -7,6 +7,7 @@
 			if (!query || !query.name) query = uni.getStorageSync('globalData') || {}
 			if (!['xiaoli', 'tongyao'].includes(query.name)) return uni.redirectTo({ url: "pages/error/error"});
 
+            this.globalData.name = query.name
 			uni.setStorageSync('globalData', query)
 
 			if (query.name === 'tongyao') {
