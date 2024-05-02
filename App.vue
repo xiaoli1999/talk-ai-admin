@@ -1,22 +1,21 @@
 <script>
 	export default {
 		globalData: {
-			isShow: false,
-            isAdmin: false
+			name: '',
 		},
 		onLaunch: function({ query }) {
 			if (!query || !query.name) query = uni.getStorageSync('globalData') || {}
-			if (!['tongyao', 'xiaoli'].includes(query.name)) return uni.redirectTo({ url: "pages/error/error"});
+			if (!['xiaoli', 'tongyao'].includes(query.name)) return uni.redirectTo({ url: "pages/error/error"});
 
 			uni.setStorageSync('globalData', query)
 
-			this.globalData.isShow = true
-
-			if (query.name === 'xiaoli') {
-				this.globalData.isAdmin = true
-			} else {
-				uni.switchTab({ url: `/pages/${ query.path }/${ query.path }` })
-				uni.hideTabBar()
+			if (query.name === 'tongyao') {
+                ([1, 2]).forEach(i => {
+                    uni.setTabBarItem({
+                        index: i,
+                        visible: false
+                    });
+                })
 			}
 		},
 		onShow: function(e) {
