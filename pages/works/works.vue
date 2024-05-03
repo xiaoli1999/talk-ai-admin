@@ -44,7 +44,7 @@
             <el-table-column label="操作" align="center" width="160" fixed="right">
                 <template #default="{row}">
                     <el-button type="primary" @click="openWorkDialog(row)">修改</el-button>
-                    <el-button type="danger" @click="deleteWork(row._id)">删除</el-button>
+                    <el-button type="danger" @click="deleteWork(row)">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -79,14 +79,14 @@
                     </div>
                 </el-form-item>
                 <el-form-item label="应用简介" prop="desc">
-                    <el-input type="textarea" v-model="workData.desc" :rows="3" :maxlength="200" placeholder="请输入应用简介" clearable show-word-limit />
+                    <el-input type="textarea" v-model="workData.desc" :rows="3" :maxlength="100" placeholder="请输入应用简介" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用提示词" prop="prompt">
-                    <el-input type="textarea" v-model="workData.prompt" :rows="3" :maxlength="200" placeholder="请输入应用提示词" clearable show-word-limit />
+                    <el-input type="textarea" v-model="workData.prompt" :rows="3" :maxlength="100" placeholder="请输入应用提示词" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用引导语" prop="guide_list">
-                    <el-input v-model="workData.guide_list[0]" :maxlength="100" placeholder="请输入应用引导语1" clearable show-word-limit style="margin-bottom: 8px;" />
-                    <el-input v-model="workData.guide_list[1]" :disabled="!workData.guide_list[0]" :maxlength="100" placeholder="请输入应用引导语2" clearable show-word-limit />
+                    <el-input v-model="workData.guide_list[0]" :maxlength="30" placeholder="请输入应用引导语1" clearable show-word-limit style="margin-bottom: 8px;" />
+                    <el-input v-model="workData.guide_list[1]" :maxlength="30" placeholder="请输入应用引导语2" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用排序" prop="sort">
                     <el-input-number v-model="workData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />
@@ -124,7 +124,7 @@ const categoryObj = ref([])
 const workDataDefault = () => ({
     category_id: 'null',
     sort: 0,
-    show: true,
+    show: false,
     name: '',
     desc: '',
     avatar: '',
@@ -143,7 +143,7 @@ const workRules = reactive({
     category_id: [{ required: true, message: '请选择应用分类', trigger: 'change' }],
     desc: [{ required: true, message: '请填写应用简介', trigger: 'change' }],
     prompt: [{ required: true, message: '请填写应用提示词', trigger: 'change' }],
-    guide_list: [{ required: true, message: '请填写应用引导语', trigger: 'change' }, { validator: (r, v, cb) => v === v.length !== 2 ? cb(new Error('请填写应用引导语')) : cb(), trigger: 'change' }],
+    guide_list: [{ validator: (r, v, cb) => !(v[0] && v[1]) ? cb(new Error('请填写应用引导语')) : cb(), trigger: 'change' }],
 })
 
 const getList = async () => {
@@ -224,11 +224,12 @@ const saveWork = async () => {
     await getList()
 }
 
-const deleteWork = (id) => {
+const deleteWork = ({ children, _id }) => {
+    if (children.length) return ElMessage.warning('该分类下还有其他应用，禁止删除！')
 
     ElMessageBox.confirm('确定删除吗?', '删除应用', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
-                await worksDb.doc(id).remove();
+                await worksDb.doc(_id).remove();
                 ElMessage.success('删除成功')
                 await getList()
             })
