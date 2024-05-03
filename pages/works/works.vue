@@ -5,6 +5,7 @@
         </view>
         <el-table :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border>
             <el-table-column label="" width="50px" align="center" />
+            <el-table-column prop="sort" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
@@ -12,9 +13,8 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="sort" label="排序" align="center" width="60px" />
-            <el-table-column prop="name" label="名称" align="center" min-width="80px" />
-            <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
+            <el-table-column prop="name" label="名称" align="center" min-width="100px" />
+            <el-table-column prop="category_id" label="分类" align="center" min-width="100px">
                 <template #default="{ row }">
                     <div>
                         <el-tag>{{ categoryObj[row.category_id] || row.name }}</el-tag>
@@ -39,8 +39,8 @@
             </el-table-column>
             <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
             <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
-            <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="update_time" label="更新时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="create_time" label="注册时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             <el-table-column label="操作" align="center" width="160" fixed="right">
                 <template #default="{row}">
                     <el-button type="primary" @click="openWorkDialog(row)">修改</el-button>
@@ -72,7 +72,7 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item label="应用图片" prop="avatar">
-                    <div style="width: 50px;height: 50px;padding: 4px; border: 1px dashed #DCDFE6; display: flex;justify-content: center;align-items: center;">
+                    <div style="position: relative;width: 50px;height: 50px;padding: 4px; border: 1px dashed #DCDFE6; display: flex;justify-content: center;align-items: center;">
                         <img v-if="workData.avatar" :src="workData.avatar" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 50%;" alt=""/>
                         <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
                         <button @click="uploadImg" style="position: absolute;width: 100%;height: 100%; z-index: 10000;inset: 0;opacity: 0" />
