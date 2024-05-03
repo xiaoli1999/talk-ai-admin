@@ -29,7 +29,16 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="desc" label="简介" align="center" min-width="160px" />
+            <el-table-column prop="desc" label="简介" align="center" min-width="160px">
+                <template #default="{ row }">
+                    <el-tooltip placement="top">
+                        <template #content>
+                            <div style="max-width: 300px;">{{ row.desc }}</div>
+                        </template>
+                        <el-text truncated>{{ row.desc }}</el-text>
+                    </el-tooltip>
+                </template>
+            </el-table-column>
             <el-table-column prop="tag_list" label="标签" align="center" min-width="100px">
                 <template #default="{ row }">
                     <div>
@@ -51,7 +60,16 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="prompt" label="提示词" align="center" min-width="160px" />
+            <el-table-column prop="prompt" label="提示词" align="center" min-width="160px">
+                <template #default="{ row }">
+                    <el-tooltip placement="top">
+                        <template #content>
+                            <div style="max-width: 300px;">{{ row.prompt }}</div>
+                        </template>
+                        <el-text truncated>{{ row.prompt }}</el-text>
+                    </el-tooltip>
+                </template>
+            </el-table-column>
             <el-table-column prop="guide_list" label="引导语" align="center" min-width="160px" :formatter="(e) => e.guide_list.join(';')" />
             <el-table-column prop="show" label="启用" align="center" width="80px">
                 <template #default="{ row }">
