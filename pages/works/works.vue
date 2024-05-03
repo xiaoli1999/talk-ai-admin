@@ -1,14 +1,14 @@
 <template>
     <el-scrollbar v-loading="loading" class="works page">
         <view style="margin: 20px;">
-            <el-button type="primary" @click="openWorkDialog(null)">新增</el-button>
+            <el-button type="primary" @click="openWorkDialog(null)">新增应用</el-button>
         </view>
         <el-table :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border>
             <el-table-column label="" width="50px" align="center" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
-                        <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" fit="contain" style="width: 30px;border-radius: 50%;" />
+                        <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" preview-teleported fit="contain" style="width: 30px;border-radius: 50%;" />
                     </div>
                 </template>
             </el-table-column>
@@ -60,35 +60,35 @@
             />
         </view>
 
-        <el-dialog class="order-dialog" v-model="workShow" width="680px" :title="workData._id ? '新增应用' : '修改应用'" align-center draggable>
+        <el-dialog class="dialog" v-model="workShow" width="680px" :title="workData._id ? '修改应用' : '新增应用'" align-center draggable>
             <el-form ref="workRef" class="work-form" :model="workData" :rules="workRules" label-width="100px">
-                <el-form-item label="名称" prop="name">
+                <el-form-item label="应用名称" prop="name">
                     <el-input v-model="workData.name" :maxlength="10" placeholder="请输入应用名称" clearable show-word-limit />
                 </el-form-item>
-                <el-form-item label="分类" prop="category_id">
+                <el-form-item label="应用分类" prop="category_id">
                     <el-select v-model="workData.category_id" placeholder="请选择应用分类" :disabled="workData._id && workData.category_id === 'null' && workData.children.length" clearable>
                         <el-option v-for="item in categoryList" :key="item._id" :label="item.name" :value="item._id" />
                         <el-option label="一级分类" value="null" />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="图片" prop="avatar">
-                    <div style="width: 50px;height: 50px;border: 1px dashed #eee; display: flex;justify-content: center;align-items: center;">
-                        <el-image v-if="workData.avatar" :src="workData.avatar" fit="contain" style="width: 50px;border-radius: 50%;" />
-                        <div v-else style="font-size: 24px;color: #eee;">+</div>
+                <el-form-item label="应用图片" prop="avatar">
+                    <div style="width: 50px;height: 50px;padding: 4px; border: 1px dashed #DCDFE6; display: flex;justify-content: center;align-items: center;">
+                        <img v-if="workData.avatar" :src="workData.avatar" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 50%;" alt=""/>
+                        <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
                         <button @click="uploadImg" style="position: absolute;width: 100%;height: 100%; z-index: 10000;inset: 0;opacity: 0" />
                     </div>
                 </el-form-item>
-                <el-form-item label="简介" prop="desc">
+                <el-form-item label="应用简介" prop="desc">
                     <el-input type="textarea" v-model="workData.desc" :rows="3" :maxlength="200" placeholder="请输入应用简介" clearable show-word-limit />
                 </el-form-item>
-                <el-form-item label="提示词" prop="prompt">
+                <el-form-item label="应用提示词" prop="prompt">
                     <el-input type="textarea" v-model="workData.prompt" :rows="3" :maxlength="200" placeholder="请输入应用提示词" clearable show-word-limit />
                 </el-form-item>
-                <el-form-item label="引导语" prop="desc">
+                <el-form-item label="应用引导语" prop="guide_list">
                     <el-input v-model="workData.guide_list[0]" :maxlength="100" placeholder="请输入应用引导语1" clearable show-word-limit style="margin-bottom: 8px;" />
                     <el-input v-model="workData.guide_list[1]" :disabled="!workData.guide_list[0]" :maxlength="100" placeholder="请输入应用引导语2" clearable show-word-limit />
                 </el-form-item>
-                <el-form-item label="排序" prop="sort">
+                <el-form-item label="应用排序" prop="sort">
                     <el-input-number v-model="workData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />
                 </el-form-item>
                 <el-form-item label="是否启用" prop="show">
@@ -139,11 +139,11 @@ const workData = ref(workDataDefault())
 
 const workRef = ref();
 const workRules = reactive({
-    name: [{ required: true, message: '请填写名称', trigger: 'change' }],
-    category_id: [{ required: true, message: '请选择分类', trigger: 'change' }],
-    desc: [{ required: true, message: '请填写简介', trigger: 'change' }],
-    prompt: [{ required: true, message: '请填写提示词', trigger: 'change' }],
-    guide_list: [{ required: true, message: '请填写引导语', trigger: 'change' }, { validator: (r, v, cb) => v === v.length !== 2 ? cb(new Error('请填写引导语')) : cb(), trigger: 'change' }],
+    name: [{ required: true, message: '请填写应用名称', trigger: 'change' }],
+    category_id: [{ required: true, message: '请选择应用分类', trigger: 'change' }],
+    desc: [{ required: true, message: '请填写应用简介', trigger: 'change' }],
+    prompt: [{ required: true, message: '请填写应用提示词', trigger: 'change' }],
+    guide_list: [{ required: true, message: '请填写应用引导语', trigger: 'change' }, { validator: (r, v, cb) => v === v.length !== 2 ? cb(new Error('请填写应用引导语')) : cb(), trigger: 'change' }],
 })
 
 const getList = async () => {
