@@ -1,1 +1,110 @@
-{"bsonType":"object","required":[],"permission":{"read":true,"create":true,"update":true,"delete":true},"properties":{"_id":{"description":"存储文档 ID（用户 ID），系统自动生成"},"category_id":{"bsonType":"string","description":"分类 id","defaultValue":0},"sort":{"bsonType":"int","description":"排序","defaultValue":0},"show":{"bsonType":"bool","description":"是否展示","defaultValue":true},"name":{"bsonType":"string","description":"标题","trim":"both","defaultValue":""},"desc":{"bsonType":"string","description":"描述","trim":"both","defaultValue":""},"avatar":{"bsonType":"string","description":"头像链接","trim":"both","defaultValue":""},"avatar_long":{"bsonType":"string","description":"头像链接（长头像）","trim":"both","defaultValue":""},"gender":{"bsonType":"string","description":"性别， 1男2女3未知","trim":"both","defaultValue":""},"tag_list":{"bsonType":"array","description":"人物标签列表","defaultValue":[]},"styles":{"bsonType":"int","description":"使用的样式风格","trim":"both","defaultValue":1},"guide_list":{"bsonType":"array","description":"引导语列表","defaultValue":[]},"hot_count":{"bsonType":"int","description":"热度","defaultValue":0},"talk_count":{"bsonType":"int","description":"对话次数","defaultValue":0},"prompt":{"bsonType":"string","description":"调教模型内容","trim":"both","defaultValue":""},"create_time":{"bsonType":"timestamp","description":"创建时间","forceDefaultValue":{"$env":"now"}},"update_time":{"bsonType":"timestamp","description":"更新时间"}},"version":"1.0.0"}
+{
+    "bsonType": "object",
+    "required": [],
+    "permission": {
+        "read": true,
+        "create": true,
+        "update": true,
+        "delete": true
+    },
+    "properties": {
+        "_id": {
+            "description": "存储文档 ID（用户 ID），系统自动生成"
+        },
+        "category_id": {
+            "bsonType": "string",
+            "description": "分类 id",
+            "defaultValue": 0
+        },
+        "sort": {
+            "bsonType": "int",
+            "description": "排序",
+            "defaultValue": 0
+        },
+        "show": {
+            "bsonType": "bool",
+            "description": "是否展示",
+            "defaultValue": true
+        },
+        "name": {
+            "bsonType": "string",
+            "description": "角色名称",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "user_name": {
+            "bsonType": "string",
+            "description": "用户名称",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "desc": {
+            "bsonType": "string",
+            "description": "描述",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "avatar": {
+            "bsonType": "string",
+            "description": "头像链接",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "avatar_long": {
+            "bsonType": "string",
+            "description": "头像链接（长头像）",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "gender": {
+            "bsonType": "string",
+            "description": "性别， 1男2女 ''未知",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "tag_list": {
+            "bsonType": "array",
+            "description": "人物标签列表",
+            "defaultValue": []
+        },
+        "styles": {
+            "bsonType": "int",
+            "description": "使用的样式风格",
+            "trim": "both",
+            "defaultValue": 1
+        },
+        "guide_list": {
+            "bsonType": "array",
+            "description": "引导语列表",
+            "defaultValue": []
+        },
+        "hot_count": {
+            "bsonType": "int",
+            "description": "热度",
+            "defaultValue": 0
+        },
+        "talk_count": {
+            "bsonType": "int",
+            "description": "对话次数",
+            "defaultValue": 0
+        },
+        "prompt": {
+            "bsonType": "string",
+            "description": "调教模型内容",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "create_time": {
+            "bsonType": "timestamp",
+            "description": "创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+        },
+        "update_time": {
+            "bsonType": "timestamp",
+            "description": "更新时间"
+        }
+    },
+    "version": "1.0.0"
+}
