@@ -9,9 +9,10 @@
 
                 </template>
             </el-table-column>
-            <el-table-column prop="nickname" label="昵称" align="center" min-width="100px" />
-            <el-table-column prop="last_login_date" label="登录时间" align="center" min-width="50px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
-            <el-table-column prop="register_date" label="注册时间" align="center" min-width="50px" :formatter="(e) => dayjs(e.register_date).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="nickname" label="昵称" align="center" min-width="80px" />
+            <el-table-column prop="register_platform" label="注册来源" align="center" min-width="100px" />
+            <el-table-column prop="last_login_date" label="登录时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="register_date" label="注册时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.register_date).format('MM-DD HH:mm:ss')" />
         </el-table>
         <view class="pagination">
             <el-pagination
