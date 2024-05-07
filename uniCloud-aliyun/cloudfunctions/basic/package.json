@@ -11,6 +11,6 @@
     "memorySize": 512,
     "timeout": 30,
     "path": "",
-    "runtime": "Nodejs18"
+    "runtime": "Nodejs16"
   }
 }
