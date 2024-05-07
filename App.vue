@@ -48,6 +48,27 @@
     padding-top: 10px;
 }
 
+.del-btn {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    text-align: center;
+    line-height: 20px;
+    top: -12px;
+    right: -12px;
+    background: #F56C6C;
+    border-radius: 50%;
+    font-size: 12px;
+    color: #fff;
+    cursor: pointer;
+    z-index: 3000;
+    transition: all .24s;
+
+    &:hover {
+        opacity: 0.68;
+    }
+}
+
 @media only screen and (max-width: 768px) {
     .el-pagination {
         background: #ffffffcc;

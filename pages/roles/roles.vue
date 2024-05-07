@@ -1,6 +1,6 @@
 <template>
     <el-scrollbar v-loading="loading" class="roles page">
-        <view style="margin: 20px;">
+        <view v-if="isAdmin" style="margin: 20px;">
             <el-button type="primary" @click="openRoleDialog(null)">新增角色</el-button>
         </view>
         <el-table class="roles-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border size="small">
@@ -85,7 +85,7 @@
             <el-table-column label="操作" align="center" width="130" fixed="right">
                 <template #default="{row}">
                     <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
-                    <el-button type="danger" @click="deleteRole(row)" size="small">删除</el-button>
+                    <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -102,7 +102,7 @@
         </view>
 
         <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" align-center draggable>
-            <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px">
+            <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px" :disabled="!isAdmin">
                 <div style="display: flex;">
                     <el-form-item label="角色名称" prop="name">
                         <el-input v-model="roleData.name" :maxlength="10" placeholder="请输入角色名称" clearable show-word-limit />
@@ -125,7 +125,7 @@
                             <img v-if="roleData.avatar" :src="roleData.avatar" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 50%;" alt=""/>
                             <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
                             <button @click="uploadImg('avatar')" style="position: absolute;width: 100%;height: 100%; z-index: 2000;inset: 0;opacity: 0" />
-                            <el-button v-show="roleData.avatar" type="danger" circle size="small" style="position: absolute;top: -16px;right: -16px;z-index: 3000;" @click="roleData.avatar = ''">❌︎</el-button>
+                            <div v-show="roleData.avatar" class="del-btn" @click="roleData.avatar = ''">❌︎</div>
                         </div>
                     </el-form-item>
                     <el-form-item label="角色背景" prop="avatar_long">
@@ -133,7 +133,8 @@
                             <img v-if="roleData.avatar_long" :src="roleData.avatar_long" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 4px;" alt=""/>
                             <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
                             <button @click="uploadImg('avatar_long')" style="position: absolute;width: 100%;height: 100%; z-index: 2000;inset: 0;opacity: 0" />
-                            <el-button v-show="roleData.avatar_long" type="danger" circle size="small" style="position: absolute;top: -16px;right: -16px;z-index: 3000;" @click="roleData.avatar_long = ''">❌︎</el-button>
+
+                            <div v-show="roleData.avatar_long" class="del-btn" @click="roleData.avatar_long = ''">❌︎</div>
                         </div>
                     </el-form-item>
                 </div>
@@ -206,6 +207,10 @@ import {createAvatarKey, listToTree} from '../../utils/common'
 /* 传统数据库集合 */
 const db = uniCloud.database()
 const rolesDb = db.collection('roles')
+
+/* 权限 */
+const globalData = ref(getApp().globalData)
+const isAdmin = ref(globalData.value.name === 'xiaoli')
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })

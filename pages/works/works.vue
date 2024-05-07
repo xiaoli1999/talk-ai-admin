@@ -1,6 +1,6 @@
 <template>
     <el-scrollbar v-loading="loading" class="works page">
-        <view style="margin: 20px;">
+        <view v-if="isAdmin" style="margin: 20px;">
             <el-button type="primary" @click="openWorkDialog(null)">新增应用</el-button>
         </view>
         <el-table class="works-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border size="small">
@@ -62,7 +62,7 @@
             <el-table-column label="操作" align="center" width="130" fixed="right">
                 <template #default="{row}">
                     <el-button type="primary" @click="openWorkDialog(row)" size="small">修改</el-button>
-                    <el-button type="danger" @click="deleteWork(row)" size="small">删除</el-button>
+                    <el-button v-if="isAdmin" type="danger" @click="deleteWork(row)" size="small">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -79,7 +79,7 @@
         </view>
 
         <el-dialog class="dialog" v-model="workShow" width="680px" :title="workData._id ? '修改应用' : '新增应用'" align-center draggable>
-            <el-form ref="workRef" class="work-form" :model="workData" :rules="workRules" label-width="100px">
+            <el-form ref="workRef" class="work-form" :model="workData" :rules="workRules" label-width="100px" :disabled="!isAdmin">
                 <el-form-item label="应用名称" prop="name">
                     <el-input v-model="workData.name" :maxlength="10" placeholder="请输入应用名称" clearable show-word-limit />
                 </el-form-item>
@@ -94,7 +94,7 @@
                         <img v-if="workData.avatar" :src="workData.avatar" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 50%;" alt=""/>
                         <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
                         <button @click="uploadImg" style="position: absolute;width: 100%;height: 100%; z-index: 2000;inset: 0;opacity: 0" />
-                        <el-button v-show="workData.avatar" type="danger" circle size="small" style="position: absolute;top: -16px;right: -16px;z-index: 3000;" @click="workData.avatar = ''">❌︎</el-button>
+                        <div v-show="workData.avatar" class="del-btn" @click="workData.avatar = ''">❌︎</div>
                     </div>
                 </el-form-item>
                 <el-form-item label="应用简介" prop="desc">
@@ -133,6 +133,10 @@ import {createAvatarKey, listToTree} from '../../utils/common'
 /* 传统数据库集合 */
 const db = uniCloud.database()
 const worksDb = db.collection('works')
+
+/* 权限 */
+const globalData = ref(getApp().globalData)
+const isAdmin = ref(globalData.value.name === 'xiaoli')
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
