@@ -60,8 +60,9 @@
             <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column label="操作" align="center" width="130" fixed="right">
+            <el-table-column label="操作" align="center" width="200" fixed="right">
                 <template #default="{row}">
+                    <el-button v-if="isAdmin && row.category_id === 'null'" type="success" @click="openWorkDialog({ category_id: row._id })" size="small">新增</el-button>
                     <el-button type="primary" @click="openWorkDialog(row)" size="small">修改</el-button>
                     <el-button v-if="isAdmin" type="danger" @click="deleteWork(row)" size="small">删除</el-button>
                 </template>
@@ -201,7 +202,8 @@ const changePage = async (e) => {
 
 const openWorkDialog = (row) => {
     workShow.value = true
-    workData.value = row ? JSON.parse(JSON.stringify(row)) : workDataDefault()
+    const data = JSON.parse(JSON.stringify(row))
+    workData.value = { ...workDataDefault(), ...data }
     setTimeout(() => workRef.value.clearValidate())
 }
 
