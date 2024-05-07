@@ -2,7 +2,7 @@ const unipay = require('./uni-pay')
 const path = require('path'); 
 const { appId, mchId, v3Key } = require('./config.js')
 const dayjs = require('./utils/dayjs.js')
-const { vipList } = require('./utils/vip.js')
+const { vipList, vipGainList } = require('./utils/vip.js')
 const { userField } = require('./utils/field.js')
 
 /* 数据库 */
@@ -24,13 +24,36 @@ module.exports = {
 	},
 	
 	/**
+	 * @function paySuccess 支付成功，更新用户信息
+	 * @param { Object } event { userId, orderId } 用户id， 订单id
+	 * @returns { Object } { errMsg: '', data: '' } 用户信息及错误信息
+	 */
+	async getGoodsList ({ pay_count } = {}) {
+		try{
+			let goodsList = JSON.parse(JSON.stringify(vipList))
+			if (pay_count) {
+				goodsList.shift()
+			} else {
+				goodsList.pop()
+			}
+			
+			//返回数据给客户端
+			return { data: { goodsList, vipGainList }, errMsg: '获取成功' }
+		} catch ({ message }) {
+			console.log('\n -----------获取vip套餐失败----------- \n', message);
+			return { errMsg: message }
+		}
+		
+	},
+	
+	/**
 	 * @function getOrderInfo 获取支付的订单信息
 	 * @param { Object } event 携带参数
 	 * @returns { object } { errMsg: '', data: '' } 错误信息及订单信息
 	 */
 	async getOrderInfo(event) {
 		try{
-			const correctOrder = vipList.find(i => i.price === event.price && i.day === event.day)
+			const correctOrder = vipList.find(i => i.price === event.price && i.date === event.day)
 			if (!correctOrder) return { errMsg: '该套餐活动已结束，如有疑问请联系客服' }
 			
 			const trade_id = dayjs().add(8, 'hour').format('YYYYMMDDHHmmssSSS')

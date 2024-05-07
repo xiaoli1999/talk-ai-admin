@@ -1,7 +1,16 @@
 {
   "name": "basci",
+  "version": "1.1.0",
+  "description": "基础",
   "dependencies": {},
   "extensions": {
     "uni-cloud-jql": {}
+  },
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 512,
+    "timeout": 30,
+    "path": "",
+    "runtime": "Nodejs18"
   }
 }
