@@ -4,7 +4,7 @@
             <el-table-column prop="user_avatar" label="头像" align="center" min-width="30px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
-                        <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" preview-teleported fit="contain" style="width: 30px;border-radius: 50%;" />
+                        <el-image v-if="row.user_avatar" :src="row.user_avatar" :preview-src-list="[row.user_avatar]" preview-teleported fit="contain" style="width: 30px;border-radius: 50%;" />
                     </div>
                 </template>
             </el-table-column>
