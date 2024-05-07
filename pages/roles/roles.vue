@@ -89,17 +89,18 @@
                 </template>
             </el-table-column>
         </el-table>
-        <view class="pagination">
-            <el-pagination
-                    v-model:currentPage="listParams.pageNo"
-                    v-model:page-size="listParams.pageSize"
-                    :total="listParams.total"
-                    @size-change="changePage(1, $event)"
-                    @current-change="changePage" :page-sizes="[10, 20, 50, 100, 200, 500]"
-                    :layout="'total, sizes, prev, pager, next'"
-                    small
-            />
-        </view>
+
+        <!--        <view class="pagination">-->
+        <!--            <el-pagination-->
+        <!--                    v-model:currentPage="listParams.pageNo"-->
+        <!--                    v-model:page-size="listParams.pageSize"-->
+        <!--                    :total="listParams.total"-->
+        <!--                    @size-change="changePage(1, $event)"-->
+        <!--                    @current-change="changePage" :page-sizes="[10, 20, 50, 100, 200, 500]"-->
+        <!--                    :layout="'total, sizes, prev, pager, next'"-->
+        <!--                    small-->
+        <!--            />-->
+        <!--        </view>-->
 
         <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" align-center draggable>
             <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px" :disabled="!isAdmin">
@@ -251,9 +252,9 @@ const roleRules = reactive({
 })
 
 const getList = async () => {
-    const start = (listParams.pageNo - 1) * listParams.pageSize
+    // const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
-    const { result: { data, count } } = await rolesDb.skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+    const { result: { data, count } } = await rolesDb.orderBy('create_time desc').get({ getCount:true })
     loading.value = false
 
     if (!data) return
