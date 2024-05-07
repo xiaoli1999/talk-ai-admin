@@ -4,12 +4,11 @@
             <el-table-column prop="avatar" label="头像" align="center" min-width="30px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
-                        <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" preview-teleported fit="contain" style="width: 30px;border-radius: 50%;" />
+                        <el-image v-if="row.user_avatar" :src="row.user_avatar" :preview-src-list="[row.user_avatar]" preview-teleported fit="contain" style="width: 30px;border-radius: 50%;" />
                     </div>
-
                 </template>
             </el-table-column>
-            <el-table-column prop="nickname" label="昵称" align="center" min-width="80px" />
+            <el-table-column prop="user_nickname" label="昵称" align="center" min-width="80px" />
             <el-table-column prop="content" label="内容" align="center" min-width="160px" />
             <el-table-column prop="create_time" label="对话时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
         </el-table>
@@ -40,7 +39,7 @@ const list = ref([])
 const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
-    const { result: { data, count } } = await db.collection('chats').skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+    const { result: { data, count } } = await db.collection('users_chats').skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
     loading.value = false
 
     if (!data) return
