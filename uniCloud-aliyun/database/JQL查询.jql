@@ -9,4 +9,9 @@
 // 详细JQL语法，请参考：https://uniapp.dcloud.net.cn/uniCloud/jql.html
 
 // 下面示例查询uni-id-users表的所有数据
-db.collection('uni-id-users').get();
+
+// 全部
+db.collection('chats').orderBy('create_time desc').get({ getCount:true })
+
+// 删除xx时间之后的
+// db.collection('chats').where('create_time > 1714784238485').remove()
