@@ -1,9 +1,10 @@
 <template>
     <el-scrollbar v-loading="loading" class="works page">
-        <view v-if="isAdmin" style="margin: 20px;">
-            <el-button type="primary" @click="openWorkDialog(null)">新增应用</el-button>
+        <view style="margin: 12px;">
+            <el-button v-if="isAdmin" type="primary" style="margin-right: 12px" @click="openWorkDialog(null)">新增应用</el-button>
+            <el-switch v-model="showAll" inline-prompt active-text="展开子级" inactive-text="收起子级" @change="showAllChange" />
         </view>
-        <el-table class="works-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border size="small">
+        <el-table class="works-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" :default-expand-all="showAll" border size="small">
             <el-table-column label="" width="50px" align="center" />
             <el-table-column prop="sort" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
@@ -138,6 +139,11 @@ const worksDb = db.collection('works')
 /* 权限 */
 const globalData = ref(getApp().globalData)
 const isAdmin = ref(globalData.value.name === 'xiaoli')
+
+const showAll = ref(uni.getStorageSync('worksShowAll') || false)
+const showAllChange = () => {
+    uni.setStorageSync('worksShowAll', showAll.value);
+}
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
