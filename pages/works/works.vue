@@ -3,7 +3,7 @@
         <view style="margin: 20px;">
             <el-button type="primary" @click="openWorkDialog(null)">新增应用</el-button>
         </view>
-        <el-table :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border>
+        <el-table class="works-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border size="small">
             <el-table-column label="" width="50px" align="center" />
             <el-table-column prop="sort" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
@@ -57,12 +57,12 @@
             </el-table-column>
             <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
             <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
-            <el-table-column prop="update_time" label="更新时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column prop="create_time" label="注册时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column label="操作" align="center" width="160" fixed="right">
+            <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column label="操作" align="center" width="130" fixed="right">
                 <template #default="{row}">
-                    <el-button type="primary" @click="openWorkDialog(row)">修改</el-button>
-                    <el-button type="danger" @click="deleteWork(row)">删除</el-button>
+                    <el-button type="primary" @click="openWorkDialog(row)" size="small">修改</el-button>
+                    <el-button type="danger" @click="deleteWork(row)" size="small">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -93,7 +93,8 @@
                     <div style="position: relative;width: 50px;height: 50px;padding: 4px; border: 1px dashed #DCDFE6; display: flex;justify-content: center;align-items: center;">
                         <img v-if="workData.avatar" :src="workData.avatar" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 50%;" alt=""/>
                         <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
-                        <button @click="uploadImg" style="position: absolute;width: 100%;height: 100%; z-index: 10000;inset: 0;opacity: 0" />
+                        <button @click="uploadImg" style="position: absolute;width: 100%;height: 100%; z-index: 2000;inset: 0;opacity: 0" />
+                        <el-button v-show="workData.avatar" type="danger" circle size="small" style="position: absolute;top: -16px;right: -16px;z-index: 3000;" @click="workData.avatar = ''">❌︎</el-button>
                     </div>
                 </el-form-item>
                 <el-form-item label="应用简介" prop="desc">
@@ -260,5 +261,11 @@ onMounted(async () => await getList())
 <style lang="scss" scoped>
 .works {
     min-height: 100vh;
+
+    .works-table {
+        :deep .el-text {
+            font-size: 12px;
+        }
+    }
 }
 </style>

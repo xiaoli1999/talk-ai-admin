@@ -3,8 +3,8 @@
         <view style="margin: 20px;">
             <el-button type="primary" @click="openRoleDialog(null)">新增角色</el-button>
         </view>
-        <el-table :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border>
-            <el-table-column label="" width="50px" align="center" />
+        <el-table class="roles-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" default-expand-all border size="small">
+            <el-table-column label="" width="30px" align="center" />
             <el-table-column prop="sort" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
@@ -20,16 +20,16 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="name" label="名称" align="center" min-width="100px" />
-            <el-table-column prop="user_name" label="用户" align="center" min-width="100px" />
-            <el-table-column prop="category_id" label="分类" align="center" min-width="100px">
+            <el-table-column prop="name" label="名称" align="center" min-width="70px" />
+            <el-table-column prop="user_name" label="用户" align="center" min-width="70px" />
+            <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
                 <template #default="{ row }">
                     <div>
                         <el-tag>{{ categoryObj[row.category_id] || row.name }}</el-tag>
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="desc" label="简介" align="center" min-width="160px">
+            <el-table-column prop="desc" label="简介" align="center" min-width="140px">
                 <template #default="{ row }">
                     <el-tooltip placement="top">
                         <template #content>
@@ -39,28 +39,28 @@
                     </el-tooltip>
                 </template>
             </el-table-column>
-            <el-table-column prop="tag_list" label="标签" align="center" min-width="100px">
+            <el-table-column prop="tag_list" label="标签" align="center" min-width="140px">
                 <template #default="{ row }">
                     <div>
                         <el-tag v-for="(item, index) in row.tag_list" :key="index" type="warning" style="margin: 4px auto;">{{ item }}</el-tag>
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="gender" label="性别" align="center" min-width="80px">
+            <el-table-column prop="gender" label="性别" align="center" width="60px">
                 <template #default="{ row }">
                     <div>
                         <el-tag type="success">{{ { '1': '男', '2': '女', '': '未知' }[row.gender] }}</el-tag>
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="category_id" label="风格" align="center" width="60px">
+            <el-table-column prop="category_id" label="风格" align="center" width="50px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
                         <div :class="`tag tag-${ row.styles }`" />
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="prompt" label="提示词" align="center" min-width="160px">
+            <el-table-column prop="prompt" label="提示词" align="center" min-width="140px">
                 <template #default="{ row }">
                     <el-tooltip placement="top">
                         <template #content>
@@ -70,22 +70,22 @@
                     </el-tooltip>
                 </template>
             </el-table-column>
-            <el-table-column prop="guide_list" label="引导语" align="center" min-width="160px" :formatter="(e) => e.guide_list.join(';')" />
-            <el-table-column prop="show" label="启用" align="center" width="80px">
+            <el-table-column prop="guide_list" label="引导语" align="center" min-width="140px" :formatter="(e) => e.guide_list.join(';')" />
+            <el-table-column prop="show" label="启用" align="center" width="50px">
                 <template #default="{ row }">
                     <div>
-                        <el-switch v-model="row.show" :disabled="true" />
+                        <el-switch v-model="row.show" :disabled="true" size="small" />
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
-            <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
-            <el-table-column prop="update_time" label="更新时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column prop="create_time" label="注册时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column label="操作" align="center" width="160" fixed="right">
+            <el-table-column prop="hot_count" label="热度" align="center" min-width="50px" />
+            <el-table-column prop="talk_count" label="对话" align="center" min-width="50px" />
+            <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column label="操作" align="center" width="130" fixed="right">
                 <template #default="{row}">
-                    <el-button type="primary" @click="openRoleDialog(row)">修改</el-button>
-                    <el-button type="danger" @click="deleteRole(row)">删除</el-button>
+                    <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
+                    <el-button type="danger" @click="deleteRole(row)" size="small">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -124,14 +124,16 @@
                         <div style="position: relative;width: 50px;height: 50px;padding: 4px; border: 1px dashed #DCDFE6; display: flex;justify-content: center;align-items: center;">
                             <img v-if="roleData.avatar" :src="roleData.avatar" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 50%;" alt=""/>
                             <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
-                            <button @click="uploadImg('avatar')" style="position: absolute;width: 100%;height: 100%; z-index: 10000;inset: 0;opacity: 0" />
+                            <button @click="uploadImg('avatar')" style="position: absolute;width: 100%;height: 100%; z-index: 2000;inset: 0;opacity: 0" />
+                            <el-button v-show="roleData.avatar" type="danger" circle size="small" style="position: absolute;top: -16px;right: -16px;z-index: 3000;" @click="roleData.avatar = ''">❌︎</el-button>
                         </div>
                     </el-form-item>
                     <el-form-item label="角色背景" prop="avatar_long">
                         <div style="position: relative;width: 50px;height: 50px;padding: 4px;border: 1px dashed #DCDFE6; display: flex;justify-content: center;align-items: center;">
                             <img v-if="roleData.avatar_long" :src="roleData.avatar_long" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 4px;" alt=""/>
                             <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
-                            <button @click="uploadImg('avatar_long')" style="position: absolute;width: 100%;height: 100%; z-index: 10000;inset: 0;opacity: 0" />
+                            <button @click="uploadImg('avatar_long')" style="position: absolute;width: 100%;height: 100%; z-index: 2000;inset: 0;opacity: 0" />
+                            <el-button v-show="roleData.avatar_long" type="danger" circle size="small" style="position: absolute;top: -16px;right: -16px;z-index: 3000;" @click="roleData.avatar_long = ''">❌︎</el-button>
                         </div>
                     </el-form-item>
                 </div>
@@ -342,6 +344,17 @@ onMounted(async () => await getList())
 <style lang="scss" scoped>
 .roles {
     min-height: 100vh;
+
+    .roles-table {
+        :deep .el-text {
+            font-size: 12px;
+        }
+
+        :deep .el-tag {
+            padding: 0 6px;
+            margin: 4px 2px !important;
+        }
+    }
 
     .tag {
         width: 36px;
