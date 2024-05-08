@@ -22,7 +22,7 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="desc" label="简介" align="center" min-width="160px">
+            <el-table-column prop="desc" label="简介" align="center" min-width="120px">
                 <template #default="{ row }">
                     <el-tooltip placement="top">
                         <template #content>
@@ -32,7 +32,17 @@
                     </el-tooltip>
                 </template>
             </el-table-column>
-            <el-table-column prop="prompt" label="提示词" align="center" min-width="160px">
+            <el-table-column prop="desc" label="背景预设" align="center" min-width="120px">
+                <template #default="{ row }">
+                    <el-tooltip placement="top">
+                        <template #content>
+                            <div style="max-width: 300px;">{{ row.system }}</div>
+                        </template>
+                        <el-text truncated>{{ row.system }}</el-text>
+                    </el-tooltip>
+                </template>
+            </el-table-column>
+            <el-table-column prop="prompt" label="提示词" align="center" min-width="120px">
                 <template #default="{ row }">
                     <el-tooltip placement="top">
                         <template #content>
@@ -101,10 +111,13 @@
                     </div>
                 </el-form-item>
                 <el-form-item label="应用简介" prop="desc">
-                    <el-input type="textarea" v-model="workData.desc" :rows="3" :maxlength="100" placeholder="请输入应用简介" clearable show-word-limit />
+                    <el-input type="textarea" v-model="workData.desc" :rows="3" :maxlength="200" placeholder="请输入应用简介" clearable show-word-limit />
+                </el-form-item>
+                <el-form-item label="应用背景预设" prop="system">
+                    <el-input type="textarea" v-model="workData.system" :rows="3" :maxlength="200" placeholder="请输入背景预设" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用提示词" prop="prompt">
-                    <el-input type="textarea" v-model="workData.prompt" :rows="3" :maxlength="100" placeholder="请输入应用提示词" clearable show-word-limit />
+                    <el-input type="textarea" v-model="workData.prompt" :rows="3" :maxlength="200" placeholder="请输入应用提示词" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用引导语" prop="guide_list">
                     <el-input v-model="workData.guide_list[0]" :maxlength="30" placeholder="请输入应用引导语1" clearable show-word-limit style="margin-bottom: 8px;" />
@@ -159,6 +172,7 @@ const workDataDefault = () => ({
     name: '',
     desc: '',
     avatar: '',
+    system: '',
     prompt: '',
     guide_list: [],
     hot_count: 0,
