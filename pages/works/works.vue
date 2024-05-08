@@ -4,7 +4,7 @@
             <el-button v-if="isAdmin" type="primary" style="margin-right: 12px" @click="openWorkDialog(null)">新增应用</el-button>
             <el-switch v-model="showAll" inline-prompt active-text="展开子级" inactive-text="收起子级" @change="showAllChange" />
         </view>
-        <el-table class="works-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" :default-expand-all="showAll" border size="small">
+        <el-table class="works-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" :default-expand-all="showAll" :row-style="setRowBg" border size="small">
             <el-table-column label="" width="50px" align="center" />
             <el-table-column prop="sort" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
@@ -213,6 +213,8 @@ const getList = async () => {
 const changePage = async (e) => {
     await getList()
 }
+
+const setRowBg = ({ row }) => (row.category_id === 'null' ? { background: '#FAFAFA', color: '#303133' } : {})
 
 const openWorkDialog = (row) => {
     workShow.value = true
