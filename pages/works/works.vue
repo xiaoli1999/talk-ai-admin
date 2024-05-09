@@ -111,17 +111,17 @@
                     </div>
                 </el-form-item>
                 <el-form-item label="应用简介" prop="desc">
-                    <el-input type="textarea" v-model="workData.desc" :rows="3" :maxlength="200" placeholder="请输入应用简介" clearable show-word-limit />
+                    <el-input type="textarea" v-model="workData.desc" :rows="3" :maxlength="500" placeholder="请输入应用简介" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用背景预设" prop="system">
-                    <el-input type="textarea" v-model="workData.system" :rows="3" :maxlength="200" placeholder="请输入背景预设" clearable show-word-limit />
+                    <el-input type="textarea" v-model="workData.system" :rows="3" :maxlength="500" placeholder="请输入背景预设" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用提示词" prop="prompt">
-                    <el-input type="textarea" v-model="workData.prompt" :rows="3" :maxlength="200" placeholder="请输入应用提示词" clearable show-word-limit />
+                    <el-input type="textarea" v-model="workData.prompt" :rows="3" :maxlength="500" placeholder="请输入应用提示词" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用引导语" prop="guide_list">
-                    <el-input v-model="workData.guide_list[0]" :maxlength="30" placeholder="请输入应用引导语1" clearable show-word-limit style="margin-bottom: 8px;" />
-                    <el-input v-model="workData.guide_list[1]" :maxlength="30" placeholder="请输入应用引导语2" clearable show-word-limit />
+                    <el-input v-model="workData.guide_list[0]" :maxlength="100" placeholder="请输入应用引导语1" clearable show-word-limit style="margin-bottom: 8px;" />
+                    <el-input v-model="workData.guide_list[1]" :maxlength="100" placeholder="请输入应用引导语2" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="应用排序" prop="sort">
                     <el-input-number v-model="workData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />

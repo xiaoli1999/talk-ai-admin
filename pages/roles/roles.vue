@@ -143,7 +143,7 @@
                 </div>
 
                 <el-form-item label="角色简介" prop="desc">
-                    <el-input type="textarea" v-model="roleData.desc" :rows="3" :maxlength="200" placeholder="请输入角色简介" clearable show-word-limit />
+                    <el-input type="textarea" v-model="roleData.desc" :rows="5" :maxlength="500" placeholder="请输入角色简介" clearable show-word-limit />
                 </el-form-item>
 
                 <el-form-item label="角色标签" prop="tag_list">
@@ -176,10 +176,10 @@
                 </div>
 
                 <el-form-item label="角色提示词" prop="prompt">
-                    <el-input type="textarea" v-model="roleData.prompt" :rows="3" :maxlength="200" placeholder="请输入角色提示词" clearable show-word-limit />
+                    <el-input type="textarea" v-model="roleData.prompt" :rows="5" :maxlength="500" placeholder="请输入角色提示词" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="角色引导语" prop="guide_list">
-                    <el-input v-model="roleData.guide_list[0]" :maxlength="100" placeholder="请输入角色引导语" clearable show-word-limit />
+                    <el-input type="textarea" v-model="roleData.guide_list[0]" :rows="3" :maxlength="300" placeholder="请输入角色引导语" clearable show-word-limit />
                 </el-form-item>
 
                 <div style="display: flex;">
