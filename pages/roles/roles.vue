@@ -153,13 +153,13 @@
 
                 <el-form-item label="角色标签" prop="tag_list">
                     <div style="display: flex;">
-                        <el-input v-model="roleData.tag_list[0]" :rows="3" :maxlength="4" placeholder="标签1" clearable show-word-limit />
+                        <el-input v-model="roleData.tag_list[0]" :maxlength="6" placeholder="标签1" clearable show-word-limit />
                         <div style="width: 10px;flex-shrink: 0"></div>
-                        <el-input v-model="roleData.tag_list[1]" :rows="3" :maxlength="4" placeholder="标签2" clearable show-word-limit />
+                        <el-input v-model="roleData.tag_list[1]" :maxlength="6" placeholder="标签2" clearable show-word-limit />
                         <div style="width: 10px;flex-shrink: 0"></div>
-                        <el-input v-model="roleData.tag_list[2]" :rows="3" :maxlength="4" placeholder="标签3" clearable show-word-limit />
+                        <el-input v-model="roleData.tag_list[2]" :maxlength="6" placeholder="标签3" clearable show-word-limit />
                         <div style="width: 10px;flex-shrink: 0"></div>
-                        <el-input v-model="roleData.tag_list[3]" :rows="3" :maxlength="4" placeholder="标签4" clearable show-word-limit />
+                        <el-input v-model="roleData.tag_list[3]" :maxlength="6" placeholder="标签4" clearable show-word-limit />
                     </div>
                 </el-form-item>
 
