@@ -17,9 +17,14 @@
             <el-table-column prop="name" label="名称" align="center" min-width="100px" />
             <el-table-column prop="category_id" label="分类" align="center" min-width="100px">
                 <template #default="{ row }">
-                    <div>
+                    <view style="position: relative;padding: 10px 0;">
                         <el-tag>{{ categoryObj[row.category_id] || row.name }}</el-tag>
-                    </div>
+                        <view v-if="row.children && row.children.length"
+                              style="position: absolute;top: 4px;right: -2px; width: fit-content;line-height: 16px; min-width: 16px;font-size: 12px;background: #409EFF;color: #fff;border-radius: 16px;"
+                        >
+                            {{ row.children.length }}
+                        </view>
+                    </view>
                 </template>
             </el-table-column>
             <el-table-column prop="desc" label="简介" align="center" min-width="120px">
