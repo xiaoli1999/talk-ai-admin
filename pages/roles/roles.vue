@@ -210,7 +210,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from 'element-plus'
-import {createAvatarKey, listToTree} from '../../utils/common'
+import { createAvatarKey, listToTree, montageImgUrl } from '../../utils/common'
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
@@ -268,8 +268,15 @@ const getList = async () => {
     loading.value = true
     const { result: { data, count } } = await rolesDb.orderBy('create_time desc').get({ getCount:true })
     loading.value = false
-
     if (!data) return
+
+    /* 限制oss大小 */
+    data.map(i => {
+        if (i.avatar) i.avatar = montageImgUrl(i.avatar, 50)
+        if (i.avatar_long) i.avatar_long = montageImgUrl(i.avatar_long, 50)
+        return i
+    })
+
     list.value = listToTree(data)
     listParams.total = count
 

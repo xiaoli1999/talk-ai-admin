@@ -105,3 +105,19 @@ export const formatKNumber = (num) => {
 
 	return num > 1000 ? (num / 1000).toFixed(1) + 'k' : num
 }
+
+/**
+ * @function montageImgUrl 拼接图片url
+ * @param { String } url 原始图片地址
+ * @param { Number } w 图片宽
+ * @return  { String } url 拼接后的图片地址
+ */
+export const montageImgUrl = (url = '', w = 100) => {
+	if (!url) return url
+
+	let resizeUrl = 'x-oss-process=image/resize,'
+	url += url.includes('?') ? '&' : '?'
+	resizeUrl += `w_${w}`
+
+	return `${url}${resizeUrl}`
+}
