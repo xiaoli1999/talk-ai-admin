@@ -10,7 +10,11 @@
             </el-table-column>
             <el-table-column prop="user_nickname" label="昵称" align="center" min-width="80px" />
             <el-table-column prop="ai_name" label="AI名称" align="center" min-width="60px" />
-            <el-table-column prop="content" label="内容" align="center" min-width="160px" />
+            <el-table-column prop="content" label="内容" align="center" min-width="160px" >
+                <template #default="{ row }">
+                    <pre style="text-align: left;">{{ row.content }}</pre>
+                </template>
+            </el-table-column>
             <el-table-column prop="create_time" label="对话时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
         </el-table>
         <view class="pagination">
@@ -58,6 +62,8 @@ onMounted(async () => await getList())
 
 <style lang="scss" scoped>
 .chat {
-
+    pre {
+        font-family: auto !important;
+    }
 }
 </style>
