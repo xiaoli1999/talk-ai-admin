@@ -12,7 +12,12 @@
             <el-table-column prop="ai_name" label="AI名称" align="center" min-width="60px" />
             <el-table-column prop="content" label="内容" align="center" min-width="160px" >
                 <template #default="{ row }">
-                    <pre style="text-align: left;">{{ row.content }}</pre>
+                    <div style="text-align: left;">
+                        <div v-for="(item, index) in row.chatList" :key="index">
+                            <p>{{ item }}</p>
+                            <p v-if="row.chatList.length > 1 && (index !== row.chatList.length - 1)" style="margin: 8px 0 ;border-bottom: 1px dashed #dfdfdf;"></p>
+                        </div>
+                    </div>
                 </template>
             </el-table-column>
             <el-table-column prop="create_time" label="对话时间" align="center" min-width="60px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
@@ -48,7 +53,7 @@ const getList = async () => {
     loading.value = false
 
     if (!data) return
-    list.value = data || []
+    list.value = (data || []).map(i => ({ ...i, chatList: i.content.split('\n') }))
     listParams.total = count
 
 }
