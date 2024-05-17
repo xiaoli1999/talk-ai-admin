@@ -10,7 +10,15 @@
                 </template>
             </el-table-column>
             <el-table-column prop="nickname" label="昵称" align="center" min-width="80px" />
-            <el-table-column prop="register_platform" label="注册来源" align="center" min-width="100px" :formatter="(e) => platformEnums[e.register_platform]" />
+            <el-table-column prop="register_platform" label="注册来源" align="center" min-width="100px">
+                <template #default="{ row }">
+                    <div>
+                        <el-tag v-if="row.inviter_uid" type="primary" size="small">{{ row.inviter_uid === '6642bdad816a3f647e0578cc' ? '管理员': '用户' }}邀请</el-tag>
+                        <el-tag v-else-if="row.register_platform" type="success" size="small">{{ platformEnums[row.register_platform] }}</el-tag>
+                        <div v-else></div>
+                    </div>
+                </template>
+            </el-table-column>
             <el-table-column prop="register_platform" label="今日注册" align="center" min-width="80px">
                 <template #default="{ row }">
                     <div>
