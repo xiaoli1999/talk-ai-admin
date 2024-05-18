@@ -233,6 +233,7 @@ const categoryObj = ref([])
 
 const roleDataDefault = () => ({
     category_id: 'null',
+    creator: '采黎',
     sort: 0,
     show: false,
     name: '',
