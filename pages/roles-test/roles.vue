@@ -6,7 +6,7 @@
 <!--        </view>-->
         <el-table class="roles-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" :default-expand-all="showAll" border :row-style="setRowBg" size="small">
             <el-table-column label="" width="30px" align="center" />
-            <el-table-column prop="sort" label="排序" align="center" width="60px" />
+<!--            <el-table-column prop="sort" label="排序" align="center" width="60px" />-->
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
@@ -22,7 +22,7 @@
                 </template>
             </el-table-column>
             <el-table-column prop="name" label="名称" align="center" min-width="70px" />
-            <el-table-column prop="user_name" label="用户" align="center" min-width="70px" />
+<!--            <el-table-column prop="user_name" label="用户" align="center" min-width="70px" />-->
             <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
                 <template #default="{ row }">
                     <view style="position: relative;padding: 10px 0;">
@@ -66,29 +66,29 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="prompt" label="提示词" align="center" min-width="140px">
-                <template #default="{ row }">
-                    <el-tooltip placement="top">
-                        <template #content>
-                            <div style="max-width: 300px;">{{ row.prompt }}</div>
-                        </template>
-                        <el-text truncated>{{ row.prompt }}</el-text>
-                    </el-tooltip>
-                </template>
-            </el-table-column>
+<!--            <el-table-column prop="prompt" label="提示词" align="center" min-width="140px">-->
+<!--                <template #default="{ row }">-->
+<!--                    <el-tooltip placement="top">-->
+<!--                        <template #content>-->
+<!--                            <div style="max-width: 300px;">{{ row.prompt }}</div>-->
+<!--                        </template>-->
+<!--                        <el-text truncated>{{ row.prompt }}</el-text>-->
+<!--                    </el-tooltip>-->
+<!--                </template>-->
+<!--            </el-table-column>-->
             <el-table-column prop="guide_list" label="引导语" align="center" min-width="140px" :formatter="(e) => e.guide_list.join(';')" />
-            <el-table-column prop="show" label="启用" align="center" width="50px">
-                <template #default="{ row }">
-                    <div>
-                        <el-switch v-model="row.show" :disabled="true" size="small" />
-                    </div>
-                </template>
-            </el-table-column>
-            <el-table-column prop="hot_count" label="热度" align="center" min-width="50px" />
-            <el-table-column prop="talk_count" label="对话" align="center" min-width="50px" />
+<!--            <el-table-column prop="show" label="启用" align="center" width="50px">-->
+<!--                <template #default="{ row }">-->
+<!--                    <div>-->
+<!--                        <el-switch v-model="row.show" :disabled="true" size="small" />-->
+<!--                    </div>-->
+<!--                </template>-->
+<!--            </el-table-column>-->
+<!--            <el-table-column prop="hot_count" label="热度" align="center" min-width="50px" />-->
+<!--            <el-table-column prop="talk_count" label="对话" align="center" min-width="50px" />-->
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column label="操作" align="center" width="200" fixed="right">
+<!--            <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />-->
+            <el-table-column label="操作" align="center" width="80" fixed="right">
                 <template #default="{row}">
                     <el-button v-if="isAdmin && row.category_id === 'null'" type="success" @click="openRoleDialog({ category_id: row._id })" size="small">新增</el-button>
                     <el-button v-if="row.category_id !== 'null'" type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
@@ -109,16 +109,14 @@
         <!--            />-->
         <!--        </view>-->
 
-        <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" align-center draggable>
-            <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px" :disabled="!isAdmin">
-                <div style="display: flex;">
-                    <el-form-item label="角色名称" prop="name">
-                        <el-input v-model="roleData.name" :maxlength="10" placeholder="请输入角色名称" clearable show-word-limit />
-                    </el-form-item>
-                    <el-form-item label="用户名称" prop="user_name">
-                        <el-input v-model="roleData.user_name" :maxlength="10" placeholder="请输入用户名称" clearable show-word-limit />
-                    </el-form-item>
-                </div>
+        <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" align-center draggable size="small">
+            <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="90px" :disabled="!isAdmin" size="small">
+                <el-form-item label="角色名称" prop="name">
+                    <el-input v-model="roleData.name" :maxlength="10" placeholder="请输入角色名称" clearable show-word-limit />
+                </el-form-item>
+                <el-form-item label="用户名称" prop="user_name">
+                    <el-input v-model="roleData.user_name" :maxlength="10" placeholder="请输入用户名称" clearable show-word-limit />
+                </el-form-item>
 
                 <el-form-item label="角色分类" prop="category_id">
                     <el-select v-model="roleData.category_id" placeholder="请选择角色分类" :disabled="roleData._id && roleData.category_id === 'null' && roleData.children.length" clearable>
@@ -156,29 +154,28 @@
                         <el-input v-model="roleData.tag_list[0]" :maxlength="6" placeholder="标签1" clearable show-word-limit />
                         <div style="width: 10px;flex-shrink: 0"></div>
                         <el-input v-model="roleData.tag_list[1]" :maxlength="6" placeholder="标签2" clearable show-word-limit />
-                        <div style="width: 10px;flex-shrink: 0"></div>
+                    </div>
+                    <div style="display: flex; padding-top: 8px">
                         <el-input v-model="roleData.tag_list[2]" :maxlength="6" placeholder="标签3" clearable show-word-limit />
                         <div style="width: 10px;flex-shrink: 0"></div>
                         <el-input v-model="roleData.tag_list[3]" :maxlength="6" placeholder="标签4" clearable show-word-limit />
                     </div>
                 </el-form-item>
 
-                <div style="display: flex;">
-                    <el-form-item label="角色性别" prop="gender">
-                        <el-radio-group v-model="roleData.gender">
-                            <el-radio value="">未知</el-radio>
-                            <el-radio value="1">男</el-radio>
-                            <el-radio value="2">女</el-radio>
-                        </el-radio-group>
-                    </el-form-item>
-                    <el-form-item label="角色风格" prop="styles">
-                        <el-radio-group v-model="roleData.styles">
-                            <el-radio v-for="item in 4" :key="item" :value="item">
-                                <div :class="`tag tag-${item}`" />
-                            </el-radio>
-                        </el-radio-group>
-                    </el-form-item>
-                </div>
+                <el-form-item label="角色性别" prop="gender">
+                    <el-radio-group v-model="roleData.gender">
+                        <el-radio value="">未知</el-radio>
+                        <el-radio value="1">男</el-radio>
+                        <el-radio value="2">女</el-radio>
+                    </el-radio-group>
+                </el-form-item>
+                <el-form-item label="角色风格" prop="styles">
+                    <el-radio-group v-model="roleData.styles">
+                        <el-radio v-for="item in 4" :key="item" :value="item">
+                            <div :class="`tag tag-${item}`" />
+                        </el-radio>
+                    </el-radio-group>
+                </el-form-item>
 
                 <el-form-item label="角色提示词" prop="prompt">
                     <el-input type="textarea" v-model="roleData.prompt" :rows="5" :maxlength="500" placeholder="请输入角色提示词" clearable show-word-limit />
@@ -191,9 +188,9 @@
                     <el-form-item label="创建者">
                         <el-input v-model="roleData.creator" placeholder="请输入创建者名称" :maxlength="6" clearable show-word-limit />
                     </el-form-item>
-                    <el-form-item label="角色排序" prop="sort">
-                        <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />
-                    </el-form-item>
+<!--                    <el-form-item label="角色排序" prop="sort">-->
+<!--                        <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />-->
+<!--                    </el-form-item>-->
                 </div>
             </el-form>
 
@@ -386,8 +383,8 @@ onMounted(async () => await getList())
     }
 
     .tag {
-        width: 36px;
-        height: 20px;
+        width: 28px;
+        height: 14px;
         border-radius: 4px;
 
         &.tag-1 {
