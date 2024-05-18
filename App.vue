@@ -1,23 +1,23 @@
 <script>
 	export default {
 		globalData: {
-			name: '',
+			name: 'xiaoli',
 		},
 		onLaunch: function({ query }) {
-			if (!query || !query.name) query = uni.getStorageSync('globalData') || {}
-			if (!['xiaoli', 'tongyao'].includes(query.name)) return uni.redirectTo({ url: "pages/error/error"});
-
-            this.globalData.name = query.name
-			uni.setStorageSync('globalData', query)
-
-			if (query.name === 'tongyao') {
-                ([1, 2]).forEach(i => {
-                    uni.setTabBarItem({
-                        index: i,
-                        visible: false
-                    });
-                })
-			}
+			// if (!query || !query.name) query = uni.getStorageSync('globalData') || {}
+			// if (!['xiaoli', 'tongyao'].includes(query.name)) return uni.redirectTo({ url: "pages/error/error"});
+            //
+            // this.globalData.name = query.name
+			// uni.setStorageSync('globalData', query)
+            //
+			// if (query.name === 'tongyao') {
+            //     ([1, 2]).forEach(i => {
+            //         uni.setTabBarItem({
+            //             index: i,
+            //             visible: false
+            //         });
+            //     })
+			// }
 		},
 		onShow: function(e) {
 
