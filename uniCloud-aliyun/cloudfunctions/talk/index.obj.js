@@ -17,11 +17,10 @@ const createTalkUrl  = (url) => {
 	const algorithm = "hmac-sha256";
 	const headers = "host date request-line";
 
-	/* 区分普通用户和vip用户 */
-	const { APPID, APISecret, APIKey, WSS, VERSION } = XF['vip']
+	/* 所有用户都用3.5 */
+	const { APPID, APISecret, APIKey, WSS, VERSION } = XF
 	url = url || WSS
 
-	// const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /v3.1/chat HTTP/1.1`;
 	const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /${VERSION}/chat HTTP/1.1`;
 	const signatureSha = CryptoJS.HmacSHA256(signatureOrigin, APISecret);
 	const signature = CryptoJS.enc.Base64.stringify(signatureSha);

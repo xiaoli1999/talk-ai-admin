@@ -97,15 +97,16 @@ const main = {
 
 			/* 组装用户最新数据 */
 			const token = createToken({ openid })
+
 			const userData = {
 				openid,
 				session_key,
 				unionid,
 				token,
-				last_login_date: Date.now(),
-				username: `cl${ dayjs().add(8, 'hour').format('YYYYMMDDHHmmssSSS') }`
+				last_login_date: Date.now()
 			}
 
+			let isPlatformRegisterVip = false
 
 			/* 查库判断用户是否存在该用户，有则更新，无则添加新用户 */
 			const { data: userList } = await usersJqlDb.where({ openid }).get()
@@ -113,6 +114,9 @@ const main = {
 			if (userList.length) {
 				await usersJqlDb.doc(userList[0]._id).update(userData)
 			} else {
+				/* 添加用户唯一名称 */
+				userData.username = `cl${ dayjs().add(8, 'hour').format('YYYYMMDDHHmmssSSS') }`
+
 				/* 注册时若携带inviteUid，则代表为受邀用户 */
 				if (event.inviteUid) {
 					userData.inviter_uid = event.inviteUid
@@ -123,16 +127,30 @@ const main = {
 				}
 
 				/* 注册时若携带platform，则记录下平台并发放奖励 */
-				if (event.platform) {
-					userData.register_platform = event.platform
+				if (event.platform) userData.register_platform = event.platform
+
+				/* 限定平台发放奖励 */
+				isPlatformRegisterVip = ['juejin', 'csdn', 'v2ex', 'w2solo', 'xiaozhong'].includes(event.platform)
+
+				/* 符合注册平台奖励时，赠送会员 */
+				if (isPlatformRegisterVip) {
+					userData.talk_count = vipCount
+
+					const nowDate = dayjs().valueOf()
+					userData.vip_start_time = nowDate
+					userData.vip_end_time = dayjs(nowDate).add(30, 'day').valueOf()
+				} else {
+					userData.talk_count = talkCount
 				}
 
-				await usersJqlDb.add({ ...userData, talk_count: talkCount })
+				await usersJqlDb.add(userData)
 			}
 
 			const { data: newUserList } = await usersJqlDb.where({ openid }).get()
 
-			return { data: newUserList[0], errMsg: userList.length ? '登录成功' : '注册成功' }
+			const newUserData = { ...newUserList[0], isPlatformRegisterVip }
+
+			return { data: newUserData, errMsg: userList.length ? '登录成功' : '注册成功' }
 		} catch ({ message }) {
 			console.log('\n----------用户注册登录异常----------\n', message);
 			return { errMsg: message }
@@ -166,6 +184,28 @@ const main = {
 	},
 
 	/**
+	 * @function getUserInfo 更新用户信息
+	 * @param { Object } event 携带参数
+	 * @param { String } event.token 用户token
+	 * @returns {object} { errMsg: '', data: '' } 错误信息及用户更新后的信息
+	 */
+	async getUserInfo ({ token }) {
+		try {
+			if (!token) return { errMsg: '无效token' }
+
+			const { openid } = verifyToken(token)
+			if (!openid) return { errMsg: '无效用户' }
+
+			const { data } = await usersDb.where({ openid }).get()
+
+			return { data: data[0], errMsg: '获取成功' }
+		} catch ({ message }) {
+			console.log('\n----------获取用户信息异常----------\n', message);
+			return { errMsg: message }
+		}
+	},
+
+	/**
 	 * @function dawnUpdateUserTalkCount 每天凌晨更新用户对话次数
 	 */
 	async dawnUpdateUserTalkCount () {
@@ -176,31 +216,12 @@ const main = {
 			/* 获取调用时间 */
 			const current_time = Date.now()
 
-			const field = {
-				_id: true,
-				talk_count: true,
-				vip_count: true,
-				vip_end_time: true
-			}
-			const { data } = await usersJqlDb.field(field).get()
+			console.log('\n ----更新vip用户对话次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			usersJqlDb.where(`vip_end_time > ${ current_time }`).update({ talk_count: vipCount })
 
-			if (!data || !data.length) return { errMsg: '更新失败', data }
+			console.log('\n ----更新非会员且次数小于默认次数的用户得对话次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			usersJqlDb.where(`vip_end_time < ${current_time } && talk_count < ${ talkCount }`).update({ talk_count: talkCount })
 
-			for(const user of data) {
-				/* 默认次数 */
-				let count = 0
-
-				/* 处理vip用户 */
-				if ((user.vip_end_time || 0) > current_time) {
-					count = vipCount
-				} else {
-					/* 处理普通用户，若当前次数大于默认次数，则不更新 */
-					count = user.talk_count > talkCount ? user.talk_count : talkCount
-				}
-
-				/* 更新信息 */
-				await usersJqlDb.doc(user._id).update({ talk_count: count })
-			}
 
 			console.log('\n----------更新用户对话次数结束时间----------', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
 			console.log('\n----------本地更新耗时----------\n');

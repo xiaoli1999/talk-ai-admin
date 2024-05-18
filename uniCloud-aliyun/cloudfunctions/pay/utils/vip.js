@@ -1,12 +1,12 @@
 const vipList = [
 	{
 		name: '天会员',
-		date: 3,
-		day: 3,
-		originalPrice: 198,
-		price: 1,
+		date: 7,
+		day: 7,
+		originalPrice: 1298,
+		price: 98,
 		hot: true,
-		desc: '新用户特惠'
+		desc: '前100名开通会员，限时特惠🎁'
 	},
 	{
 		name: '天会员',
@@ -59,7 +59,7 @@ const vipList = [
 ]
 
 const vipGainList = [
-	'会员每天拥有200次对话次数，次日凌晨更新。',
+	'会员每天拥有500次对话次数，次日凌晨更新。',
 	'会员支持联系上下文对话， 最高可支持1w中文、6k英文字数。',
 	'会员将优先体验我们推出的新功能，快人一步享受。',
 	'会员将有资格进入“会员社群”，可与其他会员互相交流，提出新功能建议等。',
@@ -68,7 +68,7 @@ const vipGainList = [
 	'会员为虚拟商品，暂不支持退款（建议先购买新人套餐体验）。',
 ]
 
-module.exports = { 
+module.exports = {
 	vipList,
 	vipGainList
 }

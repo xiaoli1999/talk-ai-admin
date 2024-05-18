@@ -8,4 +8,4 @@ const clientInfo = { // 模拟clientInfo
   uniIdToken: 'xxx'
 }
 
-dawnClearExpireOrder()
+dawnUpdateUserTalkCount()
