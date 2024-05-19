@@ -27,6 +27,7 @@
                     </div>
                 </template>
             </el-table-column>
+            <el-table-column prop="login_count" label="登录次数" align="center" min-width="80px" :formatter="(e) => e.login_count > 1 ? e.login_count : ''" />
             <el-table-column prop="last_login_date" label="登录时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="register_date" label="注册时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.register_date).format('MM-DD HH:mm:ss')" />
         </el-table>
