@@ -55,7 +55,7 @@
             <el-table-column prop="gender" label="性别" align="center" width="60px">
                 <template #default="{ row }">
                     <div>
-                        <el-tag type="success">{{ { '1': '男', '2': '女', '': '未知' }[row.gender] }}</el-tag>
+                        <el-tag type="success">{{ genderEnums[row.gender] }}</el-tag>
                     </div>
                 </template>
             </el-table-column>
@@ -166,9 +166,7 @@
                 <div style="display: flex;">
                     <el-form-item label="角色性别" prop="gender">
                         <el-radio-group v-model="roleData.gender">
-                            <el-radio value="">未知</el-radio>
-                            <el-radio value="1">男</el-radio>
-                            <el-radio value="2">女</el-radio>
+                            <el-radio v-for="item in genderEnumsList" :key="item.id" :value="item.id">{{ item.value }}</el-radio>
                         </el-radio-group>
                     </el-form-item>
                     <el-form-item label="角色风格" prop="styles">
@@ -211,6 +209,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from 'element-plus'
 import { createAvatarKey, listToTree, montageImgUrl } from '../../utils/common'
+import {genderEnums, genderEnumsList} from "@/config/enums";
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
@@ -240,7 +239,7 @@ const roleDataDefault = () => ({
     user_name: '',
     avatar: '',
     avatar_long: '',
-    gender: '',
+    gender: 0,
     desc: '',
     tag_list: [],
     styles: 1,
