@@ -17,7 +17,10 @@ export const platformEnums = {
 	xiaozhong: '小众软件',
 	xioahongshu: '小红书',
 	gongzhonghao: '公众号',
-	pengyouqaun: '朋友圈'
+	pengyouqaun: '朋友圈',
+	poster: '主海报',
+	wxad: '微信搜索广告',
+	'wxad-show': '微信展示广告'
 }
 
 export const genderEnums = {

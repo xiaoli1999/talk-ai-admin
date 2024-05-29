@@ -1,16 +1,26 @@
 <template>
     <el-scrollbar v-loading="loading" class="user page">
         <el-table :data="list" border>
-            <el-table-column prop="avatar" label="头像" align="center" min-width="30px">
+            <el-table-column prop="avatar" label="头像" align="center" min-width="40px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
-                        <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" preview-teleported fit="contain" style="width: 30px;border-radius: 50%;" />
+                        <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" preview-teleported fit="contain" style="width: 40px;border-radius: 50%;" />
                     </div>
 
                 </template>
             </el-table-column>
+
             <el-table-column prop="nickname" label="昵称" align="center" min-width="80px" />
-            <el-table-column prop="register_platform" label="注册来源" align="center" min-width="100px">
+
+            <el-table-column prop="gender" label="性别" align="center" min-width="60px">
+                <template #default="{ row }">
+                    <div>
+                        <el-tag type="primary">{{ genderEnums[row.gender] }}</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="register_platform" label="注册来源" align="center" min-width="80px">
                 <template #default="{ row }">
                     <div>
                         <el-tag v-if="row.inviter_uid" type="primary" size="small">{{ row.inviter_uid === '6642bdad816a3f647e0578cc' ? '管理员': '用户' }}邀请</el-tag>
@@ -19,6 +29,9 @@
                     </div>
                 </template>
             </el-table-column>
+
+            <el-table-column prop="login_count" label="登录次数" align="center" min-width="80px" :formatter="(e) => e.login_count > 1 ? e.login_count : ''" />
+
             <el-table-column prop="register_platform" label="今日注册" align="center" min-width="80px">
                 <template #default="{ row }">
                     <div>
@@ -27,9 +40,12 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="login_count" label="登录次数" align="center" min-width="80px" :formatter="(e) => e.login_count > 1 ? e.login_count : ''" />
-            <el-table-column prop="last_login_date" label="登录时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
-            <el-table-column prop="register_date" label="注册时间" align="center" min-width="100px" :formatter="(e) => dayjs(e.register_date).format('MM-DD HH:mm:ss')" />
+
+            <el-table-column prop="video_ad_count" label="视频次数" align="center" min-width="60px" :formatter="(e) => e.video_ad_count || ''" />
+
+            <el-table-column prop="reward_last_date" label="领奖日期" align="center" min-width="60px" />
+            <el-table-column prop="last_login_date" label="登录时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="register_date" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.register_date).format('MM-DD HH:mm:ss')" />
         </el-table>
         <view class="pagination">
             <el-pagination
@@ -48,7 +64,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { dayjs } from 'element-plus'
-import { platformEnums } from "@/config/enums";
+import { genderEnums, platformEnums } from "@/config/enums";
 
 const db = uniCloud.database()
 
