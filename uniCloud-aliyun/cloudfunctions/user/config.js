@@ -3,5 +3,7 @@ module.exports = {
 	AppSecret: '28fde98414a459bebbada964d2789584',
 	talkCount: 10,
 	vipCount: 500,
-	inviteCount: 5
+	inviteCount: 3,
+	videoAdCount: 5,
+	rewardCount: 10
 }

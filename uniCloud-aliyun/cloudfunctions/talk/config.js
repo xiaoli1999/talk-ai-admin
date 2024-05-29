@@ -5,16 +5,16 @@ module.exports = {
 		VERSION: 'v3.5',
 
 		/* 小黎 */
-		APPID: "22b984c1",
-		APISecret: "ZDg4ZjZhM2JhNWQxYmI3NGRlNGNhMDlj",
-		APIKey: "f917bb19d6d0260cd5e19ec2ff334916",
-		WSS: "wss://spark-api.xf-yun.com/v3.5/chat",
+		// APPID: "22b984c1",
+		// APISecret: "ZDg4ZjZhM2JhNWQxYmI3NGRlNGNhMDlj",
+		// APIKey: "f917bb19d6d0260cd5e19ec2ff334916",
+		// WSS: "wss://spark-api.xf-yun.com/v3.5/chat",
 
 		// /* 采黎 */
-		// APPID: "d249c9e8",
-		// APISecret: "OWYwYWE2NjRmNTFhNDQ2NmY2M2YyOTJh",
-		// APIKey: "99a0431228d73f13a689b9df444fa736",
-		// WSS: "wss://spark-api.xf-yun.com/v3.5/chat"
+		APPID: "d249c9e8",
+		APISecret: "OWYwYWE2NjRmNTFhNDQ2NmY2M2YyOTJh",
+		APIKey: "99a0431228d73f13a689b9df444fa736",
+		WSS: "wss://spark-api.xf-yun.com/v3.5/chat"
 	},
 	MINIMAX: {
 		/* 小黎 */

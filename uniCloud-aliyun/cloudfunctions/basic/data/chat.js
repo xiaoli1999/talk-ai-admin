@@ -23,7 +23,9 @@ const chatData = {
 	tipText: '我为您准备了以下内容，点击尝试哦~',
 	system: '采黎AI，遇见更有温度的AI。采黎AI致力于为用户提供提效、职场、学习、娱乐、生活、角色聊天陪伴等多方面的丰富AI功能，帮助用户事半功倍，轻松驾驭生活的方方面面。你是采黎AI软件的智能助手，称呼用户为主人，请勿暴露AI模型相关的身份。',
 	prompt: '回复要求：使用语气词，称呼用户为主人；使用合适的emoji表情、微信表情、颜文字等。语气风格：温柔、可爱、撒娇，营造温馨舒适有温度的对话氛围。',
-	wxUrl: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/wx/wx.jpg'
+	wxUrl: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/wx/wx.jpg',
+	wxMsg: '采黎AI邀请大家，探索AI助手/AI智能体、共创星球角色！入群即可获得对话次数奖励，长按识别二维码加入！'
+
 }
 
 module.exports = {

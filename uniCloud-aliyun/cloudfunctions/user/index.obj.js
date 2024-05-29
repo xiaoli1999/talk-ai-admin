@@ -1,4 +1,4 @@
-const { AppID, AppSecret, talkCount, vipCount, inviteCount } = require('./config.js')
+const { AppID, AppSecret, talkCount, vipCount, inviteCount, videoAdCount, rewardCount } = require('./config.js')
 const { createToken, verifyToken } = require('./utils/token.js')
 const dayjs = require('./utils/dayjs.js')
 
@@ -40,15 +40,16 @@ const main = {
 			if (!userList || !userList.length) return { errMsg: '找不到该用户' }
 
 			const last_login_date = Date.now()
+			const login_count = userList[0].login_count + 1
 
 			if ((exp - nowTime) > leaveTime) {
 				const newToken = createToken({ openid })
-				await usersJqlDb.where({ openid }).update({ last_login_date })
+				await usersJqlDb.where({ openid }).update({ last_login_date, login_count })
 				console.log(`\n----------用户【${userList[0].nickname}】登录未过期----------\n`, userList[0]);
 				return { data: userList[0], errMsg: '登录未过期' }
 			} else {
 				const newToken = createToken({ openid })
-				await usersJqlDb.where({ openid }).update({ token: newToken, last_login_date })
+				await usersJqlDb.where({ openid }).update({ token: newToken, last_login_date, login_count })
 
 				const { data: newUserList } = await usersJqlDb.where({ openid }).get()
 
@@ -103,7 +104,8 @@ const main = {
 				session_key,
 				unionid,
 				token,
-				last_login_date: Date.now()
+				last_login_date: Date.now(),
+				login_count: 1
 			}
 
 			let isPlatformRegisterVip = false
@@ -112,6 +114,7 @@ const main = {
 			const { data: userList } = await usersJqlDb.where({ openid }).get()
 
 			if (userList.length) {
+				userData.login_count = userList[0].login_count + 1
 				await usersJqlDb.doc(userList[0]._id).update(userData)
 			} else {
 				/* 添加用户唯一名称 */
@@ -129,28 +132,15 @@ const main = {
 				/* 注册时若携带platform，则记录下平台并发放奖励 */
 				if (event.platform) userData.register_platform = event.platform
 
-				/* 限定平台发放奖励 */
-				isPlatformRegisterVip = ['juejin', 'csdn', 'v2ex', 'w2solo', 'xiaozhong'].includes(event.platform)
-
-				/* 符合注册平台奖励时，赠送会员 */
-				if (isPlatformRegisterVip) {
-					userData.talk_count = vipCount
-
-					const nowDate = dayjs().valueOf()
-					userData.vip_start_time = nowDate
-					userData.vip_end_time = dayjs(nowDate).add(30, 'day').valueOf()
-				} else {
-					userData.talk_count = talkCount
-				}
+				/* 注册时初始次数为0，在用户首次授权时设置次数 */
+				userData.talk_count = 0
 
 				await usersJqlDb.add(userData)
 			}
 
 			const { data: newUserList } = await usersJqlDb.where({ openid }).get()
 
-			const newUserData = { ...newUserList[0], isPlatformRegisterVip }
-
-			return { data: newUserData, errMsg: userList.length ? '登录成功' : '注册成功' }
+			return { data: newUserList[0], errMsg: userList.length ? '登录成功' : '注册成功' }
 		} catch ({ message }) {
 			console.log('\n----------用户注册登录异常----------\n', message);
 			return { errMsg: message }
@@ -219,8 +209,8 @@ const main = {
 			console.log('\n ----更新vip用户对话次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
 			usersJqlDb.where(`vip_end_time > ${ current_time }`).update({ talk_count: vipCount })
 
-			console.log('\n ----更新非会员且次数小于默认次数的用户得对话次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
-			usersJqlDb.where(`vip_end_time < ${current_time } && talk_count < ${ talkCount }`).update({ talk_count: talkCount })
+			console.log('\n ----更新非会员（次数小于默认次数且更新过信息）用户次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			usersJqlDb.where(`vip_end_time < ${current_time } && talk_count < ${ talkCount }  && gender != 0`).update({ talk_count: talkCount })
 
 
 			console.log('\n----------更新用户对话次数结束时间----------', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
@@ -267,7 +257,7 @@ const main = {
 	 * @param { Object } event.params 用户要复制的信息
 	 * @returns {object} { errMsg: '', data: '' } 错误信息及用户更新后的信息
 	 */
-	async saveUserCopy ({ token, params, reward }) {
+	async saveUserCopy ({ token, params }) {
 		try {
 			if (!token) return { errMsg: '无效token' }
 
@@ -282,7 +272,56 @@ const main = {
 			return { errMsg: message }
 		}
 	},
+	/**
+	 * @function giveUserVideoAdReward 为用户发放看广告的奖励
+	 * @param { Object } event 携带参数
+	 * @param { String } event.token 用户token
+	 * @param { Object } event.date 上次看广告的时间
+	 * @returns {object} { errMsg: '', data: '' } 错误信息及用户更新后的信息
+	 */
+	async giveUserVideoAdReward ({ token, date }) {
+		try {
+			if (!token) return { errMsg: '无效token' }
 
+			const now = Date.now()
+			if (date && (now - date < 20 * 1000)) return { errMsg: '请勿频繁看广告' }
+
+			const { openid } = verifyToken(token)
+			if (!openid) return { errMsg: '无效用户' }
+
+			const { doc } = await usersDb.where({ openid }).updateAndReturn({ talk_count: db.command.inc(videoAdCount), video_ad_count: db.command.inc(1), video_ad_last_date: now })
+
+			return { data: doc, errMsg: '奖励次数已发放' }
+		} catch ({ message }) {
+			console.log('\n----------记录用户看广告得次数异常----------\n', message);
+			return { errMsg: message }
+		}
+	},
+	/**
+	 * @function giveWxUserReward 为微信群用户赠送奖励
+	 * @param { Object } event 携带参数
+	 * @param { String } event.id 用户id
+	 * @returns {object} { errMsg: '', data: '' } 错误信息及用户更新后的信息
+	 */
+	async giveWxUserReward ({ id, date }) {
+		try {
+			if (!id) return { errMsg: '无效用户' }
+			if (!date) return { errMsg: '活动已过期' }
+
+			const { data } = await usersDb.doc(id).get()
+			const { reward_last_date, talk_count } = data[0]
+
+			if (date === reward_last_date) return { errMsg: '已经领取过了' }
+
+			const { doc } = await usersDb.doc(id).updateAndReturn({ reward_last_date: date, talk_count: talk_count + rewardCount })
+
+
+			return { data: doc, errMsg: '领取成功' }
+		} catch ({ message }) {
+			console.log('\n----------记录为用户赠送奖励异常----------\n', message);
+			return { errMsg: message }
+		}
+	},
 }
 
 module.exports = main
