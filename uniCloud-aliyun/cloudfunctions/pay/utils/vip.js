@@ -1,12 +1,12 @@
 const vipList = [
 	{
 		name: '天会员',
-		date: 7,
-		day: 7,
-		originalPrice: 1298,
-		price: 98,
+		date: 1,
+		day: 1,
+		originalPrice: 198,
+		price: 10,
 		hot: true,
-		desc: '前100名开通会员，限时特惠🎁'
+		desc: '新用户优惠🎁'
 	},
 	{
 		name: '天会员',

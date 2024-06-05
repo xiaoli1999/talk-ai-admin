@@ -59,7 +59,7 @@ module.exports = {
 	 */
 	async getWorkBasicData () {
 		try {
-			const workData = await worksJqlDb.get()
+			const workData = await worksJqlDb.limit(1000).get()
 
 			const data = {
 				list: workData.data || []
@@ -93,7 +93,7 @@ module.exports = {
 	 */
 	async getRoleBasicData () {
 		try {
-			const rolesData = await rolesJqlDb.get()
+			const rolesData = await rolesJqlDb.limit(1000).get()
 
 			const data = {
 				...roleData,

@@ -209,8 +209,9 @@ const main = {
 			console.log('\n ----更新vip用户对话次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
 			usersJqlDb.where(`vip_end_time > ${ current_time }`).update({ talk_count: vipCount })
 
-			console.log('\n ----更新非会员（次数小于默认次数且更新过信息）用户次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
-			usersJqlDb.where(`vip_end_time < ${current_time } && talk_count < ${ talkCount }  && gender != 0`).update({ talk_count: talkCount })
+			/* 暂停非会员次数更新，引导用户获取次数 */
+			// console.log('\n ----更新非会员（次数小于默认次数且更新过信息）用户次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			// usersJqlDb.where(`vip_end_time < ${current_time } && talk_count < ${ talkCount }  && gender != 0`).update({ talk_count: talkCount })
 
 
 			console.log('\n----------更新用户对话次数结束时间----------', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
@@ -298,27 +299,26 @@ const main = {
 		}
 	},
 	/**
-	 * @function giveWxUserReward 为微信群用户赠送奖励
+	 * @function signReward 签到奖励
 	 * @param { Object } event 携带参数
 	 * @param { String } event.id 用户id
 	 * @returns {object} { errMsg: '', data: '' } 错误信息及用户更新后的信息
 	 */
-	async giveWxUserReward ({ id, date }) {
+	async signReward ({ id, date }) {
 		try {
 			if (!id) return { errMsg: '无效用户' }
-			if (!date) return { errMsg: '活动已过期' }
 
 			const { data } = await usersDb.doc(id).get()
-			const { reward_last_date, talk_count } = data[0]
+			const { sign_last_date, sign_count, talk_count } = data[0]
 
-			if (date === reward_last_date) return { errMsg: '已经领取过了' }
+			if (date === sign_last_date) return { errMsg: '已经领取过了' }
 
-			const { doc } = await usersDb.doc(id).updateAndReturn({ reward_last_date: date, talk_count: talk_count + rewardCount })
+			const { doc } = await usersDb.doc(id).updateAndReturn({ sign_last_date: date, sign_count: sign_count + 1, talk_count: talk_count + rewardCount })
 
 
 			return { data: doc, errMsg: '领取成功' }
 		} catch ({ message }) {
-			console.log('\n----------记录为用户赠送奖励异常----------\n', message);
+			console.log('\n----------记录用户签到赠送奖励异常----------\n', message);
 			return { errMsg: message }
 		}
 	},
