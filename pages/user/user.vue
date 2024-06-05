@@ -30,8 +30,6 @@
                 </template>
             </el-table-column>
 
-            <el-table-column prop="login_count" label="登录次数" align="center" min-width="80px" :formatter="(e) => e.login_count > 1 ? e.login_count : ''" />
-
             <el-table-column prop="register_platform" label="今日注册" align="center" min-width="80px">
                 <template #default="{ row }">
                     <div>
@@ -41,9 +39,12 @@
                 </template>
             </el-table-column>
 
-            <el-table-column prop="video_ad_count" label="视频次数" align="center" min-width="60px" :formatter="(e) => e.video_ad_count || ''" />
+            <el-table-column prop="login_count" label="登录次数" align="center" min-width="80px" sortable :formatter="(e) => e.login_count ? e.login_count : ''" />
 
-            <el-table-column prop="reward_last_date" label="领奖日期" align="center" min-width="60px" />
+            <el-table-column prop="sign_count" label="签到次数" align="center" min-width="60px" sortable :formatter="(e) => e.sign_count ? e.sign_count : ''" />
+
+            <el-table-column prop="video_ad_count" label="视频次数" align="center" min-width="60px" sortable :formatter="(e) => e.video_ad_count || ''" />
+
             <el-table-column prop="last_login_date" label="登录时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="register_date" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.register_date).format('MM-DD HH:mm:ss')" />
         </el-table>
