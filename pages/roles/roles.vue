@@ -266,7 +266,7 @@ const roleRules = reactive({
 const getList = async () => {
     // const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
-    const { result: { data, count } } = await rolesDb.orderBy('create_time desc').get({ getCount:true })
+    const { result: { data, count } } = await rolesDb.orderBy('create_time desc').limit(1000).get({ getCount:true })
     loading.value = false
     if (!data) return
 
