@@ -39,11 +39,18 @@
                 </template>
             </el-table-column>
 
+            <el-table-column prop="sign_count" label="是否签到" align="center" min-width="60px">
+                <template #default="{ row }">
+                    <div>
+                        <el-tag v-if="dayjs().format('YYYY-MM-DD') === row.sign_last_date" type="primary" size="small">是</el-tag>
+                    </div>
+                </template>
+
+            </el-table-column>
+
             <el-table-column prop="login_count" label="登录次数" align="center" min-width="80px" sortable :formatter="(e) => e.login_count ? e.login_count : ''" />
 
-            <el-table-column prop="sign_count" label="签到次数" align="center" min-width="60px" sortable :formatter="(e) => e.sign_count ? e.sign_count : ''" />
-
-            <el-table-column prop="video_ad_count" label="视频次数" align="center" min-width="60px" sortable :formatter="(e) => e.video_ad_count || ''" />
+            <el-table-column prop="video_ad_count" label="视频次数" align="center" min-width="60px" sortable :formatter="(e) => e.today_video_ad_count || ''" />
 
             <el-table-column prop="last_login_date" label="登录时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="register_date" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.register_date).format('MM-DD HH:mm:ss')" />
