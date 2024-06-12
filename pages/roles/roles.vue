@@ -10,14 +10,14 @@
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
-                        <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" preview-teleported fit="contain" style="border-radius: 50%;" />
+                        <el-image v-if="row.avatar1" :src="row.avatar1" :preview-src-list="[row.avatar1]" preview-teleported fit="contain" style="border-radius: 50%;" />
                     </div>
                 </template>
             </el-table-column>
             <el-table-column prop="avatar" label="背景" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
-                        <el-image v-if="row.avatar_long" :src="row.avatar_long" :preview-src-list="[row.avatar_long]" preview-teleported fit="contain" />
+                        <el-image v-if="row.avatar_long1" :src="row.avatar_long1" :preview-src-list="[row.avatar_long1]" preview-teleported fit="contain" />
                     </div>
                 </template>
             </el-table-column>
@@ -272,8 +272,8 @@ const getList = async () => {
 
     /* 限制oss大小 */
     data.map(i => {
-        if (i.avatar) i.avatar = montageImgUrl(i.avatar, 50)
-        if (i.avatar_long) i.avatar_long = montageImgUrl(i.avatar_long, 50)
+        if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 50)
+        if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 50)
         return i
     })
 
@@ -299,6 +299,9 @@ const openRoleDialog = (row) => {
     roleShow.value = true
     const data = JSON.parse(JSON.stringify(row))
     roleData.value = { ...roleDataDefault(), ...data }
+    /* 删除展示字段 */
+    delete roleData.value.avatar1
+    delete roleData.value.avatar_long1
     setTimeout(() => roleRef.value.clearValidate())
 }
 
