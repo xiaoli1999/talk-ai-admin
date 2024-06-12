@@ -4,6 +4,6 @@ module.exports = {
 	talkCount: 5,
 	vipCount: 500,
 	inviteCount: 3,
-	videoAdCount: 10,
+	videoAdCount: 5,
 	rewardCount: 5
 }

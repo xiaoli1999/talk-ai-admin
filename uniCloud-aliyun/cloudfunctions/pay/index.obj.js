@@ -38,7 +38,7 @@ module.exports = {
 			}
 
 			//返回数据给客户端
-			return { data: { goodsList, vipGainList, showIos: false }, errMsg: '获取成功' }
+			return { data: { goodsList, vipGainList, showIos: true }, errMsg: '获取成功' }
 		} catch ({ message }) {
 			console.log('\n -----------获取vip套餐失败----------- \n', message);
 			return { errMsg: message }

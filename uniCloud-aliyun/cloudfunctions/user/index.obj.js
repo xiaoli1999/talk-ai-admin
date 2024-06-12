@@ -206,8 +206,9 @@ const main = {
 			/* 获取调用时间 */
 			const current_time = Date.now()
 
-			console.log('\n ----更新vip用户对话次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
-			usersJqlDb.where(`vip_end_time > ${ current_time }`).update({ talk_count: vipCount })
+			console.log('\n ----清除所有用户普通对话次数及当天看视频广告次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			usersJqlDb.where('talk_count > 0').update({ talk_count: 0 })
+			usersJqlDb.where('today_video_ad_count > 0').update({ today_video_ad_count: 0 })
 
 			/* 暂停非会员次数更新，引导用户获取次数 */
 			// console.log('\n ----更新非会员（次数小于默认次数且更新过信息）用户次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
@@ -290,7 +291,14 @@ const main = {
 			const { openid } = verifyToken(token)
 			if (!openid) return { errMsg: '无效用户' }
 
-			const { doc } = await usersDb.where({ openid }).updateAndReturn({ talk_count: db.command.inc(videoAdCount), video_ad_count: db.command.inc(1), video_ad_last_date: now })
+			const params = {
+				talk_count: db.command.inc(videoAdCount),
+				today_video_ad_count: db.command.inc(1),
+				video_ad_count: db.command.inc(1),
+				video_ad_last_date: now
+			}
+
+			const { doc } = await usersDb.where({ openid }).updateAndReturn(params)
 
 			return { data: doc, errMsg: '奖励次数已发放' }
 		} catch ({ message }) {
