@@ -1,18 +1,165 @@
 <template>
-	<view class="home">
-		<view class="">
-			采黎AI后台
-			<el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/copy/copy')">复制页</el-button>
-		</view>
+    <el-scrollbar v-loading="loading" class="home page">
+        <view class="">
+            采黎AI后台
+            <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/copy/copy')">复制页</el-button>
+        </view>
 
-	</view>
+        <el-radio-group v-model="tab" style="margin: 20px auto;">
+            <el-radio-button :value="1">所有订单 （{{ orderList.length }}）</el-radio-button>
+            <el-radio-button :value="2">今日订单 （{{ todayOrderList.length }}）</el-radio-button>
+            <el-radio-button :value="3">所有VIP （{{ vipList.length }}）</el-radio-button>
+            <el-radio-button :value="4">未到期VIP （{{ useVipList.length }}）</el-radio-button>
+        </el-radio-group>
+
+        <template v-if="[1, 2].includes(tab)">
+            <el-table v-if="(tab === 1 ? orderList : todayOrderList).length" :data="tab === 1 ? orderList : todayOrderList" border>
+                <el-table-column prop="avatar" label="头像" align="center" min-width="40px">
+                    <template #default="{ row }">
+                        <div style="display: flex;justify-content: center">
+                            <el-image v-if="row.user_id[0].avatar" :src="row.user_id[0].avatar" :preview-src-list="[row.user_id[0].avatar]" preview-teleported fit="contain" style="width: 40px;border-radius: 50%;" />
+                        </div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="nickname" label="昵称" align="center" min-width="80px">
+                    <template #default="{ row }">
+                        <div style="">{{ row.user_id[0].nickname }}</div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="gender" label="性别" align="center" min-width="60px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag type="primary">{{ genderEnums[row.user_id[0].gender] }}</el-tag>
+                        </div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="register_platform" label="注册来源" align="center" min-width="80px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag v-if="row.user_id[0].inviter_uid" type="primary" size="small">{{ row.user_id[0].inviter_uid === '6642bdad816a3f647e0578cc' ? '管理员': '用户' }}邀请</el-tag>
+                            <el-tag v-else-if="row.user_id[0].register_platform" type="success" size="small">{{ platformEnums[row.user_id[0].register_platform] }}</el-tag>
+                            <div v-else></div>
+                        </div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="total_fee" label="充值金额" align="center" min-width="80px" :formatter="(e) => e.total_fee / 100" />
+                <el-table-column prop="osName" label="充值平台" align="center" min-width="80px" />
+
+                <el-table-column prop="last_login_date" label="付款时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+                <el-table-column prop="register_date" label="创建时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            </el-table>
+        </template>
+
+        <template v-if="[3, 4].includes(tab)">
+            <el-table :data="tab === 3 ? vipList : useVipList" border>
+                <el-table-column prop="avatar" label="头像" align="center" min-width="40px">
+                    <template #default="{ row }">
+                        <div style="display: flex;justify-content: center">
+                            <el-image v-if="row.avatar" :src="row.avatar" :preview-src-list="[row.avatar]" preview-teleported fit="contain" style="width: 40px;border-radius: 50%;" />
+                        </div>
+
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="nickname" label="昵称" align="center" min-width="80px" />
+
+                <el-table-column prop="gender" label="性别" align="center" min-width="60px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag type="primary">{{ genderEnums[row.gender] }}</el-tag>
+                        </div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="register_platform" label="注册来源" align="center" min-width="80px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag v-if="row.inviter_uid" type="primary" size="small">{{ row.inviter_uid === '6642bdad816a3f647e0578cc' ? '管理员': '用户' }}邀请</el-tag>
+                            <el-tag v-else-if="row.register_platform" type="success" size="small">{{ platformEnums[row.register_platform] }}</el-tag>
+                            <div v-else></div>
+                        </div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="pay_total" label="充值金额" align="center" min-width="80px" :formatter="(e) => e.pay_total / 100" />
+                <el-table-column prop="pay_count" label="充值次数" align="center" min-width="80px" />
+
+                <el-table-column prop="register_platform" label="今日注册" align="center" min-width="80px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag v-if="dayjs(row.register_date).isSame(dayjs(), 'day')" type="primary" size="small">是</el-tag>
+                            <el-tag v-else type="success" size="small">否</el-tag>
+                        </div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="sign_count" label="是否签到" align="center" min-width="60px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag v-if="dayjs().format('YYYY-MM-DD') === row.sign_last_date" type="primary" size="small">是</el-tag>
+                        </div>
+                    </template>
+
+                </el-table-column>
+
+                <el-table-column prop="vip_start_time" label="开始时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.vip_start_time).format('MM-DD HH:mm:ss')" />
+                <el-table-column prop="vip_end_time" label="结束时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.vip_end_time).format('MM-DD HH:mm:ss')" />
+            </el-table>
+        </template>
+    </el-scrollbar>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-const goPage = (url) => uni.navigateTo({ url })
+import { ref, onMounted } from 'vue'
+import { dayjs } from 'element-plus'
+import {genderEnums, platformEnums} from "@/config/enums";
+
+const db = uniCloud.database()
+const dbJQL = uniCloud.databaseForJQL()
 
 const globalData = ref(getApp().globalData)
+const goPage = (url) => uni.navigateTo({ url })
+
+const tab = ref(1)
+
+const orderList = ref([])
+const todayOrderList = ref([])
+
+const vipList = ref([])
+const useVipList = ref([])
+
+const loading = ref(false)
+
+const getOrderList = async () => {
+    loading.value = true
+    const orders = dbJQL.collection('orders').getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
+    const users = dbJQL.collection('users').getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
+    const { data } = await dbJQL.collection(orders, users).orderBy('create_time desc').limit(1000).get()
+    loading.value = false
+    if (!data) return
+
+    orderList.value = data || []
+    todayOrderList.value = orderList.value.filter(i => dayjs(i.create_time).isSame(dayjs(), 'day'))
+}
+
+const getVipList = async () => {
+    loading.value = true
+    const { result: { data } } = await db.collection('users').where('vip_end_time > 0').limit(1000).orderBy('vip_start_time desc').get()
+    loading.value = false
+
+    if (!data) return
+    vipList.value = data || []
+    useVipList.value = vipList.value.filter(i => i.vip_end_time > dayjs().valueOf())
+}
+
+onMounted(async () => {
+    await getOrderList()
+    await getVipList()
+})
 </script>
 
 <style lang="scss" scoped>

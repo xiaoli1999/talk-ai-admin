@@ -100,7 +100,7 @@ onMounted(async () => await getList())
 </script>
 
 <style lang="scss" scoped>
-.home {
+.user {
 
 }
 </style>
