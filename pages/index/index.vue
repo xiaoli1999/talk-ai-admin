@@ -49,8 +49,17 @@
                 <el-table-column prop="total_fee" label="充值金额" align="center" min-width="80px" :formatter="(e) => e.total_fee / 100" />
                 <el-table-column prop="osName" label="充值平台" align="center" min-width="80px" />
 
-                <el-table-column prop="last_login_date" label="付款时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-                <el-table-column prop="register_date" label="创建时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+                <el-table-column prop="register_platform" label="订单状态" align="center" min-width="80px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag v-if="row.status === 1" type="primary" size="small">已付款</el-tag>
+                            <el-tag v-else type="warning" size="small">未付款</el-tag>
+                        </div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column prop="paid_time" label="付款时间" align="center" min-width="80px" :formatter="(e) => e.paid_time ? dayjs(e.paid_time).format('MM-DD HH:mm:ss') : ''" />
+                <el-table-column prop="create_time" label="创建时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             </el-table>
         </template>
 
@@ -97,15 +106,7 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column prop="sign_count" label="是否签到" align="center" min-width="60px">
-                    <template #default="{ row }">
-                        <div>
-                            <el-tag v-if="dayjs().format('YYYY-MM-DD') === row.sign_last_date" type="primary" size="small">是</el-tag>
-                        </div>
-                    </template>
-
-                </el-table-column>
-
+                <el-table-column prop="last_login_date" label="最近登录时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
                 <el-table-column prop="vip_start_time" label="开始时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.vip_start_time).format('MM-DD HH:mm:ss')" />
                 <el-table-column prop="vip_end_time" label="结束时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.vip_end_time).format('MM-DD HH:mm:ss')" />
             </el-table>
