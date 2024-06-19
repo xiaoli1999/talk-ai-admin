@@ -20,7 +20,9 @@ export const platformEnums = {
 	pengyouqaun: '朋友圈',
 	poster: '主海报',
 	wxad: '微信搜索广告',
-	'wxad-show': '微信展示广告'
+	'wxad-show': '微信展示广告',
+	'wxad-pyq': '微信朋友圈广告',
+	'wxad-video': '微信视频号广告'
 }
 
 export const genderEnums = {
