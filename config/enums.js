@@ -23,6 +23,7 @@ export const platformEnums = {
 	'wxad-pyq': '广告-朋友圈',
 	'wxad-video': '广告-视频号',
 	'wxad-cover': '广告-小程序封面',
+	'wxad-popup': '广告-小程序插屏',
 }
 
 export const genderEnums = {
