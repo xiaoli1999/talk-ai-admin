@@ -19,10 +19,10 @@ export const platformEnums = {
 	gongzhonghao: '公众号',
 	pengyouqaun: '朋友圈',
 	poster: '主海报',
-	wxad: '微信搜索广告',
-	'wxad-show': '微信展示广告',
-	'wxad-pyq': '微信朋友圈广告',
-	'wxad-video': '微信视频号广告'
+	wxad: '广告-搜索',
+	'wxad-pyq': '广告-朋友圈',
+	'wxad-video': '广告-视频号',
+	'wxad-cover': '广告-小程序封面',
 }
 
 export const genderEnums = {

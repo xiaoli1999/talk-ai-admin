@@ -3,6 +3,7 @@
         <view class="">
             采黎AI后台
             <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/copy/copy')">复制页</el-button>
+            <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/magic/magic')">微调页</el-button>
         </view>
 
         <el-radio-group v-model="tab" style="margin: 20px auto;">
