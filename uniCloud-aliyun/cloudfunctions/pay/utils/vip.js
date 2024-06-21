@@ -3,32 +3,32 @@ const vipList = [
 		name: '天会员',
 		date: 1,
 		day: 1,
-		originalPrice: 198,
+		originalPrice: 298,
 		price: 98,
 		hot: true,
-		desc: '新用户优惠🎁'
+		desc: '新用户优惠'
 	},
 	{
 		name: '天会员',
 		date: 1,
 		day: 1,
-		originalPrice: 200,
-		price: 169,
+		originalPrice: 298,
+		price: 198,
 		hot: false
 	},
 	{
 		name: '天会员',
 		date: 3,
 		day: 3,
-		originalPrice: 500,
-		price: 399,
+		originalPrice: 800,
+		price: 498,
 		hot: false
 	},
 	{
 		name: '天会员',
 		date: 7,
 		day: 7,
-		originalPrice: 1200,
+		originalPrice: 1600,
 		price: 998,
 		hot: true
 	},
@@ -36,24 +36,24 @@ const vipList = [
 		name: '月会员',
 		date: 1,
 		day: 30,
-		originalPrice: 3000,
-		price: 2688,
-		hot: false
+		originalPrice: 3600,
+		price: 2898,
+		hot: true
 	},
 	{
 		name: '月会员',
 		date: 3,
 		day: 90,
-		originalPrice: 7999,
-		price: 5699,
+		originalPrice: 8999,
+		price: 6698,
 		hot: false
 	},
 	{
 		name: '年会员',
 		date: 1,
 		day: 365,
-		originalPrice: 26000,
-		price: 21999,
+		originalPrice: 30000,
+		price: 26999,
 		hot: false
 	}
 ]

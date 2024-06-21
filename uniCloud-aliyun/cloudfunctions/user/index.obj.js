@@ -10,6 +10,7 @@ const usersDb = db.collection('users')
 const dbJQL = uniCloud.databaseForJQL(db)
 const usersJqlDb = dbJQL.collection('users')
 const usersCopyJqlDb = dbJQL.collection('users_copy')
+const usersPromptJqlDb = dbJQL.collection('users_prompt')
 
 const main = {
 	_before: function () { // 通用预处理器
@@ -271,6 +272,28 @@ const main = {
 			return { data: data.doc, errMsg: '保存成功' }
 		} catch ({ message }) {
 			console.log('\n----------记录用户复制内容异常----------\n', message);
+			return { errMsg: message }
+		}
+	},
+	/**
+	 * @function saveUserPrompt 记录用户微调prompt内容
+	 * @param { Object } event 携带参数
+	 * @param { String } event.token 用户token
+	 * @param { Object } event.params 用户修改prompt信息
+	 * @returns {object} { errMsg: '', data: '' } 错误信息及用户更新后的信息
+	 */
+	async saveUserPrompt ({ token, params }) {
+		try {
+			if (!token) return { errMsg: '无效token' }
+
+			const { openid } = verifyToken(token)
+			if (!openid) return { errMsg: '无效用户' }
+
+			const data = await usersPromptJqlDb.add(params)
+
+			return { data: data.doc, errMsg: '保存成功' }
+		} catch ({ message }) {
+			console.log('\n----------记录用户微调prompt内容异常----------\n', message);
 			return { errMsg: message }
 		}
 	},

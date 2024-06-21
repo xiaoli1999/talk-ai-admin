@@ -38,7 +38,7 @@ module.exports = {
 			}
 
 			//返回数据给客户端
-			return { data: { goodsList, vipGainList, showIos: true }, errMsg: '获取成功' }
+			return { data: { goodsList, vipGainList, showIos: false }, errMsg: '获取成功' }
 		} catch ({ message }) {
 			console.log('\n -----------获取vip套餐失败----------- \n', message);
 			return { errMsg: message }
@@ -57,12 +57,14 @@ module.exports = {
 			if (!correctOrder) return { errMsg: '该套餐活动已结束，如有疑问请联系客服' }
 
 			const trade_id = dayjs().add(8, 'hour').format('YYYYMMDDHHmmssSSS')
+			const clientInfo = this.getClientInfo()
 
 			const orderParams = {
 				user_id: event.id,
 				total_fee: event.price,
 				trade_id,
 				recharge_day: event.day,
+				osName: clientInfo.osName
 			}
 			/* 创建订单 */
 			const orderRes = await dbJQL.collection('orders').add(orderParams)
@@ -116,7 +118,6 @@ module.exports = {
 			} else {
 				userParams.vip_start_time = nowDate
 				userParams.vip_end_time = dayjs(nowDate).add(recharge_day, 'day').valueOf()
-				userParams.talk_count = talk_count + 200
 			}
 
 			console.log('\n -----------支付成功要改变的参数----------- \n', userParams);

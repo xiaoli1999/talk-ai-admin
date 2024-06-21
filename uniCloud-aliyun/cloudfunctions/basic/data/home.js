@@ -17,36 +17,48 @@ const homeData = {
 	title: '最近更新',
 	roleList: [
 		{
-			avatar: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/img/roles/2024-05-09-11-01-41-Ffopz.png',
-			name: '林婉儿',
-			text: '（蹲在桌子底下寻找）我的鸡腿哪去了？',
-			pageUrl: '/pages/role/talk/talk?id=663c3c98c3b5c96502b621b3'
+			avatar: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/img/roles/2024-06-17-16-33-21-UVtDP.png',
+			name: '白雪',
+			text: '（蜜臀落在桌角，抛了个媚眼）有什么吩咐呐~',
+			pageUrl: '/pages/role/talk/talk?id=666ff4d78b0da4a4e4abf9be'
 		},
 		{
-			avatar: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/img/roles/2024-05-09-11-26-10-MuvGq.png',
-			name: '魏无羡',
-			text: '天子笑分你一坛，当作没看见我行不行？',
-			pageUrl: '/pages/role/talk/talk?id=663c42571c90b65e43368c99'
+			avatar: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/img/roles/2024-06-17-17-01-46-X86W1.jpg',
+			name: '金渝染',
+			text: '（大手擒住你的下颚）小妹？哦不，应当唤你为金奴……',
+			pageUrl: '/pages/role/talk/talk?id=666ffb9fee97ef5896c85db8'
 		},
 		{
-			avatar: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/img/roles/2024-05-09-22-19-49-ssZyl.jpg',
-			name: '赵茹雪',
-			text: '你，你又来干什么？我现在没钱!',
-			pageUrl: '/pages/role/talk/talk?id=663cdb9899c6244dcf488b20'
+			avatar: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/img/roles/2024-06-17-18-59-41-kLGor.png',
+			name: '林悦',
+			text: '（嘟着小嘴，撒娇道）陆老师，教教我嘛~',
+			pageUrl: '/pages/role/talk/talk?id=66701724a09a9b12d775d654'
+		},
+		{
+			avatar: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/img/roles/2024-06-17-18-04-10-EutKq.jpg',
+			name: '傅瑾行',
+			text: '(他坐在酒吧台下喝酒，盯着在台上跳舞的你) 啧~',
+			pageUrl: '/pages/role/talk/talk?id=66700a1e9755e328303ef991'
+		},
+		{
+			avatar: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/img/roles/2024-06-12-12-02-41-N9f7h.png',
+			name: '思雨',
+			text: '哥哥，今天有做了爱心晚餐给你哦~',
+			pageUrl: '/pages/role/talk/talk?id=66691ed43d029c65e9282362'
 		}
 	],
 	oneCard: {
 		titleImg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/card/title1.png',
 		list: [
 			{
-				title: '直播带货话术师',
-				desc: '我精心策划每一句话，只为将您的商品转化为观众心中的必备好物。用我的话术，让直播带货不再难。来，让我们一起点燃销量的火花！',
-				pageUrl: '/pages/work/talk/talk?id=663b56b58b0da4a4e49c6eb8'
+				title: '飞花令',
+				desc: '飞花令，古风雅集之游戏，以诗词为媒，邀君共赏文字之美。用户轻启话题，我即以古人之才，寻觅佳句，以应飞花之令。',
+				pageUrl: '/pages/work/talk/talk?id=6661939b816a3f647ed80efc'
 			},
 			{
-				title: '购物好评助手',
-				desc: '我是购物好评助手，能帮你轻松撰写出满意商品的好评。一键生成，提升购物体验，快来使用我吧！',
-				pageUrl: '/pages/work/talk/talk?id=663b57178a5c7863b1757ee2'
+				title: '小红书种草文案',
+				desc: '只需一个主题，我就能为你编织出让人心动的文字，让你的小红书种草文案热度满满。输入文案主题，快来体验吧！',
+				pageUrl: '/pages/work/talk/talk?id=663b5535fe975f7440311812'
 			}
 		]
 	},
@@ -56,19 +68,19 @@ const homeData = {
 		logoImg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/card/logo2.png',
 		list: [
 			{
-				title: '宝宝专家',
-				desc: '面对育儿难题，我是您的私人宝宝专家。只需提出问题，我会提供专业解答和实用建议。让我们一起轻松应对宝宝的每一个挑战！',
-				pageUrl: '/pages/work/talk/talk?id=663b58a3466d41f585a3e7df'
-			},
-			{
 				title: '脑筋急转弯',
 				desc: '我在这里，为你提供创意无限、趣味盎然的脑筋急转弯。只需点击，即可挑战你的逻辑思维，激发你的思维火花。快来加入我们，一起享受思维的乐趣吧！',
 				pageUrl: '/pages/work/talk/talk?id=663b57c6eef9cb63bb35c47a'
 			},
 			{
-				title: '睡前童话故事',
-				desc: '亲爱的小伙伴们，让我成为您的私人故事大师，为您精选温馨童话，伴您进入梦乡。快来享受这美妙的睡前时光吧！',
-				pageUrl: '/pages/work/talk/talk?id=663b5782bd022087df04222d',
+				title: '成语讲解师',
+				desc: '我是你的私人成语讲解师，一键解析成语的深层含义和历史渊源。快来提升你的语言魅力，和我一起探索汉字的智慧吧！',
+				pageUrl: '/pages/work/talk/talk?id=663b58257ad52dfcccd5a4ec'
+			},
+			{
+				title: '亲子时光策划师',
+				desc: '我是您的亲子时光策划师，只需告诉我孩子的兴趣、年龄、性别和您的预期，我会为您量身定制富有教育意义且充满趣味的亲子活动。让我们一起创造难忘的家庭回忆吧！',
+				pageUrl: '/pages/work/talk/talk?id=663b5faa09664cbba0d81a59',
 				btnText: '立即体验',
 			}
 		]
@@ -78,20 +90,20 @@ const homeData = {
 		logoImg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/card/logo3.png',
 		list: [
 			{
-				title: '抖音视频脚本助手',
-				desc: '我是你的抖音视频创意助推器，一键生成脚本，让每个视频内容更精彩。快来解锁你的创作潜力吧！',
-				pageUrl: '/pages/work/talk/talk?id=663b561e652341ed5e694298'
+				title: '文言文生成器',
+				desc: '吾乃文言文之匠，专于白话转文言之术。汝有所求，吾必以古雅之言，传今世之意。',
+				pageUrl: '/pages/work/talk/talk?id=66618a1121821b6d2b3df9a3'
 			},
 			{
-				title: 'PPT大纲助手',
-				desc: '我是您的ppt大纲助手，只需输入您的主题，我就能迅速为您撰写出清晰、逻辑严谨的PPT大纲。立刻体验，让每次演讲都令人印象深刻！',
-				pageUrl: '/pages/work/talk/talk?id=663b510f9755e328302c9d7c'
+				title: '万能老师',
+				desc: '我是万能老师！无论您在小学、初中、高中还是大学遇到任何学科的问题，我都能帮您解决。让我们一起探索知识的海洋，克服学习中的一切难题吧！',
+				pageUrl: '/pages/work/talk/talk?id=66694c69eef9cb63bb35ddab'
 			},
 			{
-				title: '涨薪助手',
-				desc: '我在这里，助您一臂之力，将工作时长、贡献与期望转化为涨薪申请书的有力文字。一键生成，高效专业，让加薪不再是遥不可及的梦想。来吧，让我成为您职场晋升的得力伙伴！',
-				btnText: '我要涨薪',
-				pageUrl: '/pages/work/talk/talk?id=663b5398466d41f585a343ff'
+				title: '小说畅想家',
+				desc: '我是小说畅想家，请提供小说主题及要求，我为您创作出引人入胜、情节生动的短篇小说。让我们一起畅游在故事的海洋里，享受文字的奇妙旅程吧！',
+				btnText: '立即创作',
+				pageUrl: '/pages/work/talk/talk?id=66694fe0ce5ec96267a45e08'
 			}
 		]
 	},
