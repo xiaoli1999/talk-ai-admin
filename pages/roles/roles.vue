@@ -90,9 +90,9 @@
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             <el-table-column label="操作" align="center" width="200" fixed="right">
                 <template #default="{row}">
-                    <el-button v-if="isAdmin && row.category_id === 'null'" type="success" @click="openRoleDialog({ category_id: row._id })" size="small">新增</el-button>
+                    <el-button v-if="row.category_id === 'null'" type="success" @click="openRoleDialog({ category_id: row._id })" size="small">新增</el-button>
                     <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
-                    <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>
+<!--                    <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>-->
                 </template>
             </el-table-column>
         </el-table>
@@ -185,14 +185,14 @@
                     <el-input type="textarea" v-model="roleData.guide_list[0]" :rows="3" :maxlength="300" placeholder="请输入角色引导语" clearable show-word-limit />
                 </el-form-item>
 
-                <div style="display: flex;">
-                    <el-form-item label="角色排序" prop="sort">
-                        <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />
-                    </el-form-item>
-                    <el-form-item label="是否启用" prop="show">
-                        <el-switch v-model="roleData.show" />
-                    </el-form-item>
-                </div>
+<!--                <div style="display: flex;">-->
+<!--                    <el-form-item label="角色排序" prop="sort">-->
+<!--                        <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />-->
+<!--                    </el-form-item>-->
+<!--                    <el-form-item label="是否启用" prop="show">-->
+<!--                        <el-switch v-model="roleData.show" />-->
+<!--                    </el-form-item>-->
+<!--                </div>-->
             </el-form>
 
             <template #footer>
@@ -213,7 +213,7 @@ import {genderEnums, genderEnumsList} from "@/config/enums";
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
-const rolesDb = db.collection('roles')
+const rolesDb = db.collection('roles_test')
 
 /* 权限 */
 const globalData = ref(getApp().globalData)
