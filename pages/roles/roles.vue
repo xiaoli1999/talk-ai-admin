@@ -92,6 +92,7 @@
                 <template #default="{row}">
                     <el-button v-if="row.category_id === 'null'" type="success" @click="openRoleDialog({ category_id: row._id })" size="small">新增</el-button>
                     <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
+                    <el-button v-if="isAdmin && row.category_id !== 'null'" type="success" @click="userRole(row)" size="small">上架</el-button>
 <!--                    <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>-->
                 </template>
             </el-table-column>
@@ -213,7 +214,8 @@ import {genderEnums, genderEnumsList} from "@/config/enums";
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
-const rolesDb = db.collection('roles_test')
+const rolesTestDb = db.collection('roles_test')
+const rolesDb = db.collection('roles')
 
 /* 权限 */
 const globalData = ref(getApp().globalData)
@@ -266,14 +268,14 @@ const roleRules = reactive({
 const getList = async () => {
     // const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
-    const { result: { data, count } } = await rolesDb.orderBy('create_time desc').limit(1000).get({ getCount:true })
+    const { result: { data, count } } = await rolesTestDb.orderBy('create_time desc').limit(1000).get({ getCount:true })
     loading.value = false
     if (!data) return
 
     /* 限制oss大小 */
     data.map(i => {
-        if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 50)
-        if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 50)
+        if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 500)
+        if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 500)
         return i
     })
 
@@ -347,7 +349,7 @@ const saveRole = async () => {
     /* 过滤无效标签 */
     params.tag_list = params.tag_list.filter(i => i)
 
-    const { errMsg } = id ? await rolesDb.doc(id).update(params).catch(e => e) : await rolesDb.add(params).catch(e => e)
+    const { errMsg } = id ? await rolesTestDb.doc(id).update(params).catch(e => e) : await rolesTestDb.add(params).catch(e => e)
     if (errMsg) return ElMessage.error(errMsg)
 
     ElMessage.success('更新成功')
@@ -357,12 +359,40 @@ const saveRole = async () => {
     await getList()
 }
 
+/* 上架 */
+const userRole = async (e) => {
+    const params = JSON.parse(JSON.stringify(e))
+    const id = params._id
+    delete params._id
+    delete params.children
+    delete params.create_time
+    delete params.avatar1
+    delete params.avatar_long1
+
+    /* 更新时间,多加10s */
+    params.update_time = dayjs().add(10, 'second').valueOf()
+    params.show = true
+
+    /* 过滤无效标签 */
+    params.tag_list = params.tag_list.filter(i => i)
+
+    const { errMsg } = await rolesDb.add(params).catch(e => e)
+    if (errMsg) return ElMessage.error(errMsg)
+
+    ElMessage.success('上架成功')
+
+    roleShow.value = false
+
+    await rolesTestDb.doc(id).remove();
+    await getList()
+}
+
 const deleteRole = ({ children, _id }) => {
     if (children.length) return ElMessage.warning('该分类下还有其他应用，禁止删除！')
 
     ElMessageBox.confirm('确定删除吗?', '删除角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
-                await rolesDb.doc(_id).remove();
+                await rolesTestDb.doc(_id).remove();
                 ElMessage.success('删除成功')
                 await getList()
             })
