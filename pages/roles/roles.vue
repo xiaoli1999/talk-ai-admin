@@ -93,7 +93,7 @@
                     <el-button v-if="row.category_id === 'null'" type="success" @click="openRoleDialog({ category_id: row._id })" size="small">新增</el-button>
                     <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
                     <el-button v-if="isAdmin && row.category_id !== 'null'" type="success" @click="userRole(row)" size="small">上架</el-button>
-<!--                    <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>-->
+                    <el-button type="danger" @click="deleteRole(row)" size="small">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -372,6 +372,7 @@ const userRole = async (e) => {
     /* 更新时间,多加10s */
     params.update_time = dayjs().add(10, 'second').valueOf()
     params.show = true
+    params.last_talk_time = Date.now()
 
     /* 过滤无效标签 */
     params.tag_list = params.tag_list.filter(i => i)
