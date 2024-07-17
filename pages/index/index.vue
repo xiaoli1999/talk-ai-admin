@@ -47,6 +47,10 @@
                     </template>
                 </el-table-column>
 
+                <el-table-column prop="title" label="标题" align="center" min-width="120px" />
+                <el-table-column prop="type" label="类型" align="center" min-width="60px" :formatter="(e) => (e.type || 'vip')" />
+                <el-table-column prop="type" label="充值数量" align="center" min-width="80px" :formatter="(e) => (e.recharge_day || e.recharge_cb)" />
+
                 <el-table-column prop="total_fee" label="充值金额" align="center" min-width="80px" :formatter="(e) => e.total_fee / 100" />
                 <el-table-column prop="osName" label="充值平台" align="center" min-width="80px" />
 
