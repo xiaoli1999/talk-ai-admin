@@ -139,7 +139,7 @@ module.exports = {
 			/* todo 判断返回信息并上报日志 */
 
 			/* 增加该模型热度 */
-			await db.collection('roles').doc(id).update({ talk_count: db.command.inc(1) })
+			await db.collection('roles').doc(id).update({ talk_count: db.command.inc(1), last_talk_time: Date.now() })
 
 			return { data , errMsg: '获取成功' }
 		} catch ({ message }) {
@@ -169,25 +169,39 @@ module.exports = {
 	 * @param { Object } params { id } 用户id、表类型
 	 * @returns { object } { errMsg: '', data： {}} 用户对话次数及错误信息
 	 */
-	async deductUserTalkCount ({ id } = {}) {
+	async deductUserTalkCount ({ id, tokens } = {}) {
 		try {
 			if (!id) return { errMsg: '找不到该用户' }
 
+			tokens = tokens || 0
+
 			/* 异步增加该模型热度 */
 			const { data: userList } = await db.collection('users').doc(id).get()
-			const currentUserInfo = { talk_count: userList[0].talk_count, vip_count: userList[0].vip_count }
+			let { cb_num, cb_pay_num } = userList[0]
+			cb_num = cb_num || 0, cb_pay_num
+			cb_pay_num = cb_pay_num || 0
 
-			if (currentUserInfo.talk_count > 0) {
-				currentUserInfo.talk_count -= 1
-			} else if (currentUserInfo.vip_count > 0) {
-				currentUserInfo.vip_count -= 1
+			const params = { cb_num, cb_pay_num }
+
+			const useCbNum = (tokens / 1000).toFixed(2) - 0
+
+			if ((cb_num + cb_pay_num) > useCbNum) {
+				if (cb_pay_num >= useCbNum) {
+					params.cb_pay_num = parseInt((cb_pay_num - useCbNum) * 100) / 100
+				} else {
+					const num = useCbNum - cb_pay_num
+					params.cb_num = parseInt((cb_num - num) * 100) / 100
+
+					params.cb_pay_num = 0
+				}
 			} else {
-				return { data: currentUserInfo, errMsg: '暂无对话次数' }
+				params.cb_num = 0
+				params.cb_pay_num = 0
 			}
 
-			const { doc } = await db.collection('users').doc(id).updateAndReturn(currentUserInfo)
+			const { doc } = await db.collection('users').doc(id).updateAndReturn(params)
 
-			return { data: { talk_count: doc.talk_count, vip_count: doc.vip_count },  errMsg: '次数扣减成功' }
+			return { data: { cb_num: doc.cb_num, cb_pay_num: doc.cb_pay_num },  errMsg: '采贝扣减成功' }
 		} catch ({ message }) {
 			return { errMsg: message }
 		}

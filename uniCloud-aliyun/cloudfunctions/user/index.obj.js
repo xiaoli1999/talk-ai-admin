@@ -1,4 +1,4 @@
-const { AppID, AppSecret, talkCount, vipCount, inviteCount, videoAdCount, rewardCount } = require('./config.js')
+const { AppID, AppSecret, inviteCb, videoAdCb, rewardCb, rewardPayCb } = require('./config.js')
 const { createToken, verifyToken } = require('./utils/token.js')
 const dayjs = require('./utils/dayjs.js')
 
@@ -127,14 +127,14 @@ const main = {
 					userData.invite_time = Date.now()
 
 					/* 邀请者发放奖励（异步会不执行） */
-					await usersDb.doc(event.inviteUid).update({ talk_count: db.command.inc(inviteCount) })
+					await usersDb.doc(event.inviteUid).update({ cb_num: db.command.inc(inviteCb), receive_cb_total: db.command.inc(inviteCb) })
 				}
 
 				/* 注册时若携带platform，则记录下平台并发放奖励 */
 				if (event.platform) userData.register_platform = event.platform
 
 				/* 注册时初始次数为0，在用户首次授权时设置次数 */
-				userData.talk_count = 0
+				userData.cb_num = 0
 
 				await usersJqlDb.add(userData)
 			}
@@ -163,7 +163,10 @@ const main = {
 			if (!openid) return { errMsg: '无效用户' }
 
 			/* 授权更新信息奖励10次对话次数 */
-			if (reward) params.talk_count = db.command.inc(10)
+			if (reward) {
+				params.cb_num = db.command.inc(rewardCb)
+				params.receive_cb_total = db.command.inc(rewardCb)
+			}
 
 			const data = await usersDb.where({ openid }).updateAndReturn(params)
 
@@ -202,13 +205,13 @@ const main = {
 	async dawnUpdateUserTalkCount () {
 		try {
 			console.time('updateUser')
-			console.log('\n----------更新用户对话次数触发时间----------', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			console.log('\n----------更新用户采贝触发时间----------', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
 
 			/* 获取调用时间 */
 			const current_time = Date.now()
 
-			console.log('\n ----清除所有用户普通对话次数及当天看视频广告次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
-			usersJqlDb.where('talk_count > 0').update({ talk_count: 0 })
+			console.log('\n ----清除所有用户免费采贝及当天看视频广告次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			usersJqlDb.where('cb_num > 0').update({ cb_num: 0 })
 			usersJqlDb.where('today_video_ad_count > 0').update({ today_video_ad_count: 0 })
 
 			/* 暂停非会员次数更新，引导用户获取次数 */
@@ -216,7 +219,8 @@ const main = {
 			// usersJqlDb.where(`vip_end_time < ${current_time } && talk_count < ${ talkCount }  && gender != 0`).update({ talk_count: talkCount })
 
 
-			console.log('\n----------更新用户对话次数结束时间----------', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			console.log('\n----------更新用户采贝' +
+				'结束时间----------', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
 			console.log('\n----------本地更新耗时----------\n');
 			console.timeEnd('updateUser')
 
@@ -315,7 +319,8 @@ const main = {
 			if (!openid) return { errMsg: '无效用户' }
 
 			const params = {
-				talk_count: db.command.inc(videoAdCount),
+				cb_num: db.command.inc(videoAdCb),
+				receive_cb_total: db.command.inc(videoAdCb),
 				today_video_ad_count: db.command.inc(1),
 				video_ad_count: db.command.inc(1),
 				video_ad_last_date: now
@@ -323,28 +328,43 @@ const main = {
 
 			const { doc } = await usersDb.where({ openid }).updateAndReturn(params)
 
-			return { data: doc, errMsg: '奖励次数已发放' }
+			return { data: doc, errMsg: '奖励采贝已发放' }
 		} catch ({ message }) {
 			console.log('\n----------记录用户看广告得次数异常----------\n', message);
 			return { errMsg: message }
 		}
 	},
 	/**
-	 * @function signReward 签到奖励
+	 * @function signReward 登录签到奖励
 	 * @param { Object } event 携带参数
 	 * @param { String } event.id 用户id
 	 * @returns {object} { errMsg: '', data: '' } 错误信息及用户更新后的信息
 	 */
-	async signReward ({ id, date }) {
+	async signReward ({ id, date, isVip }) {
 		try {
 			if (!id) return { errMsg: '无效用户' }
 
 			const { data } = await usersDb.doc(id).get()
-			const { sign_last_date, sign_count, talk_count } = data[0]
+			const { receive_cb_date, receive_vip_cb_date, receive_cb_total, receive_cb_count, cb_num } = data[0]
 
-			if (date === sign_last_date) return { errMsg: '已经领取过了' }
+			if (!isVip && date === receive_cb_date) return { errMsg: '已经领取过了' }
+			if (isVip && date === receive_vip_cb_date) return { errMsg: '已经领取过了' }
 
-			const { doc } = await usersDb.doc(id).updateAndReturn({ sign_last_date: date, sign_count: sign_count + 1, talk_count: talk_count + rewardCount })
+			let params = {}
+
+			if (isVip) {
+				params.receive_vip_cb_date = date
+				params.receive_cb_total = (receive_cb_total || 0) + rewardPayCb
+				params.cb_num = (cb_num || 0) + rewardPayCb
+			} else {
+				params.receive_cb_date = date
+				params.receive_cb_total = (receive_cb_total || 0) + rewardCb
+				params.cb_num = (cb_num || 0) + rewardCb
+
+				params.receive_cb_count = (receive_cb_count || 0) + 1
+			}
+
+			const { doc } = await usersDb.doc(id).updateAndReturn(params)
 
 
 			return { data: doc, errMsg: '领取成功' }
