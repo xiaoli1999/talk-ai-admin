@@ -1,5 +1,17 @@
 <template>
     <el-scrollbar v-loading="loading" class="user page">
+        <el-input v-model.trim="userName" style="max-width: 300px;margin-bottom: 10px;" placeholder="请输入名称" size="small">
+            <template #prepend>
+                <el-select v-model="userNameType" placeholder="Select" style="width: 80px">
+                    <el-option label="昵称" value="nickname" />
+                    <el-option label="id" value="username" />
+                </el-select>
+            </template>
+            <template #append>
+                <el-button type="primary" :disabled="!userName" @click="giveReward">发放评价奖励</el-button>
+            </template>
+        </el-input>
+
         <el-table :data="list" border>
             <el-table-column prop="avatar" label="头像" align="center" min-width="40px">
                 <template #default="{ row }">
@@ -39,14 +51,16 @@
                 </template>
             </el-table-column>
 
-            <el-table-column prop="sign_count" label="是否签到" align="center" min-width="60px">
+            <el-table-column prop="sign_count" label="是否领取" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div>
-                        <el-tag v-if="dayjs().format('YYYY-MM-DD') === row.sign_last_date" type="primary" size="small">是</el-tag>
+                        <el-tag v-if="dayjs().format('YYYY-MM-DD') === row.receive_cb_date" type="primary" size="small">是</el-tag>
                     </div>
                 </template>
-
             </el-table-column>
+
+            <el-table-column prop="pay_total" label="总充值" align="center" min-width="100px" :formatter="(e) => (e.pay_total ? e.pay_total  / 100 : '')"></el-table-column>
+            <el-table-column prop="cb_num" label="采贝数量" align="center" min-width="100px" :formatter="(e) => (`${e.cb_num}/${e.cb_pay_num}`)"></el-table-column>
 
             <el-table-column prop="login_count" label="登录次数" align="center" min-width="80px" sortable :formatter="(e) => e.login_count ? e.login_count : ''" />
 
@@ -75,6 +89,7 @@ import { dayjs } from 'element-plus'
 import { genderEnums, platformEnums } from "@/config/enums";
 
 const db = uniCloud.database()
+const dbCmd = db.command
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
@@ -93,6 +108,32 @@ const getList = async () => {
 }
 
 const changePage = async (e) => {
+    await getList()
+}
+
+/* 为用户发放评价奖励 */
+const userName = ref('')
+const userNameType = ref('nickname')
+
+const giveReward = async () => {
+    const whereObj = {}
+    whereObj[userNameType.value] = userName.value
+
+    const { result: { data } } = await db.collection('users').where(whereObj).get()
+
+    if (!data || !data.length) return uni.showToast({ title: '未找到该用户', icon: 'none' })
+
+    if (data.length > 1) return uni.showToast({ title: '查找到多条用户', icon: 'none' })
+
+
+    const { result } = await db.collection('users').where(whereObj).update({ cb_num: (data[0].cb_num || 0) + 10 })
+
+    if (result.updated !== 1) return uni.showToast({ title: '发放奖励失败', icon: 'none' })
+
+    uni.showToast({ title: '发放成功', icon: 'success' })
+
+    userName.value = ''
+
     await getList()
 }
 
