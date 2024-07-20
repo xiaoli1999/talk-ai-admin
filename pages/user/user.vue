@@ -125,8 +125,9 @@ const giveReward = async () => {
 
     if (data.length > 1) return uni.showToast({ title: '查找到多条用户', icon: 'none' })
 
+    const cb_num = Math.ceil((data[0].cb_num || 0) + 10)
 
-    const { result } = await db.collection('users').where(whereObj).update({ cb_num: (data[0].cb_num || 0) + 10 })
+    const { result } = await db.collection('users').where(whereObj).update({ cb_num })
 
     if (result.updated !== 1) return uni.showToast({ title: '发放奖励失败', icon: 'none' })
 
