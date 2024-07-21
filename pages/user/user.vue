@@ -125,7 +125,7 @@ const giveReward = async () => {
 
     if (data.length > 1) return uni.showToast({ title: '查找到多条用户', icon: 'none' })
 
-    const cb_num = Math.ceil((data[0].cb_num || 0) + 10)
+    const cb_num = Math.ceil((data[0].cb_num || 0) + 20)
 
     const { result } = await db.collection('users').where(whereObj).update({ cb_num })
 
