@@ -15,7 +15,7 @@
                        <el-tag v-if="!row.type" type="primary">智能体</el-tag>
                        <el-tag v-else-if="row.type === 'roles'" type="success">角色</el-tag>
                        <el-tag v-else-if="row.type === 'works'" type="info">助手</el-tag>
-                        <div v-else></div>
+                        <div v-else>{{ row.type }}</div>
                     </div>
                 </template>
             </el-table-column>
