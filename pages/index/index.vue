@@ -7,9 +7,9 @@
         </view>
 
         <el-radio-group v-model="tab" style="margin: 20px auto;">
-            <el-radio-button :value="1">所有订单 （{{ orderList.length }}）</el-radio-button>
+            <el-radio-button :value="1">所有订单 （{{ orderCount }}）</el-radio-button>
             <el-radio-button :value="2">今日订单 （{{ todayOrderList.length }}）</el-radio-button>
-            <el-radio-button :value="3">所有VIP （{{ vipList.length }}）</el-radio-button>
+            <el-radio-button :value="3">所有VIP （{{ vipCount }}）</el-radio-button>
             <el-radio-button :value="4">未到期VIP （{{ useVipList.length }}）</el-radio-button>
         </el-radio-group>
 
@@ -65,6 +65,13 @@
 
                 <el-table-column prop="paid_time" label="付款时间" align="center" min-width="80px" :formatter="(e) => e.paid_time ? dayjs(e.paid_time).format('MM-DD HH:mm:ss') : ''" />
                 <el-table-column prop="create_time" label="创建时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+
+                <el-table-column label="操作" align="center" min-width="160" fixed="right">
+                    <template #default="{row}">
+                        <el-button type="success" size="small" @click="copyId(row._id)">复制订单</el-button>
+                        <el-button type="primary" size="small" @click="copyId(row.user_id[0]._id)">复制用户</el-button>
+                    </template>
+                </el-table-column>
             </el-table>
         </template>
 
@@ -114,6 +121,11 @@
                 <el-table-column prop="last_login_date" label="最近登录时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.last_login_date).format('MM-DD HH:mm:ss')" />
                 <el-table-column prop="vip_start_time" label="开始时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.vip_start_time).format('MM-DD HH:mm:ss')" />
                 <el-table-column prop="vip_end_time" label="结束时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.vip_end_time).format('MM-DD HH:mm:ss')" />
+                <el-table-column label="操作" align="center" min-width="100" fixed="right">
+                    <template #default="{row}">
+                        <el-button type="primary" size="small" @click="copyId(row._id)">复制用户</el-button>
+                    </template>
+                </el-table-column>
             </el-table>
         </template>
     </el-scrollbar>
@@ -123,6 +135,7 @@
 import { ref, onMounted } from 'vue'
 import { dayjs } from 'element-plus'
 import {genderEnums, platformEnums} from "@/config/enums";
+import {copyText} from "@/utils/common";
 
 const db = uniCloud.database()
 const dbJQL = uniCloud.databaseForJQL()
@@ -132,9 +145,11 @@ const goPage = (url) => uni.navigateTo({ url })
 
 const tab = ref(1)
 
+const orderCount = ref(0)
 const orderList = ref([])
 const todayOrderList = ref([])
 
+const vipCount = ref(0)
 const vipList = ref([])
 const useVipList = ref([])
 
@@ -144,22 +159,29 @@ const getOrderList = async () => {
     loading.value = true
     const orders = dbJQL.collection('orders').getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
     const users = dbJQL.collection('users').getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
-    const { data } = await dbJQL.collection(orders, users).orderBy('create_time desc').limit(1000).get()
+    const { data, count } = await dbJQL.collection(orders, users).orderBy('create_time desc').limit(100).get({ getCount: true })
     loading.value = false
     if (!data) return
 
     orderList.value = data || []
-    todayOrderList.value = orderList.value.filter(i => dayjs(i.create_time).isSame(dayjs(), 'day'))
+    orderCount.value = count || 0
+    todayOrderList.value = orderList.value.filter(i => dayjs(i.create_time).isSame(dayjs(), 'day') && i.status === 1)
 }
 
 const getVipList = async () => {
     loading.value = true
-    const { result: { data } } = await db.collection('users').where('vip_end_time > 0').limit(1000).orderBy('vip_start_time desc').get()
+    const { result: { data, count } } = await db.collection('users').where('vip_end_time > 0').orderBy('vip_start_time desc').get({ getCount: true })
     loading.value = false
 
     if (!data) return
     vipList.value = data || []
+    vipCount.value = count || 0
     useVipList.value = vipList.value.filter(i => i.vip_end_time > dayjs().valueOf())
+}
+
+const copyId = async (text) => {
+    const data = await copyText(text).catch(() => ({}))
+    uni.showToast({ title: data ? '复制成功' : '复制失败', icon: 'none' })
 }
 
 onMounted(async () => {

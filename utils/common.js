@@ -121,3 +121,27 @@ export const montageImgUrl = (url = '', w = 100) => {
 
 	return `${url}${resizeUrl}`
 }
+
+/**
+ * @function copyText 复制文本
+ * @description
+ * @param { String } text 要复制的文本
+ * @return
+ */
+export const copyText = (text = '') => {
+	return new Promise((resolve, reject) => {
+		try {
+			const input = document.createElement('input')
+			input.value = text
+			input.style.position = 'absolute'
+			input.style.left = '-99999px'
+			document.body.appendChild(input)
+			input.select()
+			document.execCommand('Copy')
+			document.body.removeChild(input)
+			return resolve(true)
+		} catch (e) {
+			return reject(false)
+		}
+	})
+}
