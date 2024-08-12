@@ -1,5 +1,10 @@
 <template>
     <el-scrollbar v-loading="loading" class="roles page">
+        <el-radio-group v-model="tab" style="margin-bottom: 10px" @change="getList">
+            <el-radio-button :value="0">默认</el-radio-button>
+            <el-radio-button :value="1">未设置音频</el-radio-button>
+        </el-radio-group>
+
         <view style="margin: 12px;">
             <el-button v-if="isAdmin" type="primary" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
             <el-switch v-model="showAll" inline-prompt active-text="展开子级" inactive-text="收起子级" @change="showAllChange" />
@@ -185,6 +190,22 @@
                     <el-input type="textarea" v-model="roleData.guide_list[0]" :rows="3" :maxlength="300" placeholder="请输入角色引导语" clearable show-word-limit />
                 </el-form-item>
 
+                <el-form-item label="角色声音" prop="voice_id">
+                    <div style="display: flex;align-items: center">
+                        <el-select v-model="roleData.voice_id" placeholder="请选择音色" style="width: 240px;">
+                            <el-option v-for="item in filterVoiceList()" :key="item.id" :label="item.name + '——' + item.tag.join('-')" :value="item.id">
+                                <div style="position: relative;height: 32px;overflow: hidden">
+                                    <sy-audio :src="item.url" :audioTitle="item.name + '—' + item.tag.join('-')" :key="item.id" @click.stop></sy-audio>
+                                    <el-button class="!mx-[14px]" type="primary" size="small" style="position: absolute;top: 0;right: 0;z-index: 1000;">选择</el-button>
+                                </div>
+                            </el-option>
+                        </el-select>
+                        <el-button class="!mx-[14px]" type="primary" size="small" @click="createSound">生成</el-button>
+
+                        <sy-audio v-if="roleData.voice_url" :src="roleData.voice_url" audioCover='' subheading='' audioTitle=''></sy-audio>
+                    </div>
+                </el-form-item>
+
                 <div style="display: flex;">
                     <el-form-item label="角色排序" prop="sort">
                         <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />
@@ -209,7 +230,10 @@
 import { onMounted, reactive, ref } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from 'element-plus'
 import { createAvatarKey, listToTree, montageImgUrl } from '../../utils/common'
-import {genderEnums, genderEnumsList} from "@/config/enums";
+import { genderEnums, genderEnumsList } from "@/config/enums";
+import {computed} from "@vue/reactivity";
+
+const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
@@ -224,6 +248,8 @@ const showAllChange = () => {
 	uni.setStorageSync('rolesShowAll', showAll.value);
 }
 
+const tab = ref(1)
+
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
 const list = ref([])
@@ -232,7 +258,7 @@ const categoryObj = ref([])
 
 const roleDataDefault = () => ({
     category_id: 'null',
-    creator: '采黎',
+    creator_id: '',
     sort: 0,
     show: false,
     name: '',
@@ -244,9 +270,16 @@ const roleDataDefault = () => ({
     tag_list: [],
     styles: 1,
     prompt: '',
+    hide_prompt: '',
     guide_list: [],
     hot_count: 0,
     talk_count: 0,
+    /* 2.5新增 */
+    today_hot_count: 0,
+    today_talk_count: 0,
+    like_count: 0,
+    voice_id: '',
+    voice_url: '',
     update_time: ''
 })
 const roleShow = ref(false)
@@ -261,32 +294,66 @@ const roleRules = reactive({
     prompt: [{ required: true, message: '请填写角色提示词', trigger: 'change' }],
     tag_list: [{ required: true, message: '请至少填写一个标签', trigger: 'change' }, { validator: (r, v, cb) => v.filter(i => i).length === 0 ? cb(new Error('请填写引导语')) : cb(), trigger: 'change' }],
     guide_list: [{ required: true, message: '请填写引导语', trigger: 'change' }, { validator: (r, v, cb) => !v[0] ? cb(new Error('请填写引导语')) : cb(), trigger: 'change' }],
+    voice_id: [{ required: true, message: '请选择音色', trigger: 'change' }],
+    voice_url: [{ required: true, message: '请生成音频', trigger: 'change' }],
 })
+
+const voiceList = ref([])
+const getVoiceList = async () => {
+    const { data } = await TalkCloud.getVoiceData()
+
+    voiceList.value = data ? data.list : []
+}
+
+const filterVoiceList = () => {
+    if (!roleData.value.gender) return voiceList
+    const obj = { 1: '男', 2: '女' }
+    const gender = obj[roleData.value.gender]
+
+    return voiceList.value.filter(i => i.tag.includes(gender))
+}
 
 const getList = async () => {
     // const start = (listParams.pageNo - 1) * listParams.pageSize
-    loading.value = true
-    const { result: { data, count } } = await rolesDb.orderBy('create_time desc').limit(1000).get({ getCount:true })
-    loading.value = false
-    if (!data) return
+    if (tab.value === 0) {
+        loading.value = true
+        const { result: { data, count } } = await rolesDb.orderBy('create_time desc').limit(1000).get({ getCount:true })
+        loading.value = false
+        if (!data) return
 
-    /* 限制oss大小 */
-    data.map(i => {
-        if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 50)
-        if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 50)
-        return i
-    })
+        /* 限制oss大小 */
+        data.map(i => {
+            if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 50)
+            if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 50)
+            return i
+        })
 
-    list.value = listToTree(data)
-    listParams.total = count
+        list.value = listToTree(data)
+        listParams.total = count
 
-    categoryList.value = []
-    categoryObj.value = {}
-    list.value.forEach(i => {
-        categoryList.value.push({ _id: i._id, name: i.name })
-        categoryObj.value[i._id] = i.name
-    })
+        categoryList.value = []
+        categoryObj.value = {}
+        list.value.forEach(i => {
+            categoryList.value.push({ _id: i._id, name: i.name })
+            categoryObj.value[i._id] = i.name
+        })
+    } else if (tab.value === 1) {
+        loading.value = true
+        const { result: { data } } = await rolesDb.where({ voice_id: db.command.in(['', null])  }).orderBy('last_talk_time desc').limit(10).get()
+        loading.value = false
+        if (!data) return
 
+        /* 限制oss大小 */
+        data.map(i => {
+            if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 50)
+            if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 50)
+            return i
+        })
+
+        list.value = [{ name: '未配置', children: data, guide_list: [] }]
+        showAll.value = true
+    }
+    // console.log(list.value)
 }
 
 const changePage = async (e) => {
@@ -331,6 +398,16 @@ const uploadImg = (avatar) => {
     });
 }
 
+const createSound = async () => {
+    const { voice_id, name, guide_list } = roleData.value
+    const params = { id: voice_id, name, text: guide_list[0] }
+
+    const { data } = await TalkCloud.getRoleExampleSound(params)
+    if (!data) return
+
+    roleData.value.voice_url = data.url
+}
+
 const saveRole = async () => {
     if (!roleRef.value) return;
     const valid = await roleRef.value.validate().catch(() => ({}));
@@ -340,6 +417,7 @@ const saveRole = async () => {
     const id = params._id
     delete params._id
     delete params.children
+    delete params.creator
 
     /* 更新时间,多加10s */
     params.update_time = dayjs().add(10, 'second').valueOf()
@@ -369,7 +447,10 @@ const deleteRole = ({ children, _id }) => {
 
 }
 
-onMounted(async () => await getList())
+onMounted(async () => {
+    await getList()
+    getVoiceList()
+})
 </script>
 
 <style lang="scss" scoped>

@@ -1,6 +1,8 @@
 const { XF, MINIMAX } = require('./config.js')
 const CryptoJS = require("./utils/crypto-js.js")
 const base64 = require("./utils/base64.js")
+const { getTalkTextRealValue } = require('./utils/common')
+const voiceData = require('./utils/voice')
 
 /* 数据库 */
 const db = uniCloud.database();
@@ -218,6 +220,82 @@ module.exports = {
 			await dbJQL.collection('users_chats').add(event)
 
 			return { errMsg: '操作成功' }
+		} catch ({ message }) {
+			return { errMsg: message }
+		}
+	},
+
+	/**
+	 * 后台示例语音
+	 */
+
+	/**
+	 * @function getVoiceData 获取音色数据
+	 * @param { Object } params { version } 音色版本号
+	 * @returns { object } { errMsg: '', data： {}} 错误信息及对话信息
+	 */
+	async getVoiceData ({ version } = {}) {
+		try {
+			if (version === voiceData.version) {
+				return { data: null, errMsg: '音色未更新' }
+			} else {
+				return { data: voiceData, errMsg: '获取成功' }
+			}
+		} catch ({ message }) {
+			return { errMsg: message }
+		}
+	},
+
+	/**
+	 * @function getTalkSound 获取对话音频
+	 * @param { Object } params { id, text } 角色id、文本内容text
+	 * @returns { object } { errMsg: '', data： {}} 错误信息及对话信息
+	 */
+	async getRoleExampleSound ({ id, name, text } = {}) {
+		try {
+			let textValue = getTalkTextRealValue(text)
+
+			const requestBody = {
+				model: "speech-01-240228",
+				text: textValue || text,
+				stream: false,
+				voice_setting:{
+					voice_id: id,
+					speed: 1,
+					vol: 1,
+					pitch: 0
+				},
+				audio_setting:{
+					sample_rate: 32000,
+					bitrate: 128000,
+					format: "wav",
+					channel: 2
+				}
+			}
+
+			const params = {
+				url: `https://api.minimax.chat/v1/t2a_v2?GroupId=${MINIMAX.GROUPID}`,
+				method: 'POST',
+				header: {
+					"Content-Type": "application/json",
+					"Authorization": `Bearer ${MINIMAX.APIKEY}`,
+				},
+				data: requestBody
+			}
+
+			const { data: { data } } = await uniCloud.request(params)
+			if (!data) return { data: null, errMsg: '语音生成失败' }
+
+			const buffer = Buffer.from(data.audio, 'hex');
+
+			/* 上传文件 */
+			const result = await uniCloud.uploadFile({
+				cloudPath: `/sound/role-prologue/${name}/${Date.now()}.mp3`,
+				cloudPathAsRealPath: true,
+				fileContent: buffer
+			});
+
+			return { data: { url: result.fileID } , errMsg: '获取成功' }
 		} catch ({ message }) {
 			return { errMsg: message }
 		}
