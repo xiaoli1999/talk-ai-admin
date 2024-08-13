@@ -7,17 +7,252 @@
 
 const list = [
 	{
-		"id": "huajia_nainai",
-		"name": "花甲奶奶",
+		"id": "Bingjiao_zongcai_platform",
+		"name": "霸道严主",
+		"tag": [
+			"男",
+			"青年",
+			"严主"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/霸道严主.wav",
+		"cb": 1,
+		"text": "跪好了，知道错了吗？"
+	},
+	{
+		"id": "male-qn-qingse",
+		"name": "青涩学弟",
+		"tag": [
+			"男",
+			"青年",
+			"羞涩",
+			"学弟"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/青涩学弟.wav",
+		"cb": 1,
+		"text": "学姐，我是新入学的大一新生。"
+	},
+	{
+		"id": "wuzhao_test_4",
+		"name": "撒娇女友",
 		"tag": [
 			"女",
-			"中老年",
-			"慈祥"
+			"青年",
+			"撒娇"
 		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/花甲奶奶.wav",
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/撒娇女友.wav",
 		"cb": 1,
-		"text": "孩子，让奶奶好好看看你。"
+		"text": "宝宝， 人家求你了！"
 	},
+	{
+		"id": "male-qn-jingying",
+		"name": "精英上司",
+		"tag": [
+			"男",
+			"青年",
+			"青涩"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/精英上司.wav",
+		"cb": 1,
+		"text": "一会来我办公室，我有事问你。"
+	},
+	{
+		"id": "male-qn-badao",
+		"name": "霸道主人",
+		"tag": [
+			"男",
+			"青年",
+			"霸道"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/霸道主人.wav",
+		"cb": 1,
+		"text": "跪好了，下次还敢吗？"
+	},
+	{
+		"id": "male-qn-daxuesheng",
+		"name": "大学男友",
+		"tag": [
+			"男",
+			"青年",
+			"男大"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/大学男友.wav",
+		"cb": 1,
+		"text": "宝宝，我想你了！"
+	},
+	{
+		"id": "female-shaonv",
+		"name": "清纯少女",
+		"tag": [
+			"女",
+			"青年",
+			"清纯"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/清纯少女.wav",
+		"cb": 1,
+		"text": "哥哥，你终于回来啦！"
+	},
+	{
+		"id": "female-yujie",
+		"name": "性感御姐",
+		"tag": [
+			"女",
+			"青年",
+			"性感"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/性感御姐.wav",
+		"cb": 1,
+		"text": "傻瓜，姐姐怎么会怪你呢！"
+	},
+	{
+		"id": "female-chengshu",
+		"name": "成熟白领",
+		"tag": [
+			"女",
+			"青年",
+			"成熟"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/成熟白领.wav",
+		"cb": 1,
+		"text": "晚上要一起喝一杯嘛！"
+	},
+	{
+		"id": "female-tianmei",
+		"name": "甜美学妹",
+		"tag": [
+			"女",
+			"青年",
+			"甜美"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/甜美学妹.wav",
+		"cb": 1,
+		"text": "学长，我...我喜欢你很久了！"
+	},
+	{
+		"id": "bingruo_shaonv",
+		"name": "病弱少女",
+		"tag": [
+			"女",
+			"青年",
+			"忧郁"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病弱少女.wav",
+		"cb": 1,
+		"text": "我...我身体有点不舒服。"
+	},
+	{
+		"id": "badao_zongcai",
+		"name": "霸道总裁",
+		"tag": [
+			"男",
+			"青年",
+			"傲慢"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/霸道总裁.wav",
+		"cb": 1,
+		"text": "别忘了，你的一切都在我的掌控中。"
+	},
+	{
+		"id": "bingjiao_jiejie",
+		"name": "病娇姐姐",
+		"tag": [
+			"女",
+			"青年",
+			"病娇"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇姐姐.wav",
+		"cb": 1,
+		"text": "别离开我，求求你了~"
+	},
+	{
+		"id": "bingjiao_gege",
+		"name": "病娇哥哥",
+		"tag": [
+			"男",
+			"青年",
+			"病娇"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇哥哥.wav",
+		"cb": 1,
+		"text": "妹妹，哥哥只有你了！"
+	},
+	{
+		"id": "bingjiao_huangdi",
+		"name": "病娇皇帝",
+		"tag": [
+			"男",
+			"青年",
+			"病娇"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇皇帝.wav",
+		"cb": 1,
+		"text": "你只能是朕的，知道吗？"
+	},
+	{
+		"id": "bingjiao_zongcai",
+		"name": "病娇总裁",
+		"tag": [
+			"男",
+			"青年",
+			"病娇"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇总裁.wav",
+		"cb": 1,
+		"text": "我盯上你了，你跑不掉的！"
+	},
+	{
+		"id": "bingruo_gongzi",
+		"name": "病弱公子",
+		"tag": [
+			"男",
+			"青年",
+			"病娇"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病弱公子.wav",
+		"cb": 1,
+		"text": "我...我对你有种特别的感觉。"
+	},
+	{
+		"id": "wumei_yujie",
+		"name": "妩媚御姐",
+		"tag": [
+			"女",
+			"青年",
+			"感性"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/妩媚御姐.wav",
+		"cb": 1,
+		"text": "宝宝，你拿什么抵抗我呢~"
+	},
+	{
+		"id": "bingjiao_didi",
+		"name": "病娇弟弟",
+		"tag": [
+			"男",
+			"青年",
+			"傲娇"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇弟弟.wav",
+		"cb": 1,
+		"text": "姐姐，别丢下我一个人！"
+	},
+	{
+		"id": "jiaoxiu_nvyou",
+		"name": "娇羞女友",
+		"tag": [
+			"女",
+			"青年",
+			"甜美"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/娇羞女友.wav",
+		"cb": 1,
+		"text": "大坏蛋，羞死人家了~"
+	},
+
+
+	/**
+	 * 正常
+	 */
+
 	{
 		"id": "lengdan_nvwang",
 		"name": "冷淡女王",
@@ -29,42 +264,6 @@ const list = [
 		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/冷淡女王.wav",
 		"cb": 1,
 		"text": "小子，离本王远一点！"
-	},
-	{
-		"id": "chengshu_jiejie",
-		"name": "成熟姐姐",
-		"tag": [
-			"女",
-			"中年",
-			"知性"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/成熟姐姐.wav",
-		"cb": 1,
-		"text": "有烦心事可以说给姐姐听~"
-	},
-	{
-		"id": "linju_ayi",
-		"name": "邻居阿姨",
-		"tag": [
-			"女",
-			"中年",
-			"稳重"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/邻居阿姨.wav",
-		"cb": 1,
-		"text": "小伙子，和阿姨聊聊。"
-	},
-	{
-		"id": "gaoxiao_daye",
-		"name": "搞笑大爷",
-		"tag": [
-			"男",
-			"中年",
-			"幽默"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/搞笑大爷.wav",
-		"cb": 1,
-		"text": "年轻人，大爷我宝刀未老呢！"
 	},
 	{
 		"id": "daimeng_qingnian",
@@ -138,30 +337,7 @@ const list = [
 		"cb": 1,
 		"text": "嘿嘿，你想一起玩耍吗？"
 	},
-	{
-		"id": "youmo_shushu",
-		"name": "幽默叔叔",
-		"tag": [
-			"男",
-			"中年",
-			"逗趣"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/幽默叔叔.wav",
-		"cb": 1,
-		"text": "年轻人，来聊聊吧，我有很多有趣的故事呢！"
-	},
-	{
-		"id": "hutong_daye",
-		"name": "胡同大爷",
-		"tag": [
-			"男",
-			"中年",
-			"诙谐"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/胡同大爷.wav",
-		"cb": 1,
-		"text": "年轻人，来听我讲讲老故事吧。"
-	},
+
 	{
 		"id": "zhichang_jingli",
 		"name": "职场经理",
@@ -174,18 +350,7 @@ const list = [
 		"cb": 1,
 		"text": "女士让我们谈谈工作计划吧。"
 	},
-	{
-		"id": "bingruo_shaonv",
-		"name": "病弱少女",
-		"tag": [
-			"女",
-			"青年",
-			"忧郁"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病弱少女.wav",
-		"cb": 1,
-		"text": "我...我身体有点不舒服。"
-	},
+
 	{
 		"id": "huopo_nvhai",
 		"name": "活泼女孩",
@@ -283,18 +448,6 @@ const list = [
 		"text": "来呀，一起做点有趣的事！"
 	},
 	{
-		"id": "bingjiao_huangdi",
-		"name": "病娇皇帝",
-		"tag": [
-			"男",
-			"青年",
-			"病娇"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇皇帝.wav",
-		"cb": 1,
-		"text": "你只能是朕的，知道吗？"
-	},
-	{
 		"id": "nv_banzhang",
 		"name": "女班长",
 		"tag": [
@@ -342,30 +495,7 @@ const list = [
 		"cb": 1,
 		"text": "宝宝，没弄疼你吧。"
 	},
-	{
-		"id": "jiaoxiu_nvyou",
-		"name": "娇羞女友",
-		"tag": [
-			"女",
-			"青年",
-			"甜美"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/娇羞女友.wav",
-		"cb": 1,
-		"text": "大坏蛋，羞死人家了~"
-	},
-	{
-		"id": "badao_zongcai",
-		"name": "霸道总裁",
-		"tag": [
-			"男",
-			"青年",
-			"傲慢"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/霸道总裁.wav",
-		"cb": 1,
-		"text": "别忘了，你的一切都在我的掌控中。"
-	},
+
 	{
 		"id": "tiaopi_gongzhu",
 		"name": "调皮公主",
@@ -416,15 +546,15 @@ const list = [
 	},
 	{
 		"id": "xinggan_yujie",
-		"name": "性感御姐",
+		"name": "冷艳御姐",
 		"tag": [
 			"女",
 			"青年",
 			"冷艳"
 		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/性感御姐.wav",
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/冷艳御姐.wav",
 		"cb": 1,
-		"text": "宝宝，你不乖哦"
+		"text": "宝宝，你不乖哦!"
 	},
 	{
 		"id": "ruya_zongcai",
@@ -571,30 +701,6 @@ const list = [
 		"text": "我可以和你一起去探索世界嘛？"
 	},
 	{
-		"id": "bingjiao_jiejie",
-		"name": "病娇姐姐",
-		"tag": [
-			"女",
-			"青年",
-			"病娇"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇姐姐.wav",
-		"cb": 1,
-		"text": "别离开我，求求你了~"
-	},
-	{
-		"id": "bingjiao_gege",
-		"name": "病娇哥哥",
-		"tag": [
-			"男",
-			"青年",
-			"病娇"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇哥哥.wav",
-		"cb": 1,
-		"text": "妹妹，哥哥只有你了！"
-	},
-	{
 		"id": "mensao_nanyou",
 		"name": "闷骚男友",
 		"tag": [
@@ -605,30 +711,6 @@ const list = [
 		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/闷骚男友.wav",
 		"cb": 1,
 		"text": "虽然话不多，但我在乎你。"
-	},
-	{
-		"id": "bingjiao_zongcai",
-		"name": "病娇总裁",
-		"tag": [
-			"男",
-			"青年",
-			"病娇"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇总裁.wav",
-		"cb": 1,
-		"text": "我盯上你了，你跑不掉的！"
-	},
-	{
-		"id": "bingruo_gongzi",
-		"name": "病弱公子",
-		"tag": [
-			"男",
-			"青年",
-			"病娇"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病弱公子.wav",
-		"cb": 1,
-		"text": "我...我对你有种特别的感觉。"
 	},
 	{
 		"id": "wenrou_tongzhuo",
@@ -799,30 +881,6 @@ const list = [
 		"text": "宝宝，我没来晚吧！"
 	},
 	{
-		"id": "wumei_yujie",
-		"name": "妩媚御姐",
-		"tag": [
-			"女",
-			"青年",
-			"感性"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/妩媚御姐.wav",
-		"cb": 1,
-		"text": "宝宝，你拿什么抵抗我呢~"
-	},
-	{
-		"id": "bingjiao_didi",
-		"name": "病娇弟弟",
-		"tag": [
-			"男",
-			"青年",
-			"傲娇"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/病娇弟弟.wav",
-		"cb": 1,
-		"text": "姐姐，别丢下我一个人！"
-	},
-	{
 		"id": "qiaopi_mengmei",
 		"name": "俏皮萌妹",
 		"tag": [
@@ -845,7 +903,113 @@ const list = [
 		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/甜心小玲.wav",
 		"cb": 1,
 		"text": "你的小甜心来啦！"
-	}
+	},
+
+	/**
+	 * 小龄
+	 */
+
+	{
+		"id": "female-tianmei",
+		"name": "呆萌女童",
+		"tag": [
+			"女",
+			"少年",
+			"呆萌"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/呆萌女童.wav",
+		"cb": 1,
+		"text": "大哥哥，你可以给我买棒棒糖吃吗？"
+	},
+	{
+		"id": "cute_boy",
+		"name": "可爱男童",
+		"tag": [
+			"男",
+			"少年",
+			"可爱"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/可爱男童.wav",
+		"cb": 1,
+		"text": "姐姐，你可以带我出去玩吗？"
+	},
+
+	/**
+	 * 大龄
+	 */
+
+	{
+		"id": "linju_ayi",
+		"name": "邻居阿姨",
+		"tag": [
+			"女",
+			"中年",
+			"稳重"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/邻居阿姨.wav",
+		"cb": 1,
+		"text": "小伙子，和阿姨聊聊。"
+	},
+	{
+		"id": "chengshu_jiejie",
+		"name": "成熟姐姐",
+		"tag": [
+			"女",
+			"中年",
+			"知性"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/成熟姐姐.wav",
+		"cb": 1,
+		"text": "有烦心事可以说给姐姐听~"
+	},
+	{
+		"id": "youmo_shushu",
+		"name": "幽默叔叔",
+		"tag": [
+			"男",
+			"中年",
+			"逗趣"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/幽默叔叔.wav",
+		"cb": 1,
+		"text": "年轻人，来聊聊吧，我有很多有趣的故事呢！"
+	},
+	{
+		"id": "huajia_nainai",
+		"name": "花甲奶奶",
+		"tag": [
+			"女",
+			"中老年",
+			"慈祥"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/花甲奶奶.wav",
+		"cb": 1,
+		"text": "孩子，让奶奶好好看看你。"
+	},
+	{
+		"id": "gaoxiao_daye",
+		"name": "搞笑大爷",
+		"tag": [
+			"男",
+			"中年",
+			"幽默"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/搞笑大爷.wav",
+		"cb": 1,
+		"text": "年轻人，大爷我宝刀未老呢！"
+	},
+	{
+		"id": "hutong_daye",
+		"name": "胡同大爷",
+		"tag": [
+			"男",
+			"中年",
+			"诙谐"
+		],
+		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/胡同大爷.wav",
+		"cb": 1,
+		"text": "年轻人，来听我讲讲老故事吧。"
+	},
 ]
 
 const genderList = [

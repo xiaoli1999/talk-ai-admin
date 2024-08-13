@@ -1,16 +1,16 @@
 <template>
     <el-scrollbar v-loading="loading" class="roles page">
-        <el-radio-group v-model="tab" style="margin-bottom: 10px" @change="getList">
-            <el-radio-button :value="0">默认</el-radio-button>
-            <el-radio-button :value="1">未设置音频</el-radio-button>
+        <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
+            <el-radio-button :value="0">最新创建</el-radio-button>
+            <el-radio-button :value="1">最近聊天</el-radio-button>
+            <el-radio-button :value="2">未设置音频</el-radio-button>
+            <el-radio-button :value="3">测试角色</el-radio-button>
         </el-radio-group>
 
         <view style="margin: 12px;">
             <el-button v-if="isAdmin" type="primary" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
-            <el-switch v-model="showAll" inline-prompt active-text="展开子级" inactive-text="收起子级" @change="showAllChange" />
         </view>
-        <el-table class="roles-table" :data="list" row-key="_id" :tree-props="{ children: 'children' }" :default-expand-all="showAll" border :row-style="setRowBg" size="small">
-            <el-table-column label="" width="30px" align="center" />
+        <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small">
             <el-table-column prop="sort" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
@@ -102,17 +102,17 @@
             </el-table-column>
         </el-table>
 
-        <!--        <view class="pagination">-->
-        <!--            <el-pagination-->
-        <!--                    v-model:currentPage="listParams.pageNo"-->
-        <!--                    v-model:page-size="listParams.pageSize"-->
-        <!--                    :total="listParams.total"-->
-        <!--                    @size-change="changePage(1, $event)"-->
-        <!--                    @current-change="changePage" :page-sizes="[10, 20, 50, 100, 200, 500]"-->
-        <!--                    :layout="'total, sizes, prev, pager, next'"-->
-        <!--                    small-->
-        <!--            />-->
-        <!--        </view>-->
+        <view class="pagination">
+            <el-pagination
+                    v-model:currentPage="listParams.pageNo"
+                    v-model:page-size="listParams.pageSize"
+                    :total="listParams.total"
+                    @size-change="changePage(1, $event)"
+                    @current-change="changePage" :page-sizes="[10, 20, 50, 100, 200, 500]"
+                    :layout="'total, sizes, prev, pager, next'"
+                    small
+            />
+        </view>
 
         <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" align-center draggable>
             <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px" :disabled="!isAdmin">
@@ -192,17 +192,17 @@
 
                 <el-form-item label="角色声音" prop="voice_id">
                     <div style="display: flex;align-items: center">
-                        <el-select v-model="roleData.voice_id" placeholder="请选择音色" style="width: 240px;">
+                        <el-select v-model="roleData.voice_id" placeholder="请选择音色" style="width: 280px;">
                             <el-option v-for="item in filterVoiceList()" :key="item.id" :label="item.name + '——' + item.tag.join('-')" :value="item.id">
-                                <div style="position: relative;height: 32px;overflow: hidden">
-                                    <sy-audio :src="item.url" :audioTitle="item.name + '—' + item.tag.join('-')" :key="item.id" @click.stop></sy-audio>
-                                    <el-button class="!mx-[14px]" type="primary" size="small" style="position: absolute;top: 0;right: 0;z-index: 1000;">选择</el-button>
+                                <div style="display: flex;align-items: center;justify-content: space-between;padding-top: 4px;">
+                                    <sy-audio class="audio" :src="item.url" :audioTitle="item.name + '—' + item.tag.join('-')" :key="item.id" @click.stop></sy-audio>
+                                    <el-button type="primary" size="small" style="margin-left: 8px;">选择</el-button>
                                 </div>
                             </el-option>
                         </el-select>
-                        <el-button class="!mx-[14px]" type="primary" size="small" @click="createSound">生成</el-button>
+                        <el-button class="!mx-[14px]" type="primary" size="small" @click="createSound" style="margin: 0 8px;">生成</el-button>
 
-                        <sy-audio v-if="roleData.voice_url" :src="roleData.voice_url" audioCover='' subheading='' audioTitle=''></sy-audio>
+                        <sy-audio v-if="roleData.voice_url" :src="roleData.voice_url" audioCover='' subheading='' audioTitle='测试音频'></sy-audio>
                     </div>
                 </el-form-item>
 
@@ -238,27 +238,43 @@ const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 /* 传统数据库集合 */
 const db = uniCloud.database()
 const rolesDb = db.collection('roles')
+const rolesTestDb = db.collection('roles_test')
 
 /* 权限 */
 const globalData = ref(getApp().globalData)
 const isAdmin = ref(globalData.value.name === 'xiaoli')
 
-const showAll = ref(uni.getStorageSync('rolesShowAll') || false)
-const showAllChange = () => {
-	uni.setStorageSync('rolesShowAll', showAll.value);
-}
-
-const tab = ref(1)
+const tab = ref(2)
 
 const loading = ref(false)
-const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
+const listParams = reactive({ pageNo: 1, pageSize: 10, total: 0 })
 const list = ref([])
-const categoryList = ref([])
-const categoryObj = ref([])
+const categoryList = ref([
+    {
+        "_id": "6634e1558620667bb4fe5fc0",
+        "name": "虚拟想象"
+    },
+    {
+        "_id": "663c306f0d2b315faf92d78a",
+        "name": "动漫人物"
+    },
+    {
+        "_id": "663c30f5213929f866b41dcb",
+        "name": "历史人物"
+    },
+    {
+        "_id": "663c30b40d2b315faf92e382",
+        "name": "游戏角色"
+    },
+    {
+        "_id": "663c3133c3b5c96502b4019d",
+        "name": "小说角色"
+    }
+])
+const categoryObj = ref(Object.fromEntries(categoryList.value.map(item => [item._id, item.name])))
 
 const roleDataDefault = () => ({
     category_id: 'null',
-    creator_id: '',
     sort: 0,
     show: false,
     name: '',
@@ -280,7 +296,9 @@ const roleDataDefault = () => ({
     like_count: 0,
     voice_id: '',
     voice_url: '',
-    update_time: ''
+    last_talk_time: '',
+    update_time: '',
+    creator_id: ''
 })
 const roleShow = ref(false)
 const roleData = ref(roleDataDefault())
@@ -306,7 +324,7 @@ const getVoiceList = async () => {
 }
 
 const filterVoiceList = () => {
-    if (!roleData.value.gender) return voiceList
+    if (!roleData.value.gender) return voiceList.value
     const obj = { 1: '男', 2: '女' }
     const gender = obj[roleData.value.gender]
 
@@ -314,46 +332,53 @@ const filterVoiceList = () => {
 }
 
 const getList = async () => {
-    // const start = (listParams.pageNo - 1) * listParams.pageSize
+    const start = (listParams.pageNo - 1) * listParams.pageSize
+
+    let data = []
+    let count = 0
+
     if (tab.value === 0) {
         loading.value = true
-        const { result: { data, count } } = await rolesDb.orderBy('create_time desc').limit(1000).get({ getCount:true })
+        const { result } = await rolesDb.skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
         loading.value = false
         if (!data) return
 
-        /* 限制oss大小 */
-        data.map(i => {
-            if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 50)
-            if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 50)
-            return i
-        })
-
-        list.value = listToTree(data)
-        listParams.total = count
-
-        categoryList.value = []
-        categoryObj.value = {}
-        list.value.forEach(i => {
-            categoryList.value.push({ _id: i._id, name: i.name })
-            categoryObj.value[i._id] = i.name
-        })
+        data = result.data || []
+        count = result.count
     } else if (tab.value === 1) {
         loading.value = true
-        const { result: { data } } = await rolesDb.where({ voice_id: db.command.in(['', null])  }).orderBy('last_talk_time desc').limit(10).get()
+        const { result } = await rolesDb.skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
         loading.value = false
         if (!data) return
 
-        /* 限制oss大小 */
-        data.map(i => {
-            if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 50)
-            if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 50)
-            return i
-        })
+        data = result.data || []
+        count = result.count
+    } else if (tab.value === 2) {
+        loading.value = true
+        const { result } = await rolesDb.where({ voice_id: db.command.in(['', null])  }).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
+        loading.value = false
+        if (!data) return
 
-        list.value = [{ name: '未配置', children: data, guide_list: [] }]
-        showAll.value = true
+        data = result.data || []
+        count = result.count
+    } else if (tab.value === 3) {
+        loading.value = true
+        const { result } = await rolesTestDb.where("category!='null'").skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+        loading.value = false
+        if (!data) return
+
+        data = result.data || []
+        count = result.count
     }
-    // console.log(list.value)
+
+    data.map(i => {
+        if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 100)
+        if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 500)
+        return i
+    })
+
+    list.value = data
+    listParams.total = count
 }
 
 const changePage = async (e) => {
@@ -414,6 +439,12 @@ const saveRole = async () => {
     if (valid !== true) return ElMessage.warning('请填写信息')
 
     const params = JSON.parse(JSON.stringify(roleData.value))
+
+    if (tab.value === 3) {
+        delete params._id
+        delete params.create_time
+    }
+
     const id = params._id
     delete params._id
     delete params.children
@@ -455,8 +486,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .roles {
-    min-height: 100vh;
-
     .roles-table {
         :deep .el-text {
             font-size: 12px;
@@ -495,6 +524,48 @@ onMounted(async () => {
     :deep .dialog {
          .el-radio {
             margin-right: 18px;
+        }
+    }
+}
+
+:deep .audio_center,
+:deep .audio {
+
+    .audio_center_cover {
+        width: 30px;
+        margin-right: 0;
+        height: auto;
+
+        .icon-play-cell {
+            font-size: 22px !important;
+            line-height: 1;
+        }
+    }
+
+    .audio_center_right {
+        .single {
+            padding: 4px;
+
+            .single_title_info {
+                font-size: 13px;
+            }
+
+            .single_title {
+                margin: 0;
+                line-height: 1.2rem;
+
+                .single_title_info {
+                    font-size: 12px;
+                }
+            }
+
+            .tips {
+                display: none;
+            }
+
+            > uni-slider {
+                display: none;
+            }
         }
     }
 }
