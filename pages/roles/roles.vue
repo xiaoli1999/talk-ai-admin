@@ -466,9 +466,7 @@ const saveRole = async () => {
     await getList()
 }
 
-const deleteRole = ({ children, _id }) => {
-    if (children.length) return ElMessage.warning('该分类下还有其他应用，禁止删除！')
-
+const deleteRole = ({ _id }) => {
     ElMessageBox.confirm('确定删除吗?', '删除角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
                 await rolesDb.doc(_id).remove();
