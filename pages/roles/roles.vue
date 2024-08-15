@@ -233,7 +233,7 @@ import { createAvatarKey, listToTree, montageImgUrl } from '../../utils/common'
 import { genderEnums, genderEnumsList } from "@/config/enums";
 import {computed} from "@vue/reactivity";
 
-const TalkCloud = uniCloud.importObject('talk', { customUI: true })
+const TalkCloud = uniCloud.importObject('talk-test', { customUI: true })
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
@@ -468,9 +468,7 @@ const saveRole = async () => {
     await getList()
 }
 
-const deleteRole = ({ children, _id }) => {
-    if (children.length) return ElMessage.warning('该分类下还有其他应用，禁止删除！')
-
+const deleteRole = ({ _id }) => {
     ElMessageBox.confirm('确定删除吗?', '删除角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
                 await rolesDb.doc(_id).remove();
