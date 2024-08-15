@@ -1,16 +1,17 @@
 <template>
     <el-scrollbar v-loading="loading" class="user page">
-        <el-input v-model.trim="userName" style="max-width: 300px;margin-bottom: 10px;" placeholder="请输入名称" size="small">
-            <template #prepend>
-                <el-select v-model="userNameType" placeholder="Select" style="width: 80px">
-                    <el-option label="昵称" value="nickname" />
-                    <el-option label="id" value="username" />
-                </el-select>
-            </template>
-            <template #append>
-                <el-button type="primary" :disabled="!userName" @click="giveReward">发放评价奖励</el-button>
-            </template>
-        </el-input>
+        <div style="display: flex;align-items: center;margin-bottom: 10px;">
+            <el-input v-model.trim="userName" style="max-width: 180px;" placeholder="请输入名称" size="small">
+                <template #prepend>
+                    <el-select v-model="userNameType" placeholder="Select" style="width: 80px">
+                        <el-option label="昵称" value="nickname" />
+                        <el-option label="id" value="username" />
+                    </el-select>
+                </template>
+            </el-input>
+            <el-input-number v-model="userCbNum" :min="1" :controls="false" style="width: 60px;"  />
+            <el-button type="primary" :disabled="!userName" @click="giveReward">发放奖励</el-button>
+        </div>
 
         <el-table :data="list" border>
             <el-table-column prop="avatar" label="头像" align="center" min-width="40px">
@@ -113,6 +114,7 @@ const changePage = async (e) => {
 
 /* 为用户发放评价奖励 */
 const userName = ref('')
+const userCbNum = ref(20)
 const userNameType = ref('nickname')
 
 const giveReward = async () => {
@@ -125,7 +127,7 @@ const giveReward = async () => {
 
     if (data.length > 1) return uni.showToast({ title: '查找到多条用户', icon: 'none' })
 
-    const cb_num = Math.ceil((data[0].cb_num || 0) + 20)
+    const cb_num = Math.ceil((data[0].cb_num || 0) + userCbNum.value)
 
     const { result } = await db.collection('users').where(whereObj).update({ cb_num })
 
