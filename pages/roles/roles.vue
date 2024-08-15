@@ -451,7 +451,9 @@ const saveRole = async () => {
     delete params.creator
 
     /* 更新时间,多加10s */
-    params.update_time = dayjs().add(10, 'second').valueOf()
+    const time = dayjs().add(10, 'second').valueOf()
+    params.update_time = time
+    params.last_talk_time = time
 
     /* 过滤无效标签 */
     params.tag_list = params.tag_list.filter(i => i)
