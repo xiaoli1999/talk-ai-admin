@@ -10,8 +10,7 @@
         <el-radio-group v-model="tab" style="margin: 20px auto;">
             <el-radio-button :value="1">所有订单 （{{ orderCount }}）</el-radio-button>
             <el-radio-button :value="2">今日订单 （{{ todayOrderList.length }}）</el-radio-button>
-            <el-radio-button :value="3">所有VIP （{{ vipCount }}）</el-radio-button>
-            <el-radio-button :value="4">未到期VIP （{{ useVipList.length }}）</el-radio-button>
+            <el-radio-button :value="3">VIP （{{ vipCount }}）</el-radio-button>
         </el-radio-group>
 
         <template v-if="[1, 2].includes(tab)">
@@ -76,8 +75,8 @@
             </el-table>
         </template>
 
-        <template v-if="[3, 4].includes(tab)">
-            <el-table :data="tab === 3 ? vipList : useVipList" border>
+        <template v-if="tab === 3">
+            <el-table :data="vipList" border>
                 <el-table-column prop="avatar" label="头像" align="center" min-width="40px">
                     <template #default="{ row }">
                         <div style="display: flex;justify-content: center">
@@ -171,13 +170,12 @@ const getOrderList = async () => {
 
 const getVipList = async () => {
     loading.value = true
-    const { result: { data, count } } = await db.collection('users').where('vip_end_time > 0').orderBy('vip_start_time desc').get({ getCount: true })
+    const { result: { data, count } } = await db.collection('users').where(`vip_end_time > ${dayjs().valueOf()}`).orderBy('vip_start_time desc').limit(500).get({ getCount: true })
     loading.value = false
 
     if (!data) return
     vipList.value = data || []
     vipCount.value = count || 0
-    useVipList.value = vipList.value.filter(i => i.vip_end_time > dayjs().valueOf())
 }
 
 const copyId = async (text) => {
