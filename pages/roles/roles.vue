@@ -233,7 +233,7 @@ import { createAvatarKey, listToTree, montageImgUrl } from '../../utils/common'
 import { genderEnums, genderEnumsList } from "@/config/enums";
 import {computed} from "@vue/reactivity";
 
-const TalkCloud = uniCloud.importObject('talk-test', { customUI: true })
+const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
