@@ -1,6 +1,7 @@
 const { AppID, AppSecret, inviteCb, videoAdCb, rewardCb, rewardPayCb } = require('./config.js')
 const { createToken, verifyToken } = require('./utils/token.js')
 const dayjs = require('./utils/dayjs.js')
+const { disableUserList } = require('./utils/disable.js')
 
 const db = uniCloud.database();
 /* 传统数据库集合 */
@@ -11,6 +12,7 @@ const dbJQL = uniCloud.databaseForJQL(db)
 const usersJqlDb = dbJQL.collection('users')
 const usersCopyJqlDb = dbJQL.collection('users_copy')
 const usersPromptJqlDb = dbJQL.collection('users_prompt')
+const RolesJqlDb = dbJQL.collection('roles')
 
 const main = {
 	_before: function () { // 通用预处理器
@@ -31,6 +33,9 @@ const main = {
 			const { openid, exp } = verifyToken(token)
 
 			if (!openid) return { errMsg: '登录过期' }
+
+			/* 校验是否为黑名单用户 */
+			if (disableUserList.includes(openid)) return { disable: true, errMsg: '该账号已被禁用' }
 
 			const nowTime = Math.floor(Date.now() / 1000)
 			const leaveTime = 60 * 60 * 1
@@ -96,6 +101,9 @@ const main = {
 				}
 				return { errMsg: errObj[errcode] }
 			}
+
+			/* 校验是否为黑名单用户 */
+			if (disableUserList.includes(openid)) return { disable: true, errMsg: '该账号已被禁用' }
 
 			/* 组装用户最新数据 */
 			const token = createToken({ openid })
@@ -210,9 +218,12 @@ const main = {
 			/* 获取调用时间 */
 			const current_time = Date.now()
 
-			console.log('\n ----清除所有用户免费采贝及当天看视频广告次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
-			usersJqlDb.where('cb_num > 0').update({ cb_num: 0 })
+			console.log('\n ----清除非会员用户免费采贝及当天看视频广告次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			usersJqlDb.where(`cb_num > 0 && vip_end_time < ${ current_time }`).update({ cb_num: 0 })
 			usersJqlDb.where('today_video_ad_count > 0').update({ today_video_ad_count: 0 })
+
+			console.log('\n ----清除角色当天热度及聊天数', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			RolesJqlDb.where('today_hot_count > 0').update({ today_hot_count: 0, today_talk_count: 0 })
 
 			/* 暂停非会员次数更新，引导用户获取次数 */
 			// console.log('\n ----更新非会员（次数小于默认次数且更新过信息）用户次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));

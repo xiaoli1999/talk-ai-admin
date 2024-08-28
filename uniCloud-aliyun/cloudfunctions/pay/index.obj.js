@@ -35,8 +35,19 @@ module.exports = {
 			/* 删除第一项 */
 			const newCbList = JSON.parse(JSON.stringify(cbList)).slice(1)
 
+			const data = {
+				vipList,
+				firstCb,
+				cbList: newCbList,
+				vipQyList,
+				cbDocList,
+				vipDocObj,
+				showIos: true, /* 是否展示ios */
+				version: '', /* 线上绕审核版本 */
+			}
+
 			//返回数据给客户端
-			return { data: { vipList, firstCb, cbList: newCbList, vipQyList, cbDocList, vipDocObj, showIos: true }, errMsg: '获取成功' }
+			return { data, errMsg: '获取成功' }
 		} catch ({ message }) {
 			console.log('\n -----------获取vip套餐失败----------- \n', message);
 			return { errMsg: message }
