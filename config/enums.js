@@ -7,7 +7,7 @@
  */
 
 
-const enumsToList = (obj) => Object.entries(obj).map(([id, value]) => ({ id: Number(id), value }))
+const enumsToList = (obj) => Object.entries(obj).map(([id, value]) => ({ id: id, value }))
 
 export const platformEnums = {
 	juejin: '掘金',
@@ -44,3 +44,9 @@ export const sortEnums = {
 	2: '按最新排序'
 }
 export const sortEnumsList = enumsToList(sortEnums)
+
+export const htmlEnums = {
+	'newVersion': '新版本',
+	'vip': 'vip通知'
+}
+export const htmlEnumsList = enumsToList(htmlEnums)
