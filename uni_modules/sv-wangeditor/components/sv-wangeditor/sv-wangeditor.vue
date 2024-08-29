@@ -2,7 +2,7 @@
   <view class="sv-wangeditor">
     <!-- 将node_modules中的@wangeditor/editor/dist/css/style.css复制到项目根目录static/css文件夹中，并改名为wangeditor-style.css -->
     <!-- 因为uniapp在编译时会将h5原生button等标签转换为uni-button从而导致样式失效，故将样式文件放置static中，并通过link引入才能规避uniapp这一bug -->
-    <link href="static/css/wangeditor-style.css" rel="stylesheet" />
+    <link href="/admin/static/css/wangeditor-style.css" rel="stylesheet" />
     <Toolbar
       class="editor-toolbar"
       :editor="editorIns"
