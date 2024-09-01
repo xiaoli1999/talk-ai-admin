@@ -171,7 +171,7 @@
                 <div style="display: flex;">
                     <el-form-item label="角色性别" prop="gender">
                         <el-radio-group v-model="roleData.gender">
-                            <el-radio v-for="item in genderEnumsList" :key="item.id" :value="item.id">{{ item.value }}</el-radio>
+                            <el-radio v-for="item in genderEnumsList" :key="item.id" :value="Number(item.id)">{{ item.value }}</el-radio>
                         </el-radio-group>
                     </el-form-item>
                     <el-form-item label="角色风格" prop="styles">
@@ -244,7 +244,7 @@ const rolesTestDb = db.collection('roles_test')
 const globalData = ref(getApp().globalData)
 const isAdmin = ref(globalData.value.name === 'xiaoli')
 
-const tab = ref(2)
+const tab = ref(3)
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 10, total: 0 })
