@@ -8,7 +8,7 @@
         </el-radio-group>
 
         <view style="margin: 12px;">
-            <el-button v-if="isAdmin" type="primary" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
+            <el-button v-if="isAdmin" type="primary" :disabled="tab === 3" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
         </view>
         <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small">
             <el-table-column prop="sort" label="排序" align="center" width="60px" />
@@ -95,7 +95,6 @@
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             <el-table-column label="操作" align="center" width="200" fixed="right">
                 <template #default="{row}">
-                    <el-button v-if="isAdmin && row.category_id === 'null'" type="success" @click="openRoleDialog({ category_id: row._id })" size="small">新增</el-button>
                     <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
                     <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>
                 </template>
@@ -247,7 +246,7 @@ const isAdmin = ref(globalData.value.name === 'xiaoli')
 const tab = ref(3)
 
 const loading = ref(false)
-const listParams = reactive({ pageNo: 1, pageSize: 10, total: 0 })
+const listParams = reactive({ pageNo: 1, pageSize: 20, total: 0 })
 const list = ref([])
 const categoryList = ref([
     {
@@ -440,6 +439,8 @@ const saveRole = async () => {
 
     const params = JSON.parse(JSON.stringify(roleData.value))
 
+    const testRoleId = params._id
+
     if (tab.value === 3) {
         delete params._id
         delete params.create_time
@@ -464,6 +465,9 @@ const saveRole = async () => {
     ElMessage.success('更新成功')
 
     roleShow.value = false
+
+    /* 删除测试角色 */
+    if (tab.value === 3) await rolesTestDb.doc(testRoleId).remove();
 
     await getList()
 }
