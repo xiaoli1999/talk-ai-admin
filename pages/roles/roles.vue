@@ -6,6 +6,11 @@
             <el-radio-button :value="2">未设置音频</el-radio-button>
             <el-radio-button :value="3">测试角色</el-radio-button>
         </el-radio-group>
+        <el-radio-group v-model="gender" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
+            <el-radio-button :value="0">全部</el-radio-button>
+            <el-radio-button :value="1">男</el-radio-button>
+            <el-radio-button :value="2">女</el-radio-button>
+        </el-radio-group>
 
         <view style="margin: 12px;">
             <el-button v-if="isAdmin" type="primary" :disabled="tab === 3" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
@@ -91,7 +96,7 @@
             </el-table-column>
             <el-table-column prop="hot_count" label="热度" align="center" min-width="50px" />
             <el-table-column prop="talk_count" label="对话" align="center" min-width="50px" />
-            <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             <el-table-column label="操作" align="center" width="200" fixed="right">
                 <template #default="{row}">
@@ -244,6 +249,7 @@ const globalData = ref(getApp().globalData)
 const isAdmin = ref(globalData.value.name === 'xiaoli')
 
 const tab = ref(3)
+const gender = ref(0)
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 20, total: 0 })
@@ -336,9 +342,15 @@ const getList = async () => {
     let data = []
     let count = 0
 
+    const whereObj = {
+        category: db.command.neq('null')
+    }
+
+    if (gender.value) whereObj.gender = gender.value
+
     if (tab.value === 0) {
         loading.value = true
-        const { result } = await rolesDb.skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+        const { result } = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
         loading.value = false
         if (!data) return
 
@@ -346,15 +358,16 @@ const getList = async () => {
         count = result.count
     } else if (tab.value === 1) {
         loading.value = true
-        const { result } = await rolesDb.skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
+        const { result } = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
         loading.value = false
         if (!data) return
 
         data = result.data || []
         count = result.count
     } else if (tab.value === 2) {
+        whereObj.voice_id = db.command.in(['', null])
         loading.value = true
-        const { result } = await rolesDb.where({ voice_id: db.command.in(['', null])  }).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
+        const { result } = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
         loading.value = false
         if (!data) return
 
@@ -362,7 +375,7 @@ const getList = async () => {
         count = result.count
     } else if (tab.value === 3) {
         loading.value = true
-        const { result } = await rolesTestDb.where("category!='null'").skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+        const { result } = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
         loading.value = false
         if (!data) return
 
@@ -452,7 +465,7 @@ const saveRole = async () => {
     delete params.creator
 
     /* 更新时间,多加10s */
-    const time = dayjs().add(10, 'second').valueOf()
+    const time = dayjs().add(20, 'second').valueOf()
     params.update_time = time
     params.last_talk_time = time
 
