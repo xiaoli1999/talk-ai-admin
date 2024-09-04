@@ -5,6 +5,7 @@
             <el-radio-button :value="1">最近聊天</el-radio-button>
             <el-radio-button :value="2">未设置音频</el-radio-button>
             <el-radio-button :value="3">测试角色</el-radio-button>
+            <el-radio-button :value="4">未改写角色</el-radio-button>
         </el-radio-group>
         <el-radio-group v-model="gender" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
             <el-radio-button :value="0">全部</el-radio-button>
@@ -248,7 +249,7 @@ const rolesTestDb = db.collection('roles_test')
 const globalData = ref(getApp().globalData)
 const isAdmin = ref(globalData.value.name === 'xiaoli')
 
-const tab = ref(3)
+const tab = ref(4)
 const gender = ref(0)
 
 const loading = ref(false)
@@ -339,49 +340,39 @@ const filterVoiceList = () => {
 const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
 
-    let data = []
-    let count = 0
-
     const whereObj = {
         category: db.command.neq('null')
     }
 
     if (gender.value) whereObj.gender = gender.value
 
+    let res = {}
+
+    loading.value = true
+
     if (tab.value === 0) {
-        loading.value = true
-        const { result } = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-        loading.value = false
-        if (!data) return
-
-        data = result.data || []
-        count = result.count
+        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
     } else if (tab.value === 1) {
-        loading.value = true
-        const { result } = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
-        loading.value = false
-        if (!data) return
-
-        data = result.data || []
-        count = result.count
+        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
     } else if (tab.value === 2) {
         whereObj.voice_id = db.command.in(['', null])
-        loading.value = true
-        const { result } = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
-        loading.value = false
-        if (!data) return
 
-        data = result.data || []
-        count = result.count
+        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
     } else if (tab.value === 3) {
-        loading.value = true
-        const { result } = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-        loading.value = false
-        if (!data) return
+        res = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+    } else if (tab.value === 4) {
+        whereObj.update_time = db.command.lt(dayjs('2024-09-04 00:00').valueOf())
 
-        data = result.data || []
-        count = result.count
+        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
     }
+
+    loading.value = false
+
+    if (!res.result) return
+
+    const data = res.result.data || []
+    const count = res.result.count || 0
+
 
     data.map(i => {
         if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 100)
