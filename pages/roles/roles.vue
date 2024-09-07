@@ -4,8 +4,9 @@
             <el-radio-button :value="0">最新创建</el-radio-button>
             <el-radio-button :value="1">最近聊天</el-radio-button>
             <el-radio-button :value="2">未设置音频</el-radio-button>
-            <el-radio-button :value="3">测试角色</el-radio-button>
+            <el-radio-button :value="3">其他角色</el-radio-button>
             <el-radio-button :value="4">未改写角色</el-radio-button>
+            <el-radio-button :value="5">采采原创</el-radio-button>
         </el-radio-group>
         <el-radio-group v-model="gender" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
             <el-radio-button :value="0">全部</el-radio-button>
@@ -14,7 +15,7 @@
         </el-radio-group>
 
         <view style="margin: 12px;">
-            <el-button v-if="isAdmin" type="primary" :disabled="tab === 3" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
+            <el-button v-if="isAdmin" type="primary" :disabled="tab >= 3" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
         </view>
         <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small">
             <el-table-column prop="sort" label="排序" align="center" width="60px" />
@@ -234,9 +235,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from 'element-plus'
-import { createAvatarKey, listToTree, montageImgUrl } from '../../utils/common'
+import { createAvatarKey, montageImgUrl } from '../../utils/common'
 import { genderEnums, genderEnumsList } from "@/config/enums";
-import {computed} from "@vue/reactivity";
 
 const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 
@@ -244,12 +244,13 @@ const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 const db = uniCloud.database()
 const rolesDb = db.collection('roles')
 const rolesTestDb = db.collection('roles_test')
+const rolesMyDb = db.collection('roles_my')
 
 /* 权限 */
 const globalData = ref(getApp().globalData)
 const isAdmin = ref(globalData.value.name === 'xiaoli')
 
-const tab = ref(4)
+const tab = ref(5)
 const gender = ref(0)
 
 const loading = ref(false)
@@ -364,6 +365,9 @@ const getList = async () => {
         whereObj.update_time = db.command.lt(dayjs('2024-09-04 00:00').valueOf())
 
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
+    } else if (tab.value === 5) {
+
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount: true })
     }
 
     loading.value = false
@@ -445,9 +449,14 @@ const saveRole = async () => {
 
     const testRoleId = params._id
 
-    if (tab.value === 3) {
+    if ([3, 5].includes(tab.value)) {
         delete params._id
         delete params.create_time
+
+        if (tab.value === 5) {
+            params.creator_id = 'cc'
+            params.today_hot_count = 1000
+        }
     }
 
     const id = params._id
