@@ -280,7 +280,7 @@ const roleDataDefault = () => ({
     sort: 0,
     show: true,
     name: '',
-    user_name: '',
+    user_name: '我',
     avatar: '',
     avatar_long: '',
     gender: 0,
@@ -446,7 +446,7 @@ const saveRole = async () => {
     // delete params.create_time
 
     // params.creator_id = 'cc'
-    params.today_hot_count = 1000
+    params.today_hot_count = 5000
 
     /* 更新时间,多加10s */
     const time = dayjs().add(20, 'second').valueOf()
