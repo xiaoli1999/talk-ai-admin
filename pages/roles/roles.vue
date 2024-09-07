@@ -450,7 +450,6 @@ const saveRole = async () => {
 
         if (tab.value === 5) {
             params.creator_id = 'cc'
-            params.today_hot_count = 1000
         }
     }
 
@@ -476,6 +475,8 @@ const saveRole = async () => {
 
     /* 删除测试角色 */
     if (tab.value === 3) await rolesTestDb.doc(testRoleId).remove();
+
+    if (tab.value === 5) await rolesMyDb.doc(testRoleId).remove();
 
     await getList()
 }
