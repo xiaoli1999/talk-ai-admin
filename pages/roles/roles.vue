@@ -3,7 +3,6 @@
         <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
             <el-radio-button :value="0">最新创建</el-radio-button>
             <el-radio-button :value="1">最近聊天</el-radio-button>
-            <el-radio-button :value="2">未设置音频</el-radio-button>
             <el-radio-button :value="3">其他角色</el-radio-button>
             <el-radio-button :value="4">未改写角色</el-radio-button>
             <el-radio-button :value="5">采采原创</el-radio-button>
@@ -354,10 +353,6 @@ const getList = async () => {
     if (tab.value === 0) {
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
     } else if (tab.value === 1) {
-        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
-    } else if (tab.value === 2) {
-        whereObj.voice_id = db.command.in(['', null])
-
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
     } else if (tab.value === 3) {
         res = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
