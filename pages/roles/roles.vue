@@ -1,10 +1,10 @@
 <template>
     <el-scrollbar v-loading="loading" class="roles page">
         <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
-            <el-radio-button :value="0">最新创建</el-radio-button>
-            <el-radio-button :value="1">最近聊天</el-radio-button>
-            <el-radio-button :value="3">其他角色</el-radio-button>
-            <el-radio-button :value="4">未改写角色</el-radio-button>
+<!--            <el-radio-button :value="0">最新创建</el-radio-button>-->
+<!--            <el-radio-button :value="1">最近聊天</el-radio-button>-->
+<!--            <el-radio-button :value="3">其他角色</el-radio-button>-->
+<!--            <el-radio-button :value="4">未改写角色</el-radio-button>-->
             <el-radio-button :value="5">采采原创</el-radio-button>
         </el-radio-group>
         <el-radio-group v-model="gender" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
@@ -14,7 +14,7 @@
         </el-radio-group>
 
         <view style="margin: 12px;">
-            <el-button v-if="isAdmin" type="primary" :disabled="tab >= 3" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
+            <el-button type="primary" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
         </view>
         <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small">
             <el-table-column prop="sort" label="排序" align="center" width="60px" />
@@ -99,10 +99,11 @@
             <el-table-column prop="talk_count" label="对话" align="center" min-width="50px" />
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column label="操作" align="center" width="200" fixed="right">
+            <el-table-column label="操作" align="center" width="240" fixed="right">
                 <template #default="{row}">
                     <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
-                    <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>
+                    <el-button type="success" @click="copyPrompt(row)" size="small">复制形象</el-button>
+                    <el-button type="danger" @click="deleteRole(row)" size="small">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -119,8 +120,8 @@
             />
         </view>
 
-        <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" align-center draggable>
-            <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px" :disabled="!isAdmin">
+        <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" :close-on-click-modal="false" align-center draggable>
+            <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px">
                 <div style="display: flex;">
                     <el-form-item label="角色名称" prop="name">
                         <el-input v-model="roleData.name" :maxlength="10" placeholder="请输入角色名称" clearable show-word-limit />
@@ -133,7 +134,6 @@
                 <el-form-item label="角色分类" prop="category_id">
                     <el-select v-model="roleData.category_id" placeholder="请选择角色分类" :disabled="roleData._id && roleData.category_id === 'null' && roleData.children.length" clearable>
                         <el-option v-for="item in categoryList" :key="item._id" :label="item.name" :value="item._id" />
-                        <el-option label="一级分类" value="null" />
                     </el-select>
                 </el-form-item>
 
@@ -191,8 +191,13 @@
                 <el-form-item label="角色提示词" prop="prompt">
                     <el-input type="textarea" v-model="roleData.prompt" :rows="5" :maxlength="500" placeholder="请输入角色提示词" clearable show-word-limit />
                 </el-form-item>
+
                 <el-form-item label="角色引导语" prop="guide_list">
-                    <el-input type="textarea" v-model="roleData.guide_list[0]" :rows="3" :maxlength="300" placeholder="请输入角色引导语" clearable show-word-limit />
+                    <el-input type="textarea" v-model="roleData.guide_list[0]" :rows="2" :maxlength="300" placeholder="请输入角色引导语" clearable show-word-limit />
+                </el-form-item>
+
+                <el-form-item label="角色形象" prop="creator_id">
+                    <el-input type="textarea" v-model="roleData.creator_id" :rows="2" :maxlength="500" placeholder="请输入角色形象" clearable show-word-limit />
                 </el-form-item>
 
                 <el-form-item label="角色声音" prop="voice_id">
@@ -210,15 +215,6 @@
                         <sy-audio v-if="roleData.voice_url" :src="roleData.voice_url" audioCover='' subheading='' audioTitle='测试音频'></sy-audio>
                     </div>
                 </el-form-item>
-
-                <div style="display: flex;">
-                    <el-form-item label="角色排序" prop="sort">
-                        <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />
-                    </el-form-item>
-                    <el-form-item label="是否启用" prop="show">
-                        <el-switch v-model="roleData.show" />
-                    </el-form-item>
-                </div>
             </el-form>
 
             <template #footer>
@@ -234,7 +230,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from 'element-plus'
-import { createAvatarKey, montageImgUrl } from '../../utils/common'
+import { createAvatarKey, montageImgUrl, copyText } from '../../utils/common'
 import { genderEnums, genderEnumsList } from "@/config/enums";
 
 const TalkCloud = uniCloud.importObject('talk', { customUI: true })
@@ -280,9 +276,9 @@ const categoryList = ref([
 const categoryObj = ref(Object.fromEntries(categoryList.value.map(item => [item._id, item.name])))
 
 const roleDataDefault = () => ({
-    category_id: 'null',
+    category_id: '',
     sort: 0,
-    show: false,
+    show: true,
     name: '',
     user_name: '',
     avatar: '',
@@ -320,6 +316,7 @@ const roleRules = reactive({
     guide_list: [{ required: true, message: '请填写引导语', trigger: 'change' }, { validator: (r, v, cb) => !v[0] ? cb(new Error('请填写引导语')) : cb(), trigger: 'change' }],
     voice_id: [{ required: true, message: '请选择音色', trigger: 'change' }],
     voice_url: [{ required: true, message: '请生成音频', trigger: 'change' }],
+    creator_id: [{ required: true, message: '请填写用户形象', trigger: 'change' }],
 })
 
 const voiceList = ref([])
@@ -349,18 +346,20 @@ const getList = async () => {
     let res = {}
 
     loading.value = true
+    //
+    // if (tab.value === 0) {
+    //     res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+    // } else if (tab.value === 1) {
+    //     res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
+    // } else if (tab.value === 3) {
+    //     res = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+    // } else if (tab.value === 4) {
+    //     whereObj.update_time = db.command.lt(dayjs('2024-09-04 00:00').valueOf())
+    //
+    //     res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
+    // } else
 
-    if (tab.value === 0) {
-        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-    } else if (tab.value === 1) {
-        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
-    } else if (tab.value === 3) {
-        res = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-    } else if (tab.value === 4) {
-        whereObj.update_time = db.command.lt(dayjs('2024-09-04 00:00').valueOf())
-
-        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
-    } else if (tab.value === 5) {
+    if (tab.value === 5) {
 
         res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount: true })
     }
@@ -442,22 +441,12 @@ const saveRole = async () => {
 
     const params = JSON.parse(JSON.stringify(roleData.value))
 
-    const testRoleId = params._id
-
-    if ([3, 5].includes(tab.value)) {
-        delete params._id
-        delete params.create_time
-
-        if (tab.value === 5) {
-            params.creator_id = 'cc'
-            params.today_hot_count = 1000
-        }
-    }
-
     const id = params._id
     delete params._id
-    delete params.children
-    delete params.creator
+    // delete params.create_time
+
+    // params.creator_id = 'cc'
+    params.today_hot_count = 1000
 
     /* 更新时间,多加10s */
     const time = dayjs().add(20, 'second').valueOf()
@@ -467,15 +456,12 @@ const saveRole = async () => {
     /* 过滤无效标签 */
     params.tag_list = params.tag_list.filter(i => i)
 
-    const { errMsg } = id ? await rolesDb.doc(id).update(params).catch(e => e) : await rolesDb.add(params).catch(e => e)
+    const { errMsg } = id ? await rolesMyDb.doc(id).update(params).catch(e => e) : await rolesMyDb.add(params).catch(e => e)
     if (errMsg) return ElMessage.error(errMsg)
 
     ElMessage.success('更新成功')
 
     roleShow.value = false
-
-    /* 删除测试角色 */
-    if (tab.value === 3) await rolesTestDb.doc(testRoleId).remove();
 
     await getList()
 }
@@ -488,6 +474,11 @@ const deleteRole = ({ _id }) => {
                 await getList()
             })
 
+}
+
+const copyPrompt = async ({ creator_id }) => {
+    const data = await copyText(creator_id).catch(() => ({}))
+    uni.showToast({ title: data ? '复制成功' : '复制失败', icon: 'none' })
 }
 
 onMounted(async () => {

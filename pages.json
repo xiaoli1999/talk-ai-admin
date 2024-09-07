@@ -1,74 +1,11 @@
 {
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
 		{
-			"path": "pages/index/index",
-			"style": {
-				"navigationBarTitleText": "首页"
-			}
-		},
-		{
-			"path": "pages/user/user",
-			"style": {
-				"navigationBarTitleText": "访客"
-			}
-		},
-		{
-			"path": "pages/chat/chat",
-			"style": {
-				"navigationBarTitleText": "聊天"
-			}
-		},
-		{
-			"path" : "pages/works/works",
-			"style" : 
-			{
-				"navigationBarTitleText" : "应用",
-				"enablePullDownRefresh" : false
-			}
-		},
-		{
 			"path" : "pages/roles/roles",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : "角色",
 				"enablePullDownRefresh" : false
-			}
-		},
-		{
-			"path" : "pages/error/error",
-			"style" : 
-			{
-				"navigationBarTitleText" : "404",
-				"enablePullDownRefresh" : false
-			}
-		},
-		{
-			"path" : "pages/copy/copy",
-			"style" : 
-			{
-				"navigationBarTitleText" : "",
-				"enablePullDownRefresh" : false
-			}
-		},
-		{
-			"path" : "pages/magic/magic",
-			"style" : 
-			{
-				"navigationBarTitleText" : ""
-			}
-		},
-		{
-			"path" : "pages/bg/bg",
-			"style" : 
-			{
-				"navigationBarTitleText" : ""
-			}
-		},
-		{
-			"path" : "pages/notice/notice",
-			"style" : 
-			{
-				"navigationBarTitleText" : ""
 			}
 		}
 	],
@@ -88,22 +25,6 @@
 		"fontSize": "14px",
 		"spacing": "4px",
 		"list": [
-			{
-				"pagePath": "pages/index/index",
-				"text": "首页"
-			},
-			{
-				"pagePath": "pages/user/user",
-				"text": "访客"
-			},
-			{
-				"pagePath": "pages/chat/chat",
-				"text": "聊天"
-			},
-			{
-				"pagePath": "pages/works/works",
-				"text": "应用"
-			},
 			{
 				"pagePath": "pages/roles/roles",
 				"text": "角色"
