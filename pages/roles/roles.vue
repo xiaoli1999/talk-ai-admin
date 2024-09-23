@@ -196,8 +196,8 @@
                     <el-input type="textarea" v-model="roleData.guide_list[0]" :rows="2" :maxlength="300" placeholder="请输入角色引导语" clearable show-word-limit />
                 </el-form-item>
 
-                <el-form-item label="角色形象" prop="creator_id">
-                    <el-input type="textarea" v-model="roleData.creator_id" :rows="2" :maxlength="500" placeholder="请输入角色形象" clearable show-word-limit />
+                <el-form-item label="角色形象" prop="looks_prompt">
+                    <el-input type="textarea" v-model="roleData.looks_prompt" :rows="2" :maxlength="500" placeholder="请输入角色形象" clearable show-word-limit />
                 </el-form-item>
 
                 <el-form-item label="角色声音" prop="voice_id">
@@ -300,7 +300,8 @@ const roleDataDefault = () => ({
     voice_url: '',
     last_talk_time: '',
     update_time: '',
-    creator_id: ''
+    creator_id: '',
+    looks_prompt: ''
 })
 const roleShow = ref(false)
 const roleData = ref(roleDataDefault())
@@ -316,7 +317,7 @@ const roleRules = reactive({
     guide_list: [{ required: true, message: '请填写引导语', trigger: 'change' }, { validator: (r, v, cb) => !v[0] ? cb(new Error('请填写引导语')) : cb(), trigger: 'change' }],
     voice_id: [{ required: true, message: '请选择音色', trigger: 'change' }],
     voice_url: [{ required: true, message: '请生成音频', trigger: 'change' }],
-    creator_id: [{ required: true, message: '请填写用户形象', trigger: 'change' }],
+    looks_prompt: [{ required: true, message: '请填写用户形象', trigger: 'change' }],
 })
 
 const voiceList = ref([])
@@ -443,10 +444,8 @@ const saveRole = async () => {
 
     const id = params._id
     delete params._id
-    // delete params.create_time
 
-    // params.creator_id = 'cc'
-    params.today_hot_count = 5000
+    params.today_hot_count = params.creator_id ? 1000 : 5000
 
     /* 更新时间,多加10s */
     const time = dayjs().add(20, 'second').valueOf()
@@ -476,8 +475,8 @@ const deleteRole = ({ _id }) => {
 
 }
 
-const copyPrompt = async ({ creator_id }) => {
-    const data = await copyText(creator_id).catch(() => ({}))
+const copyPrompt = async ({ looks_prompt }) => {
+    const data = await copyText(looks_prompt).catch(() => ({}))
     uni.showToast({ title: data ? '复制成功' : '复制失败', icon: 'none' })
 }
 
