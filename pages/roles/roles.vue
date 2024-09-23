@@ -1,12 +1,14 @@
 <template>
     <el-scrollbar v-loading="loading" class="roles page">
         <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
-<!--            <el-radio-button :value="0">最新创建</el-radio-button>-->
-<!--            <el-radio-button :value="1">最近聊天</el-radio-button>-->
-<!--            <el-radio-button :value="3">其他角色</el-radio-button>-->
-<!--            <el-radio-button :value="4">未改写角色</el-radio-button>-->
-            <el-radio-button :value="5">采采原创</el-radio-button>
+            <el-radio-button :value="0">采采原创</el-radio-button>
         </el-radio-group>
+
+        <el-radio-group v-model="category" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
+            <el-radio-button value="">全部</el-radio-button>
+            <el-radio-button v-for="item in categoryList" :key="item._id" :value="item._id">{{ item.name.slice(0, 2) }}</el-radio-button>
+        </el-radio-group>
+
         <el-radio-group v-model="gender" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
             <el-radio-button :value="0">全部</el-radio-button>
             <el-radio-button :value="1">男</el-radio-button>
@@ -245,8 +247,9 @@ const rolesMyDb = db.collection('roles_my')
 const globalData = ref(getApp().globalData)
 const isAdmin = ref(globalData.value.name === 'xiaoli')
 
-const tab = ref(5)
+const tab = ref(0)
 const gender = ref(0)
+const category = ref('')
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 20, total: 0 })
@@ -338,32 +341,17 @@ const filterVoiceList = () => {
 const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
 
-    const whereObj = {
-        category: db.command.neq('null')
-    }
+    const whereObj = {}
+
+    if (category.value) whereObj.category_id = category.value
 
     if (gender.value) whereObj.gender = gender.value
 
     let res = {}
 
     loading.value = true
-    //
-    // if (tab.value === 0) {
-    //     res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-    // } else if (tab.value === 1) {
-    //     res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
-    // } else if (tab.value === 3) {
-    //     res = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-    // } else if (tab.value === 4) {
-    //     whereObj.update_time = db.command.lt(dayjs('2024-09-04 00:00').valueOf())
-    //
-    //     res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
-    // } else
 
-    if (tab.value === 5) {
-
-        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount: true })
-    }
+    res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).get({ getCount: true })
 
     loading.value = false
 
