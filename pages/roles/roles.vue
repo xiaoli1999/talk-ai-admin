@@ -362,7 +362,7 @@ const getList = async () => {
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
     } else if (tab.value === 5) {
 
-        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount: true })
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).get({ getCount: true })
     }
 
     loading.value = false
@@ -449,7 +449,8 @@ const saveRole = async () => {
         delete params.create_time
 
         if (tab.value === 5) {
-            params.creator_id = 'cc'
+            params.creator_id = params.creator_id || 'cc'
+            delete params.looks_prompt
         }
     }
 
