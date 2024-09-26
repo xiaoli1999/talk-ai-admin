@@ -1,7 +1,8 @@
 <template>
     <el-scrollbar v-loading="loading" class="roles page">
         <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
-            <el-radio-button :value="0">采采原创</el-radio-button>
+            <el-radio-button :value="0">全部</el-radio-button>
+            <el-radio-button :value="1">已逾期</el-radio-button>
         </el-radio-group>
 
         <el-radio-group v-model="category" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
@@ -239,8 +240,6 @@ const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
-const rolesDb = db.collection('roles')
-const rolesTestDb = db.collection('roles_test')
 const rolesMyDb = db.collection('roles_my')
 
 /* 权限 */
@@ -342,6 +341,9 @@ const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
 
     const whereObj = {}
+
+    /* 已逾期 */
+    if (tab.value === 1) whereObj.create_time = db.command.lte(dayjs().subtract(1, 'day').valueOf())
 
     if (category.value) whereObj.category_id = category.value
 
@@ -456,7 +458,7 @@ const saveRole = async () => {
 const deleteRole = ({ _id }) => {
     ElMessageBox.confirm('确定删除吗?', '删除角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
-                await rolesDb.doc(_id).remove();
+                await rolesMyDb.doc(_id).remove();
                 ElMessage.success('删除成功')
                 await getList()
             })
