@@ -451,6 +451,8 @@ const saveRole = async () => {
         if (tab.value === 5) {
             params.creator_id = params.creator_id || 'cc'
             delete params.looks_prompt
+            delete params.username
+            delete params.nickname
         }
     }
 
