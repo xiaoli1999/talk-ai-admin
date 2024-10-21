@@ -36,7 +36,7 @@
                 </template>
             </el-table-column>
             <el-table-column prop="name" label="名称" align="center" min-width="70px" />
-            <el-table-column prop="user_name" label="用户" align="center" min-width="70px" />
+            <el-table-column prop="nickname" label="投稿人" align="center" min-width="70px" />
             <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
                 <template #default="{ row }">
                     <view style="position: relative;padding: 10px 0;">
