@@ -17,11 +17,11 @@
             <el-button type="danger" :disabled="!selectList.length" style="margin-right: 12px" @click="deleteWords">批量删除</el-button>
         </view>
 
-        <el-table class="roles-table" :data="list" border size="small" @selection-change="selectionChange">
+        <el-table class="roles-table" :data="list" border @selection-change="selectionChange">
             <el-table-column type="selection" label="排序" align="center" width="60px" />
             <el-table-column type="index" label="排序" align="center" width="60px" />
-            <el-table-column prop="content" label="搜索内容" align="center" min-width="150px" />
-            <el-table-column prop="content" label="分类" align="center" min-width="120px" >
+            <el-table-column prop="content" label="搜索内容" align="center" min-width="200px" />
+            <el-table-column prop="content" label="分类" align="center" min-width="150px" >
                 <template #default="{ row }">
                     <el-radio-group v-model="row.sex" @change="setWordSex($event, row)">
                         <el-radio v-for="item in genderEnumsList" :key="item.id" :value="Number(item.id)">{{ item.value }}</el-radio>
@@ -33,7 +33,7 @@
             <el-table-column prop="today_count" label="今日热度" align="center" min-width="80px" />
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="create_time" label="创建时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column label="操作" align="center" width="200" fixed="right">
+            <el-table-column label="操作" align="center" width="120" fixed="right">
                 <template #default="{row}">
                     <el-button type="danger" @click="deleteWords([row])" size="small">删除</el-button>
                 </template>
