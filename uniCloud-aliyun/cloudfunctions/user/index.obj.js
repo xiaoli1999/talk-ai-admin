@@ -1,4 +1,4 @@
-const { AppID, AppSecret, inviteCb, videoAdCb, rewardCb, rewardPayCb } = require('./config.js')
+const { AppID, AppSecret, inviteCb, cbNum, videoAdCb, rewardCb, rewardPayCb } = require('./config.js')
 const { createToken, verifyToken } = require('./utils/token.js')
 const dayjs = require('./utils/dayjs.js')
 const { disableUserList } = require('./utils/disable.js')
@@ -13,6 +13,7 @@ const usersJqlDb = dbJQL.collection('users')
 const usersCopyJqlDb = dbJQL.collection('users_copy')
 const usersPromptJqlDb = dbJQL.collection('users_prompt')
 const RolesJqlDb = dbJQL.collection('roles')
+const SearchsJqlDb = dbJQL.collection('searchs')
 
 const main = {
 	_before: function () { // 通用预处理器
@@ -170,7 +171,7 @@ const main = {
 			const { openid } = verifyToken(token)
 			if (!openid) return { errMsg: '无效用户' }
 
-			/* 授权更新信息奖励10次对话次数 */
+			/* 授权更新信息奖励5个采贝 */
 			if (reward) {
 				params.cb_num = db.command.inc(rewardCb)
 				params.receive_cb_total = db.command.inc(rewardCb)
@@ -222,8 +223,14 @@ const main = {
 			usersJqlDb.where(`cb_num > 0 && vip_end_time < ${ current_time }`).update({ cb_num: 0 })
 			usersJqlDb.where('today_video_ad_count > 0').update({ today_video_ad_count: 0 })
 
-			console.log('\n ----清除角色当天热度及聊天数', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
-			RolesJqlDb.where('today_hot_count > 0').update({ today_hot_count: 0, today_talk_count: 0 })
+			// 获取昨天凌晨的时间
+			const yesterday_time = Date.now() - 60 * 60 * 24 * 1000
+
+			console.log('\n ----清除非昨天创建的角色的当天热度及聊天数', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			RolesJqlDb.where(`today_hot_count > 0 && create_time < ${yesterday_time}`).update({ today_hot_count: 0, today_talk_count: 0 })
+
+			console.log('\n ----清除搜索词当天搜索次数', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
+			SearchsJqlDb.where(`today_count > 0`).update({ today_count: 0 })
 
 			/* 暂停非会员次数更新，引导用户获取次数 */
 			// console.log('\n ----更新非会员（次数小于默认次数且更新过信息）用户次数----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
@@ -369,8 +376,8 @@ const main = {
 				params.cb_num = (cb_num || 0) + rewardPayCb
 			} else {
 				params.receive_cb_date = date
-				params.receive_cb_total = (receive_cb_total || 0) + rewardCb
-				params.cb_num = (cb_num || 0) + rewardCb
+				params.receive_cb_total = (receive_cb_total || 0) + cbNum
+				params.cb_num = (cb_num || 0) + cbNum
 
 				params.receive_cb_count = (receive_cb_count || 0) + 1
 			}
@@ -384,6 +391,51 @@ const main = {
 			return { errMsg: message }
 		}
 	},
+
+	async sendReward () {
+		const dbCmd = db.command
+
+		// 会员补偿
+
+		// const { data } = await usersDb.where({ vip_end_time: dbCmd.gte(1726675200000), last_login_date: dbCmd.gte(1726675200000) })
+		// 	.get({ count: true })
+		//
+		// for (let i = 0; i < data.length; i++) {
+		// 	const user = data[i]
+		//
+		// 	const vipDate = user.vip_end_time + 172800000
+		//
+		// 	console.log(i, user.nickname)
+		// 	console.log('更新前', dayjs(user.vip_end_time).format('YYYY-MM-DD HH:mm:ss'))
+		// 	console.log('更新后', dayjs(vipDate).format('YYYY-MM-DD HH:mm:ss'))
+		//
+		// 	await usersDb.doc(user._id).update({ vip_end_time: vipDate })
+		//
+		// }
+		//
+		// console.log('一共', data.length, '个')
+
+
+		// 采贝补偿
+
+		// const { data } = await usersDb.where({ last_login_date: dbCmd.gte(1726675200000) }).limit(1000).orderBy('last_login_date', 'desc').get({ count: true })
+		//
+		// for (let i = 0; i < data.length; i++) {
+		// 	const user = data[i]
+		//
+		// 	const num = Math.ceil(user.cb_pay_num) + 40
+		//
+		// 	console.log(i, user.nickname)
+		// 	console.log('付费采贝-更新前', user.cb_pay_num)
+		// 	console.log('付费采贝-更新后', num)
+		//
+		// 	await usersDb.doc(user._id).update({ cb_pay_num: num })
+		//
+		// }
+		//
+		// console.log('一共', data.length, '个', data)
+	}
+
 }
 
 module.exports = main
