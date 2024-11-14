@@ -3,35 +3,60 @@ const { chatData, getTipList } = require('./data/chat.js')
 const roleData = require('./data/role.js')
 
 const db = uniCloud.database();
+const rolesDb = db.collection('roles');
 
 /* JQL数据库集合 */
 const dbJQL = uniCloud.databaseForJQL(db)
-const worksJqlDb = dbJQL.collection('works')
 const rolesJqlDb = dbJQL.collection('roles')
+const rolesLikeJqlDb = dbJQL.collection('roles_like')
+const worksJqlDb = dbJQL.collection('works')
 
 module.exports = {
-	/**
-	 * todo 暂时保留，防止旧版报错
-	 * @function getBasicData 获取基础信息
-	 * @returns { object } { errMsg: '', data: {} } 错误信息及url
-	 * @return { object } data.homeData 首页基础数据
-	 * @return { object } data.chatData 问答页基础数据
-	 * @return { object } data.roleData 角色页基础数据
-	 * @return { Array } data.workList 助手页数据
-	 * @return { Array } data.roleList 角色页数据
-	 */
-	async getBasicData () {
-		try {
-			const workData = await worksJqlDb.get()
-			const rolesData = await rolesJqlDb.get()
 
-			const data = {
-				homeData,
-				chatData: { ...chatData, tipList: getTipList() },
-				roleData,
-				workList: workData.data || [],
-				roleList: rolesData.data || []
-			}
+	/**
+	 * @function todo 旧版数据 getHomeBasicData 获取首页基础数据
+	 * @returns { object } { errMsg: '', data: {} } 错误信息及url
+	 * @returns { object } data 首页基础数据
+	 */
+	async getHomeBasicData () {
+		try {
+			return { data: homeData, errMsg: '获取成功' }
+		} catch ({ message }) {
+			return { errMsg: message }
+		}
+	},
+
+	/**
+	 * @function getHomeData 获取首页数据
+	 * @returns { object } { errMsg: '', data: {} } 错误信息及url
+	 * @returns { object } data 首页基础数据
+	 */
+	async getHomeData ({ gender }) {
+		try {
+			const data = { ...homeData }
+
+			const whereData = { show: true }
+			if (gender) whereData.gender = gender === 1 ? 2 : 1
+
+			/* 获取最新角色 */
+			const { data: newList } = await rolesDb.where(whereData).limit(5).orderBy('create_time', 'desc').get()
+			data.newList = newList || []
+
+			/* 获取最近在聊的角色 */
+			const { data: talkList } = await rolesDb.where(whereData).limit(2).orderBy('last_talk_time', 'desc').get()
+			data.talkList = talkList || []
+
+			// /* 获取最喜欢的角色 */
+			// const roles = rolesJqlDb.getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
+			// const rolesLike = rolesLikeJqlDb.orderBy('create_time desc').limit(10).getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
+
+			/* 随机取最喜欢的角色 */
+			const skip =  Math.floor(Math.random() * 81)
+
+			const { data: likeList } = await rolesJqlDb.where(whereData).orderBy('like_count desc').skip(skip).limit(3).get()
+			data.likeList = (likeList || []).map(i => ({ ...i, _id: { _value: i._id }, list: [] }))
+			console.log(data)
+
 
 			return { data, errMsg: '获取成功' }
 		} catch ({ message }) {
@@ -40,13 +65,20 @@ module.exports = {
 	},
 
 	/**
-	 * @function getHomeBasicData 获取首页基础数据
+	 * @function getHomeHotList 获取首页最热数据
 	 * @returns { object } { errMsg: '', data: {} } 错误信息及url
-	 * @returns { object } data 首页基础数据
+	 * @returns { Array } data 首页最热数据
 	 */
-	async getHomeBasicData () {
+	async getHomeHotList ({ gender }) {
 		try {
-			return { data: homeData, errMsg: '获取成功' }
+
+			const whereData = { show: true }
+			if (gender) whereData.gender = gender === 1 ? 2 : 1
+
+			/* 获取当天热度最高的角色 */
+			const { data } = await rolesDb.where(whereData).limit(9).orderBy('today_hot_count', 'desc').get()
+
+			return { data, errMsg: '获取成功' }
 		} catch ({ message }) {
 			return { errMsg: message }
 		}
@@ -85,24 +117,4 @@ module.exports = {
 			return { errMsg: message }
 		}
 	},
-
-	/**
-	 * @function getRoleBasicData 获取角色页基础数据
-	 * @returns { object } { errMsg: '', data: {} } 错误信息及url
-	 * @returns { object } data 角色页基础数据
-	 */
-	async getRoleBasicData () {
-		try {
-			const rolesData = await rolesJqlDb.limit(1000).get()
-
-			const data = {
-				...roleData,
-				list: rolesData.data || []
-			}
-
-			return { data, errMsg: '获取成功' }
-		} catch ({ message }) {
-			return { errMsg: message }
-		}
-	}
 }

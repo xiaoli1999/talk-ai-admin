@@ -42,8 +42,10 @@ module.exports = {
 				vipQyList,
 				cbDocList,
 				vipDocObj,
-				showIos: true, /* 是否展示ios */
+				showIos: false, /* 是否展示ios */
 				version: '', /* 线上绕审核版本 */
+				showService: true, /* ios展示客服按钮 */
+				iosTip: '由于相关规范，ios功能暂不可用。\n \n 可登录安卓、电脑端充值。 \n \n 如遇到问题请咨询客服（备注手机型号）。'
 			}
 
 			//返回数据给客户端
@@ -93,9 +95,10 @@ module.exports = {
 
 			console.log('orderRes', orderRes);
 
+			const orderTypeEnums = { vip: '开通会员', cb: '充值采贝', 'first-cb': '采贝首充福利' }
 			const params = {
 				openid: event.openid, //这个是客户端上传的用户的openid
-				body: '采黎vip续费',
+				body: orderTypeEnums[type],
 				outTradeNo: orderRes.id, //给他个随机号让他可以第二次发起支付
 				totalFee: currentOrder.price, // 金额，单位元,在上传过来的时候就已经*100了
 				notifyUrl: 'https://fc-mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.next.bspapp.com/pay/notify', // 支付结果通知地址
@@ -149,7 +152,7 @@ module.exports = {
 			if (!userId || !orderId) return { errMsg: '参数错误' }
 
 			const { data: userList } = await db.collection('users').doc(userId).get()
-		 	const { vip_end_time, pay_count, cb_pay_num, cb_pay_count, pay_total } = userList[0]
+		 	const { vip_end_time, cb_pay_num, cb_pay_count, pay_count, pay_total } = userList[0]
 
 			const { data: orderList } = await db.collection('orders').doc(orderId).get()
 			const { total_fee, type, recharge_day, recharge_cb  } = orderList[0]
@@ -169,13 +172,13 @@ module.exports = {
 					userParams.vip_start_time = nowDate
 					userParams.vip_end_time = dayjs(nowDate).add(recharge_day, 'day').valueOf()
 				}
-
-				userParams.pay_count = (pay_count || 0) + 1
 			} else {
+				/* 将当前付费向上取整 */
+				const cb_pay_num_int = Math.ceil(cb_pay_num || 0)
 				if (vip_end_time > nowDate) {
-					userParams.cb_pay_num = (cb_pay_num || 0) + parseInt(recharge_cb * 1.1)
+					userParams.cb_pay_num = cb_pay_num_int + parseInt(recharge_cb * 1.1)
 				} else {
-					userParams.cb_pay_num = (cb_pay_num || 0) + recharge_cb
+					userParams.cb_pay_num = cb_pay_num_int + recharge_cb
 				}
 
 				userParams.cb_pay_count = (cb_pay_count || 0) + 1
