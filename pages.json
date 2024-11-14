@@ -19,19 +19,18 @@
 			}
 		},
 		{
-			"path" : "pages/works/works",
-			"style" : 
-			{
-				"navigationBarTitleText" : "应用",
-				"enablePullDownRefresh" : false
-			}
-		},
-		{
 			"path" : "pages/roles/roles",
 			"style" : 
 			{
 				"navigationBarTitleText" : "角色",
 				"enablePullDownRefresh" : false
+			}
+		},
+		{
+			"path" : "pages/search/search",
+			"style" : 
+			{
+				"navigationBarTitleText" : "搜索词"
 			}
 		},
 		{
@@ -70,6 +69,14 @@
 			{
 				"navigationBarTitleText" : ""
 			}
+		},
+		{
+			"path" : "pages/works/works",
+			"style" : 
+			{
+				"navigationBarTitleText" : "搜索词",
+				"enablePullDownRefresh" : false
+			}
 		}
 	],
 	"globalStyle": {
@@ -101,12 +108,12 @@
 				"text": "聊天"
 			},
 			{
-				"pagePath": "pages/works/works",
-				"text": "应用"
-			},
-			{
 				"pagePath": "pages/roles/roles",
 				"text": "角色"
+			},
+			{
+				"pagePath": "pages/search/search",
+				"text": "搜索词"
 			}
 		]
 	},
