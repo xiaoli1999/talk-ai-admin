@@ -17,7 +17,7 @@
             <el-button v-if="isAdmin" type="primary" :disabled="tab >= 3" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
         </view>
         <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small">
-            <el-table-column prop="sort" label="排序" align="center" width="60px" />
+            <el-table-column type="index" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
