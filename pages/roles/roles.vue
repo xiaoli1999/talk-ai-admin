@@ -453,6 +453,10 @@ const saveRole = async () => {
             delete params.looks_prompt
             delete params.username
             delete params.nickname
+
+            /* 3.5 新增字段 */
+            delete params.vip
+            delete params.version
         }
     }
 
