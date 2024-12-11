@@ -156,6 +156,33 @@
             "description": "创建者id",
             "defaultValue": ""
         },
+        "username": {
+            "bsonType": "string",
+            "title": "创建者用户名",
+            "description": "用户名，不允许重复",
+            "defaultValue": "",
+            "trim": "both"
+        },
+        "nickname": {
+            "bsonType": "string",
+            "title": "创建者昵称",
+            "description": "用户昵称",
+            "defaultValue": "",
+            "trim": "both"
+        },
+        /* 3.5新增 vip、version */
+        "vip": {
+            "bsonType": "bool",
+            "title": "创建者昵称",
+            "description": "用户昵称",
+            "defaultValue": false
+        },
+        "version": {
+            "bsonType": "int",
+            "title": "投稿版本",
+            "description": "投稿版本，用来排优先级",
+            "defaultValue": 0
+        },
         "create_time": {
             "bsonType": "timestamp",
             "description": "创建时间",
