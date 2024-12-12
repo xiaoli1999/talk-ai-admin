@@ -1,8 +1,9 @@
 <template>
     <el-scrollbar v-loading="loading" class="roles page">
         <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
-            <el-radio-button :value="0">全部</el-radio-button>
-            <el-radio-button :value="1">已逾期</el-radio-button>
+            <el-radio-button :value="0">原创投稿</el-radio-button>
+            <el-radio-button :value="2">原创逾期</el-radio-button>
+            <el-radio-button :value="1">快捷投稿</el-radio-button>
         </el-radio-group>
 
         <el-radio-group v-model="category" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
@@ -37,6 +38,13 @@
             </el-table-column>
             <el-table-column prop="name" label="名称" align="center" min-width="70px" />
             <el-table-column prop="nickname" label="投稿人" align="center" min-width="70px" />
+            <el-table-column prop="vip" label="会员" align="center" width="60px">
+                <template #default="{ row }">
+                    <div>
+                        <el-tag v-if="row.vip" type="danger" size="small">会员</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
             <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
                 <template #default="{ row }">
                     <view style="position: relative;padding: 10px 0;">
@@ -98,8 +106,6 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="hot_count" label="热度" align="center" min-width="50px" />
-            <el-table-column prop="talk_count" label="对话" align="center" min-width="50px" />
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             <el-table-column label="操作" align="center" width="240" fixed="right">
@@ -123,7 +129,7 @@
             />
         </view>
 
-        <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" :close-on-click-modal="false" align-center draggable>
+        <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '修改角色' : '新增角色'" :close-on-click-modal="false" align-center draggable>
             <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px">
                 <div style="display: flex;">
                     <el-form-item label="角色名称" prop="name">
@@ -161,7 +167,7 @@
                 </div>
 
                 <el-form-item label="角色简介" prop="desc">
-                    <el-input type="textarea" v-model="roleData.desc" :rows="5" :maxlength="500" placeholder="请输入角色简介" clearable show-word-limit />
+                    <el-input type="textarea" v-model="roleData.desc" :rows="5" :maxlength="1000" placeholder="请输入角色简介" clearable show-word-limit />
                 </el-form-item>
 
                 <el-form-item label="角色标签" prop="tag_list">
@@ -192,7 +198,7 @@
                 </div>
 
                 <el-form-item label="角色提示词" prop="prompt">
-                    <el-input type="textarea" v-model="roleData.prompt" :rows="5" :maxlength="500" placeholder="请输入角色提示词" clearable show-word-limit />
+                    <el-input type="textarea" v-model="roleData.prompt" :rows="5" :maxlength="1000" placeholder="请输入角色提示词" clearable show-word-limit />
                 </el-form-item>
 
                 <el-form-item label="角色引导语" prop="guide_list">
@@ -303,7 +309,11 @@ const roleDataDefault = () => ({
     last_talk_time: '',
     update_time: '',
     creator_id: '',
-    looks_prompt: ''
+    looks_prompt: '',
+
+    /* 3.5新增 */
+    vip: false,
+    version: 3.5
 })
 const roleShow = ref(false)
 const roleData = ref(roleDataDefault())
@@ -341,9 +351,19 @@ const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
 
     const whereObj = {}
+    let orderBy = ''
 
-    /* 已逾期 */
-    if (tab.value === 1) whereObj.create_time = db.command.lte(dayjs().subtract(1, 'day').valueOf())
+    if (tab.value === 0) {
+        whereObj.version = db.command.gte(3.4)
+        orderBy = 'vip desc'
+    } else if (tab.value === 1) {
+        whereObj.version = db.command.in([undefined, null, ''])
+
+    } else if (tab.value === 2) {
+        orderBy = 'vip desc'
+        whereObj.version = db.command.gte(3.4)
+        whereObj.create_time = db.command.lte(dayjs().subtract(3, 'day').valueOf())
+    }
 
     if (category.value) whereObj.category_id = category.value
 
@@ -353,7 +373,7 @@ const getList = async () => {
 
     loading.value = true
 
-    res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).get({ getCount: true })
+    res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy(orderBy).get({ getCount: true })
 
     loading.value = false
 
