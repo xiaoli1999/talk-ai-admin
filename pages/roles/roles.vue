@@ -1,11 +1,13 @@
 <template>
     <el-scrollbar v-loading="loading" class="roles page">
         <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
-            <el-radio-button :value="0">最新创建</el-radio-button>
-            <el-radio-button :value="1">最近聊天</el-radio-button>
-            <el-radio-button :value="3">其他角色</el-radio-button>
-            <el-radio-button :value="4">未改写角色</el-radio-button>
-            <el-radio-button :value="5">采采原创</el-radio-button>
+            <el-radio-button :value="0">最新</el-radio-button>
+            <el-radio-button :value="1">最热</el-radio-button>
+            <el-radio-button :value="2">最近</el-radio-button>
+            <el-radio-button :value="3">搬家</el-radio-button>
+            <el-radio-button :value="4">未改写</el-radio-button>
+            <el-radio-button :value="5">原创</el-radio-button>
+            <el-radio-button :value="6">快捷（旧）</el-radio-button>
         </el-radio-group>
         <el-radio-group v-model="gender" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
             <el-radio-button :value="0">全部</el-radio-button>
@@ -33,7 +35,7 @@
                 </template>
             </el-table-column>
             <el-table-column prop="name" label="名称" align="center" min-width="70px" />
-            <el-table-column prop="user_name" label="用户" align="center" min-width="70px" />
+            <el-table-column prop="user_name" label="用户" align="center" min-width="50px" :formatter="(e) => e.vip ? 'VIP' : e.user_name" />
             <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
                 <template #default="{ row }">
                     <view style="position: relative;padding: 10px 0;">
@@ -95,11 +97,11 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="hot_count" label="热度" align="center" min-width="50px" />
-            <el-table-column prop="talk_count" label="对话" align="center" min-width="50px" />
+            <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
+            <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column label="操作" align="center" width="200" fixed="right">
+            <el-table-column label="操作" align="center" width="130" fixed="right">
                 <template #default="{row}">
                     <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
                     <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>
@@ -158,7 +160,7 @@
                 </div>
 
                 <el-form-item label="角色简介" prop="desc">
-                    <el-input type="textarea" v-model="roleData.desc" :rows="5" :maxlength="500" placeholder="请输入角色简介" clearable show-word-limit />
+                    <el-input type="textarea" v-model="roleData.desc" :rows="5" :maxlength="1000" placeholder="请输入角色简介" clearable show-word-limit />
                 </el-form-item>
 
                 <el-form-item label="角色标签" prop="tag_list">
@@ -189,7 +191,7 @@
                 </div>
 
                 <el-form-item label="角色提示词" prop="prompt">
-                    <el-input type="textarea" v-model="roleData.prompt" :rows="5" :maxlength="500" placeholder="请输入角色提示词" clearable show-word-limit />
+                    <el-input type="textarea" v-model="roleData.prompt" :rows="5" :maxlength="1000" placeholder="请输入角色提示词" clearable show-word-limit />
                 </el-form-item>
                 <el-form-item label="角色引导语" prop="guide_list">
                     <el-input type="textarea" v-model="roleData.guide_list[0]" :rows="3" :maxlength="300" placeholder="请输入角色引导语" clearable show-word-limit />
@@ -353,6 +355,8 @@ const getList = async () => {
     if (tab.value === 0) {
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
     } else if (tab.value === 1) {
+        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount:true })
+    } else if (tab.value === 2) {
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
     } else if (tab.value === 3) {
         res = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
@@ -361,7 +365,10 @@ const getList = async () => {
 
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
     } else if (tab.value === 5) {
-
+        whereObj.version = db.command.gte(3.4)
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').get({ getCount: true })
+    } else if (tab.value === 6) {
+        whereObj.version = db.command.in([undefined, null, ''])
         res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).get({ getCount: true })
     }
 
@@ -444,11 +451,11 @@ const saveRole = async () => {
 
     const testRoleId = params._id
 
-    if ([3, 5].includes(tab.value)) {
+    if ([3, 5, 6].includes(tab.value)) {
         delete params._id
         delete params.create_time
 
-        if (tab.value === 5) {
+        if ([5, 6].includes(tab.value)) {
             params.creator_id = params.creator_id || 'cc'
             delete params.looks_prompt
             delete params.username
@@ -483,7 +490,7 @@ const saveRole = async () => {
     /* 删除测试角色 */
     if (tab.value === 3) await rolesTestDb.doc(testRoleId).remove();
 
-    if (tab.value === 5) await rolesMyDb.doc(testRoleId).remove();
+    if ([5, 6].includes(tab.value)) await rolesMyDb.doc(testRoleId).remove();
 
     await getList()
 }
