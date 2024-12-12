@@ -1,1 +1,199 @@
-{"bsonType":"object","required":[],"permission":{"read":true,"create":true,"update":true,"delete":true},"properties":{"_id":{"description":"存储文档 ID（用户 ID），系统自动生成"},"category_id":{"bsonType":"string","description":"分类 id","defaultValue":0},"sort":{"bsonType":"int","description":"排序","defaultValue":0},"show":{"bsonType":"bool","description":"是否展示","defaultValue":true},"name":{"bsonType":"string","description":"角色名称","trim":"both","defaultValue":""},"user_name":{"bsonType":"string","description":"用户名称","trim":"both","defaultValue":""},"desc":{"bsonType":"string","description":"描述","trim":"both","defaultValue":""},"avatar":{"bsonType":"string","description":"头像链接","trim":"both","defaultValue":""},"avatar_long":{"bsonType":"string","description":"头像链接（长头像）","trim":"both","defaultValue":""},"gender":{"bsonType":"int","title":"性别","description":"用户性别：0 未知 1 男性 2 女性","defaultValue":0,"enum":[{"text":"未知","value":0},{"text":"男","value":1},{"text":"女","value":2}]},"tag_list":{"bsonType":"array","description":"人物标签列表","defaultValue":[]},"styles":{"bsonType":"int","description":"使用的样式风格","trim":"both","defaultValue":1},"guide_list":{"bsonType":"array","description":"引导语列表","defaultValue":[]},"hot_count":{"bsonType":"int","description":"热度","defaultValue":0},"talk_count":{"bsonType":"int","description":"对话次数","defaultValue":0},"today_hot_count":{"bsonType":"int","description":"当天热度","defaultValue":0},"today_talk_count":{"bsonType":"int","description":"当天对话次数","defaultValue":0},"like_count":{"bsonType":"int","description":"喜欢数","defaultValue":0},"voice_id":{"bsonType":"string","description":"音色id","trim":"both","defaultValue":""},"voice_url":{"bsonType":"string","description":"音色链接","trim":"both","defaultValue":""},"prompt":{"bsonType":"string","description":"角色设定","trim":"both","defaultValue":""},"hide_prompt":{"bsonType":"string","description":"角色隐藏设定","trim":"both","defaultValue":""},"last_talk_time":{"bsonType":"timestamp","description":"上次对话时间"},"looks_prompt":{"bsonType":"string","description":"角色形象提示词","trim":"both","defaultValue":""},"creator_id":{"bsonType":"string","description":"创建者id","defaultValue":""},"username":{"bsonType":"string","title":"创建者用户名","description":"用户名，不允许重复","defaultValue":"","trim":"both"},"nickname":{"bsonType":"string","title":"创建者昵称","description":"用户昵称","defaultValue":"","trim":"both"},"create_time":{"bsonType":"timestamp","description":"创建时间","forceDefaultValue":{"$env":"now"}},"update_time":{"bsonType":"timestamp","description":"更新时间"}},"version":"1.0.0"}
+{
+    "bsonType": "object",
+    "required": [],
+    "permission": {
+        "read": true,
+        "create": true,
+        "update": true,
+        "delete": true
+    },
+    "properties": {
+        "_id": {
+            "description": "存储文档 ID（用户 ID），系统自动生成"
+        },
+        "category_id": {
+            "bsonType": "string",
+            "description": "分类 id",
+            "defaultValue": 0
+        },
+        "sort": {
+            "bsonType": "int",
+            "description": "排序",
+            "defaultValue": 0
+        },
+        "show": {
+            "bsonType": "bool",
+            "description": "是否展示",
+            "defaultValue": true
+        },
+        "name": {
+            "bsonType": "string",
+            "description": "角色名称",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "user_name": {
+            "bsonType": "string",
+            "description": "用户名称",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "desc": {
+            "bsonType": "string",
+            "description": "描述",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "avatar": {
+            "bsonType": "string",
+            "description": "头像链接",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "avatar_long": {
+            "bsonType": "string",
+            "description": "头像链接（长头像）",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "gender": {
+            "bsonType": "int",
+            "title": "性别",
+            "description": "用户性别：0 未知 1 男性 2 女性",
+            "defaultValue": 0,
+            "enum": [
+                {
+                    "text": "未知",
+                    "value": 0
+                },
+                {
+                    "text": "男",
+                    "value": 1
+                },
+                {
+                    "text": "女",
+                    "value": 2
+                }
+            ]
+        },
+        "tag_list": {
+            "bsonType": "array",
+            "description": "人物标签列表",
+            "defaultValue": []
+        },
+        "styles": {
+            "bsonType": "int",
+            "description": "使用的样式风格",
+            "trim": "both",
+            "defaultValue": 1
+        },
+        "guide_list": {
+            "bsonType": "array",
+            "description": "引导语列表",
+            "defaultValue": []
+        },
+        "hot_count": {
+            "bsonType": "int",
+            "description": "热度",
+            "defaultValue": 0
+        },
+        "talk_count": {
+            "bsonType": "int",
+            "description": "对话次数",
+            "defaultValue": 0
+        },
+        "today_hot_count": {
+            "bsonType": "int",
+            "description": "当天热度",
+            "defaultValue": 0
+        },
+        "today_talk_count": {
+            "bsonType": "int",
+            "description": "当天对话次数",
+            "defaultValue": 0
+        },
+        "like_count": {
+            "bsonType": "int",
+            "description": "喜欢数",
+            "defaultValue": 0
+        },
+        "voice_id": {
+            "bsonType": "string",
+            "description": "音色id",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "voice_url": {
+            "bsonType": "string",
+            "description": "音色链接",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "prompt": {
+            "bsonType": "string",
+            "description": "角色设定",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "hide_prompt": {
+            "bsonType": "string",
+            "description": "角色隐藏设定",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "last_talk_time": {
+            "bsonType": "timestamp",
+            "description": "上次对话时间"
+        },
+        "looks_prompt": {
+            "bsonType": "string",
+            "description": "角色形象提示词",
+            "trim": "both",
+            "defaultValue": ""
+        },
+        "creator_id": {
+            "bsonType": "string",
+            "description": "创建者id",
+            "defaultValue": ""
+        },
+        "username": {
+            "bsonType": "string",
+            "title": "创建者用户名",
+            "description": "用户名，不允许重复",
+            "defaultValue": "",
+            "trim": "both"
+        },
+        "nickname": {
+            "bsonType": "string",
+            "title": "创建者昵称",
+            "description": "用户昵称",
+            "defaultValue": "",
+            "trim": "both"
+        },
+        /* 3.5新增 vip、version */
+        "vip": {
+            "bsonType": "bool",
+            "title": "创建者昵称",
+            "description": "用户昵称",
+            "defaultValue": false
+        },
+        "version": {
+            "bsonType": "double",
+            "title": "投稿版本",
+            "description": "投稿版本，用来排优先级",
+            "defaultValue": 0
+        },
+        "create_time": {
+            "bsonType": "timestamp",
+            "description": "创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+        },
+        "update_time": {
+            "bsonType": "timestamp",
+            "description": "更新时间"
+        }
+    },
+    "version": "1.0.0"
+}
