@@ -2,8 +2,8 @@
     <el-scrollbar v-loading="loading" class="roles page">
         <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
             <el-radio-button :value="0">原创投稿</el-radio-button>
-            <el-radio-button :value="2">原创逾期</el-radio-button>
-            <el-radio-button :value="1">快捷投稿</el-radio-button>
+            <el-radio-button :value="1">原创逾期</el-radio-button>
+            <el-radio-button :value="2">快捷投稿</el-radio-button>
         </el-radio-group>
 
         <el-radio-group v-model="category" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
@@ -357,12 +357,11 @@ const getList = async () => {
         whereObj.version = db.command.gte(3.4)
         orderBy = 'vip desc'
     } else if (tab.value === 1) {
-        whereObj.version = db.command.in([undefined, null, ''])
-
-    } else if (tab.value === 2) {
         orderBy = 'vip desc'
         whereObj.version = db.command.gte(3.4)
         whereObj.create_time = db.command.lte(dayjs().subtract(3, 'day').valueOf())
+    } else if (tab.value === 2) {
+        whereObj.version = db.command.in([undefined, null, ''])
     }
 
     if (category.value) whereObj.category_id = category.value
@@ -402,7 +401,7 @@ const setRowBg = ({ row }) => (row.category_id === 'null' ? { background: '#FAFA
 const openRoleDialog = (row) => {
     roleShow.value = true
     const data = JSON.parse(JSON.stringify(row))
-    roleData.value = { ...roleDataDefault(), ...data }
+    roleData.value = { ...roleDataDefault(), ...data, version: data.version || null }
     /* 删除展示字段 */
     delete roleData.value.avatar1
     delete roleData.value.avatar_long1
