@@ -366,6 +366,7 @@ const getList = async () => {
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
     } else if (tab.value === 5) {
         whereObj.version = db.command.gte(3.4)
+        whereObj.update_time = db.command.nin([undefined, null, ''])
         res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').get({ getCount: true })
     } else if (tab.value === 6) {
         whereObj.version = db.command.in([undefined, null, ''])
@@ -498,7 +499,7 @@ const saveRole = async () => {
 const deleteRole = ({ _id }) => {
     ElMessageBox.confirm('确定删除吗?', '删除角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
-                await rolesDb.doc(_id).remove();
+                await ([5, 6].includes(tab.value) ? rolesMyDb : rolesDb).doc(_id).remove();
                 ElMessage.success('删除成功')
                 await getList()
             })
