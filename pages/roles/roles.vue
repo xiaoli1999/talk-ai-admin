@@ -4,6 +4,8 @@
             <el-radio-button :value="0">原创投稿</el-radio-button>
             <el-radio-button :value="1">原创逾期</el-radio-button>
             <el-radio-button :value="2">快捷投稿</el-radio-button>
+            <el-radio-button :value="10">重复投稿人</el-radio-button>
+            <el-radio-button :value="11">重复名称</el-radio-button>
         </el-radio-group>
 
         <el-radio-group v-model="category" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
@@ -257,7 +259,7 @@ const gender = ref(0)
 const category = ref('')
 
 const loading = ref(false)
-const listParams = reactive({ pageNo: 1, pageSize: 20, total: 0 })
+const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
 const list = ref([])
 const categoryList = ref([
     {
@@ -372,7 +374,44 @@ const getList = async () => {
 
     loading.value = true
 
-    res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy(orderBy).get({ getCount: true })
+    if (tab.value < 10) {
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy(orderBy).get({ getCount: true })
+    } else {
+        if (tab.value === 10) {
+            /* 查到重复列 */
+            const repeatRes = await rolesMyDb.aggregate().group({ _id: '$creator_id', count: { $sum: 1 } }).sort({ count: -1 }).match({count: { $gt: 1 } }).end();
+
+            const repeatArr = repeatRes.result.data.map(i => (i._id))
+
+            let repeatList = []
+
+            for (const content of repeatArr) {
+                whereObj.creator_id = content
+                const { result: { data } } = await rolesMyDb.where(whereObj).limit(500).orderBy('create_time asc').get()
+                repeatList.push(...data)
+            }
+
+            res = { result: { data: repeatList, count: repeatList.length } }
+        }
+
+        if (tab.value === 11) {
+            /* 查到重复列 */
+            const repeatRes = await rolesMyDb.aggregate().group({ _id: '$name', count: { $sum: 1 } }).sort({ count: -1 }).match({count: { $gt: 1 } }).end();
+
+            const repeatArr = repeatRes.result.data.map(i => (i._id))
+
+            let repeatList = []
+
+            for (const content of repeatArr) {
+                whereObj.name = content
+                const { result: { data } } = await rolesMyDb.where(whereObj).limit(500).orderBy('create_time asc').get()
+                repeatList.push(...data)
+            }
+
+            res = { result: { data: repeatList, count: repeatList.length } }
+        }
+
+    }
 
     loading.value = false
 
