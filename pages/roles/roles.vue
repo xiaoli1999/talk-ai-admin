@@ -21,9 +21,12 @@
 
         <view style="margin: 12px;">
             <el-button type="primary" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
+            <el-button type="danger" :disabled="!selectList.length" style="margin-right: 12px" @click="deleteRole">批量删除</el-button>
         </view>
-        <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small">
-            <el-table-column prop="sort" label="排序" align="center" width="60px" />
+
+        <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small" @selection-change="selectionChange">
+            <el-table-column type="selection" label="选择" align="center" width="40px" />
+            <el-table-column type="index" label="排序" align="center" width="50px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
@@ -114,7 +117,7 @@
                 <template #default="{row}">
                     <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
                     <el-button type="success" @click="copyPrompt(row)" size="small">复制形象</el-button>
-                    <el-button type="danger" @click="deleteRole(row)" size="small">删除</el-button>
+                    <el-button type="danger" @click="deleteRole([row])" size="small">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -248,6 +251,7 @@ const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
+const dbCmd = db.command
 const rolesMyDb = db.collection('roles_my')
 
 /* 权限 */
@@ -261,6 +265,7 @@ const category = ref('')
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
 const list = ref([])
+
 const categoryList = ref([
     {
         "_id": "6634e1558620667bb4fe5fc0",
@@ -284,6 +289,9 @@ const categoryList = ref([
     }
 ])
 const categoryObj = ref(Object.fromEntries(categoryList.value.map(item => [item._id, item.name])))
+
+const selectList = ref([])
+const selectionChange = (e) => (selectList.value = e)
 
 const roleDataDefault = () => ({
     category_id: '',
@@ -513,10 +521,12 @@ const saveRole = async () => {
     await getList()
 }
 
-const deleteRole = ({ _id }) => {
+const deleteRole = (list = []) => {
+    const ids = (list.length ? list : selectList.value).map(i => i._id)
+
     ElMessageBox.confirm('确定删除吗?', '删除角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
-                await rolesMyDb.doc(_id).remove();
+                await rolesMyDb.where({ _id: dbCmd.in(ids) }).remove();
                 ElMessage.success('删除成功')
                 await getList()
             })
