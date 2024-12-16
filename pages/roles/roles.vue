@@ -43,6 +43,7 @@
             </el-table-column>
             <el-table-column prop="name" label="名称" align="center" min-width="70px" />
             <el-table-column prop="nickname" label="投稿人" align="center" min-width="70px" />
+
             <el-table-column prop="vip" label="会员" align="center" width="60px">
                 <template #default="{ row }">
                     <div>
@@ -50,6 +51,14 @@
                     </div>
                 </template>
             </el-table-column>
+            <el-table-column prop="vip" label="采贝" align="center" width="80px">
+                <template #default="{ row }">
+                    <div>
+                        <el-tag v-if="row.user_cb_pay_num" type="primary" size="small">{{ row.user_cb_pay_num }}</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
+
             <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
                 <template #default="{ row }">
                     <view style="position: relative;padding: 10px 0;">
@@ -323,7 +332,10 @@ const roleDataDefault = () => ({
 
     /* 3.5新增 */
     vip: false,
-    version: 3.5
+    version: 3.6,
+
+    /* 3.5新增 */
+    user_cb_pay_num: 0
 })
 const roleShow = ref(false)
 const roleData = ref(roleDataDefault())
@@ -361,13 +373,10 @@ const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
 
     const whereObj = {}
-    let orderBy = ''
 
     if (tab.value === 0) {
         whereObj.version = db.command.gte(3.4)
-        orderBy = 'vip desc'
     } else if (tab.value === 1) {
-        orderBy = 'vip desc'
         whereObj.version = db.command.gte(3.4)
         whereObj.create_time = db.command.lte(dayjs().subtract(3, 'day').valueOf())
     } else if (tab.value === 2) {
@@ -383,7 +392,7 @@ const getList = async () => {
     loading.value = true
 
     if (tab.value < 10) {
-        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy(orderBy).get({ getCount: true })
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').orderBy("user_cb_pay_num", "desc").get({ getCount: true })
     } else {
         if (tab.value === 10) {
             /* 查到重复列 */
