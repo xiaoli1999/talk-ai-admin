@@ -35,7 +35,24 @@
                 </template>
             </el-table-column>
             <el-table-column prop="name" label="名称" align="center" min-width="70px" />
-            <el-table-column prop="user_name" label="用户" align="center" min-width="50px" :formatter="(e) => e.vip ? 'VIP' : e.user_name" />
+
+            <template v-if="[5, 6].includes(tab)">
+                <el-table-column prop="vip" label="会员" align="center" width="60px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag v-if="row.vip" type="danger" size="small">会员</el-tag>
+                        </div>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="vip" label="采贝" align="center" width="80px">
+                    <template #default="{ row }">
+                        <div>
+                            <el-tag v-if="row.user_cb_pay_num" type="primary" size="small">{{ row.user_cb_pay_num }}</el-tag>
+                        </div>
+                    </template>
+                </el-table-column>
+            </template>
+
             <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
                 <template #default="{ row }">
                     <view style="position: relative;padding: 10px 0;">
@@ -72,13 +89,6 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="category_id" label="风格" align="center" width="50px">
-                <template #default="{ row }">
-                    <div style="display: flex;justify-content: center">
-                        <div :class="`tag tag-${ row.styles }`" />
-                    </div>
-                </template>
-            </el-table-column>
             <el-table-column prop="prompt" label="提示词" align="center" min-width="140px">
                 <template #default="{ row }">
                     <el-tooltip placement="top">
@@ -97,8 +107,12 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
-            <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
+
+            <template v-if="![5, 6].includes(tab)">
+                <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
+                <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
+            </template>
+
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm:ss')" />
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
             <el-table-column label="操作" align="center" width="130" fixed="right">
@@ -367,7 +381,7 @@ const getList = async () => {
     } else if (tab.value === 5) {
         whereObj.version = db.command.gte(3.4)
         whereObj.update_time = db.command.nin([undefined, null, ''])
-        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').get({ getCount: true })
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').orderBy("user_cb_pay_num", "desc").get({ getCount: true })
     } else if (tab.value === 6) {
         whereObj.version = db.command.in([undefined, null, ''])
         res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).get({ getCount: true })
@@ -465,6 +479,8 @@ const saveRole = async () => {
             /* 3.5 新增字段 */
             delete params.vip
             delete params.version
+            /* 3.52 新增字段 */
+            delete params.user_cb_pay_num
         }
     }
 
