@@ -183,6 +183,13 @@
             "description": "投稿版本，用来排优先级",
             "defaultValue": 0
         },
+        /* 3.52新增 user_cb_pay_num */
+        "user_cb_pay_num": {
+            "bsonType": "double",
+            "title": "付费采贝",
+            "description": "当前用户付费采贝",
+            "defaultValue": 0
+        },
         "create_time": {
             "bsonType": "timestamp",
             "description": "创建时间",
