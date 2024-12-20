@@ -2,8 +2,9 @@
     <el-scrollbar v-loading="loading" class="roles page">
         <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
             <el-radio-button :value="0">原创投稿</el-radio-button>
-            <el-radio-button :value="1">原创逾期</el-radio-button>
-            <el-radio-button :value="2">快捷投稿</el-radio-button>
+            <el-radio-button :value="1">原创投稿（旧）</el-radio-button>
+            <el-radio-button :value="2">原创逾期</el-radio-button>
+            <el-radio-button :value="3">快捷投稿</el-radio-button>
             <el-radio-button :value="10">重复投稿人</el-radio-button>
             <el-radio-button :value="11">重复名称</el-radio-button>
         </el-radio-group>
@@ -375,11 +376,15 @@ const getList = async () => {
     const whereObj = {}
 
     if (tab.value === 0) {
-        whereObj.version = db.command.gte(3.4)
+        whereObj.version = db.command.gte(3.5)
+        whereObj.user_cb_pay_num = db.command.gte(0)
     } else if (tab.value === 1) {
         whereObj.version = db.command.gte(3.4)
-        whereObj.create_time = db.command.lte(dayjs().subtract(3, 'day').valueOf())
+        whereObj.user_cb_pay_num = db.command.in([undefined, null, ''])
     } else if (tab.value === 2) {
+        whereObj.version = db.command.gte(3.5)
+        whereObj.create_time = db.command.lte(dayjs().subtract(3, 'day').valueOf())
+    } else if (tab.value === 3) {
         whereObj.version = db.command.in([undefined, null, ''])
     }
 
