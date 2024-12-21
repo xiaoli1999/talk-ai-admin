@@ -1,5 +1,11 @@
 <template>
     <el-scrollbar v-loading="loading" class="user page">
+        <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
+            <el-radio-button :value="0">最近</el-radio-button>
+            <el-radio-button :value="1">今天注册</el-radio-button>
+            <el-radio-button :value="2">有付费采贝</el-radio-button>
+        </el-radio-group>
+
         <div style="display: flex;align-items: center;margin-bottom: 10px;">
             <el-input v-model.trim="userName" style="max-width: 180px;" placeholder="请输入名称" size="small">
                 <template #prepend>
@@ -93,19 +99,29 @@ const db = uniCloud.database()
 const dbCmd = db.command
 
 const loading = ref(false)
+const tab = ref(0)
 const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
 const list = ref([])
 
 const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
-    const { result: { data, count } } = await db.collection('users').skip(start).limit(listParams.pageSize).orderBy('last_login_date desc').get({ getCount:true })
+
+    let where = {}
+    let orderBy = 'last_login_date desc'
+
+    if (tab.value === 1) {
+        where.register_date = dbCmd.gte(dayjs().startOf('day').valueOf())
+    } else if (tab.value === 2) {
+        where.cb_pay_num = dbCmd.gt(0)
+    }
+
+    const { result: { data, count } } = await db.collection('users').where(where).skip(start).limit(listParams.pageSize).orderBy(orderBy).get({ getCount:true })
     loading.value = false
 
     if (!data) return
     list.value = data || []
     listParams.total = count
-
 }
 
 const changePage = async (e) => {
