@@ -126,7 +126,7 @@ const getList = async () => {
     const whereObj = {}
     if (themeTab.value) whereObj['type'] = themeTab.value
 
-    const { result: { data, count } } = await HtmlsDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+    const { result: { data, count } } = await HtmlsDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('sort asc').get({ getCount:true })
     loading.value = false
 
     if (!data) return
@@ -192,13 +192,15 @@ const openHtmlDialog = (row) => {
         // 主色：#4B2E72 高亮蓝： #8A38F5 高亮红： #EB2F96 字体：14px 行高: 20px
 
         const colors = ['#4B2E72', '#8A38F5', '#EB2F96', '#fff', '#fff', '#fff', '#fff', '#fff', '#fff', '#fff', ...editorConfig.MENU_CONF.color.colors]
+        const lineHeightList = [1.25, ...editorConfig.MENU_CONF.lineHeight.lineHeightList]
 
         editorConfig.MENU_CONF['color'] = { colors }
         editorConfig.MENU_CONF['bgColor'] = { colors }
+        editorConfig.MENU_CONF['lineHeight'] = { lineHeightList }
 
         editorRef.value.editorIns.children[0].fontSize = '14px'
         editorRef.value.editorIns.children[0].color = '#4B2E72'
-        editorRef.value.editorIns.children[0].lineHeight = '1.5'
+        editorRef.value.editorIns.children[0].lineHeight = 1.25
     })
 }
 
