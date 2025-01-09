@@ -1,8 +1,19 @@
 <template>
 	<view v-loading="loading" class="page notice">
-        <el-button type="primary" @click="openHtmlDialog(null)" style="margin-bottom: 10px">新增公告模版</el-button>
+        <div style="display: flex; align-items: center;padding-bottom: 10px">
+            <el-radio-group v-model="themeTab" style="" @change="getList">
+                <el-radio-button :value="''">全部主题</el-radio-button>
+                <el-radio-button v-for="item in htmlEnumsList" :key="item.id" :value="item.id">{{ item.value }}</el-radio-button>
+            </el-radio-group>
+
+            <el-button type="success" @click="openHtmlDialog(null)" style="margin-left: 10px;">预览</el-button>
+        </div>
+
+        <el-button type="primary" @click="openHtmlDialog(null)" style="margin-bottom: 10px;">新增模版</el-button>
+
         <el-table :data="list" border>
 
+            <el-table-column prop="sort" label="排序" align="center" min-width="40px" />
             <el-table-column prop="title" label="标题" align="center" min-width="80px" />
 
             <el-table-column prop="type" label="类型" align="center" min-width="60px">
@@ -70,18 +81,21 @@
                     <el-form-item label="启用" prop="use">
                         <el-switch v-model="htmlData.use" />
                     </el-form-item>
+                    <el-form-item label="排序">
+                        <el-input-number v-model="htmlData.sort" :step="1" :precision="0" />
+                    </el-form-item>
                 </div>
 
                 <el-form-item label="内容" prop="content">
                     <div class="html-editor" :class="htmlLite ? 'black' : '' ">
-                        <sv-wangeditor ref="editorRef" v-model:html="htmlData.content" mode="default"  @save="saveEditor" />
+                        <sv-wangeditor ref="editorRef" v-model:html="htmlData.content" mode="default" />
                     </div>
                 </el-form-item>
             </el-form>
 
             <template #footer>
                 <div class="pb-[12px]">
-                    <el-button type="info" plain @click="htmlData = false">取消</el-button>
+                    <el-button type="info" plain @click="htmlShow = false">取消</el-button>
                     <el-button class="!ml-[14px]" type="primary" @click="saveHtml">确认</el-button>
                 </div>
             </template>
@@ -91,10 +105,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, nextTick } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from "element-plus";
 import { htmlEnums, htmlEnumsList } from "@/config/enums";
-
 
 const db = uniCloud.database()
 const HtmlsDb = db.collection('htmls')
@@ -104,11 +117,16 @@ const dbCmd = db.command
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 10, total: 0 })
 const list = ref([])
+const themeTab = ref('')
 
 const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
-    const { result: { data, count } } = await HtmlsDb.skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
+
+    const whereObj = {}
+    if (themeTab.value) whereObj['type'] = themeTab.value
+
+    const { result: { data, count } } = await HtmlsDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
     loading.value = false
 
     if (!data) return
@@ -131,6 +149,7 @@ const htmlDataDefault = () => ({
     type: '',
     content: '',
     use: false,
+    sort: themeTab.value ? (list.value.length ? (list.value[list.value.length - 1].sort || 0) + 1 : 0) : 0,
     create_time: '',
 })
 
@@ -149,13 +168,33 @@ const editorRef = ref();
 
 const openHtmlDialog = (row) => {
     htmlShow.value = true
-    const data = JSON.parse(JSON.stringify(row))
+    let data = {}
+
+    if (row) {
+        data = JSON.parse(JSON.stringify(row))
+    } else {
+        data.type = themeTab.value
+    }
     htmlData.value = { ...htmlDataDefault(), ...data }
 
     setTimeout(() => htmlRef.value.clearValidate())
+
+    nextTick(() => {
+        const editorConfig  = editorRef.value.editorIns.getConfig()
+        // console.log(editorConfig)
+
+        // 主色：#4B2E72 高亮蓝： #8A38F5 高亮红： #EB2F96 字体：14px 行高: 20px
+
+        const colors = ['#4B2E72', '#8A38F5', '#EB2F96', '#fff', '#fff', '#fff', '#fff', '#fff', '#fff', '#fff', ...editorConfig.MENU_CONF.color.colors]
+
+        editorConfig.MENU_CONF['color'] = { colors }
+        editorConfig.MENU_CONF['bgColor'] = { colors }
+
+        editorRef.value.editorIns.children[0].fontSize = '14px'
+        editorRef.value.editorIns.children[0].color = '#4B2E72'
+        editorRef.value.editorIns.children[0].lineHeight = '1.5'
+    })
 }
-
-
 
 const saveHtml = async () => {
     if (!htmlRef.value) return;
@@ -199,13 +238,14 @@ onMounted(() => {
     //background: #262626;
 
     .html-editor {
+        //background: #f7f8fa;
 
 
         :deep .sv-wangeditor {
             border: 0;
 
             .w-e-text-container {
-
+                //background: #f7f8fa;
             }
 
             .w-e-scroll {
@@ -215,6 +255,22 @@ onMounted(() => {
                 margin: 24px auto;
                 border-radius: 8px;
                 overflow-y: auto;
+                background: #fafafa;
+
+                &::-webkit-scrollbar {
+                    width: 4px;
+                }
+
+                /* 设置滚动条的轨道样式，例如背景颜色和边框样式 */
+                &::-webkit-scrollbar-track {
+                    background-color: #f7f8fa;
+                }
+
+                /* 设置滚动条的滑块样式，例如背景颜色、边框样式和圆角半径 */
+                &::-webkit-scrollbar-thumb {
+                    background-color: #efefef;
+                    border-radius: 4px;
+                }
             }
         }
 
