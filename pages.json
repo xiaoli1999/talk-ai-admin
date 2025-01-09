@@ -77,6 +77,13 @@
 				"navigationBarTitleText" : "搜索词",
 				"enablePullDownRefresh" : false
 			}
+		},
+		{
+			"path" : "pages/doc/doc",
+			"style" : 
+			{
+				"navigationBarTitleText" : ""
+			}
 		}
 	],
 	"globalStyle": {

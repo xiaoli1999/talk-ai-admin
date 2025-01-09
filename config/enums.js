@@ -47,7 +47,6 @@ export const sortEnumsList = enumsToList(sortEnums)
 
 export const htmlEnums = {
 	'newVersion': '新版本（旧）',
-	'vip': 'vip通知（旧）',
 
 	/* 新枚举，直接使用汉字做key */
 	'版本更新': '版本更新',

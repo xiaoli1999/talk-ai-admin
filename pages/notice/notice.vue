@@ -6,10 +6,10 @@
                 <el-radio-button v-for="item in htmlEnumsList" :key="item.id" :value="item.id">{{ item.value }}</el-radio-button>
             </el-radio-group>
 
-            <el-button type="success" @click="openHtmlDialog(null)" style="margin-left: 10px;">预览</el-button>
+            <el-button v-if="themeTab" type="success" style="margin-left: 10px;" @click="goDoc">预览</el-button>
         </div>
 
-        <el-button type="primary" @click="openHtmlDialog(null)" style="margin-bottom: 10px;">新增模版</el-button>
+        <el-button type="primary" style="margin-bottom: 10px;" @click="openHtmlDialog(null)">新增模版</el-button>
 
         <el-table :data="list" border>
 
@@ -138,6 +138,12 @@ const getList = async () => {
 const changePage = async (e) => {
     await getList()
 }
+
+const goDoc = async () => {
+    uni.navigateTo({ url: `/pages/doc/doc?type=${ themeTab.value }` })
+}
+
+
 
 
 /**
