@@ -71,6 +71,7 @@
                     <template #default="{row}">
                         <el-button type="success" size="small" @click="copyId(row._id)">复制订单</el-button>
                         <el-button type="primary" size="small" @click="copyId(row.user_id[0]._id)">复制用户</el-button>
+                        <el-button type="danger" size="small" @click="deleteOrder(row)">删除</el-button>
                     </template>
                 </el-table-column>
             </el-table>
@@ -134,7 +135,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { dayjs } from 'element-plus'
+import {dayjs, ElMessage, ElMessageBox} from 'element-plus'
 import {genderEnums, platformEnums} from "@/config/enums";
 import {copyText} from "@/utils/common";
 
@@ -182,6 +183,19 @@ const getVipList = async () => {
 const copyId = async (text) => {
     const data = await copyText(text).catch(() => ({}))
     uni.showToast({ title: data ? '复制成功' : '复制失败', icon: 'none' })
+}
+
+const deleteOrder = async (row) => {
+    if (row.status === 1) {
+        const data = await ElMessageBox.confirm('该订单那已付款，确定删除吗?', '删除订单', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }).catch(() => '')
+
+        if (data !== 'confirm') return
+    }
+
+    await dbJQL.collection('orders').doc(row._id).remove();
+    ElMessage.success('删除成功')
+
+    await getOrderList()
 }
 
 onMounted(async () => {
