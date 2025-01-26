@@ -57,3 +57,12 @@ export const htmlEnums = {
 	'新人必读': '新人必读',
 }
 export const htmlEnumsList = enumsToList(htmlEnums)
+
+export const payEnums = {
+	'': '全部',
+	'cb': '采贝',
+	'vip': '会员',
+	'first-cb': '首充',
+	'card': '畅聊卡'
+}
+export const payEnumsList = enumsToList(payEnums)

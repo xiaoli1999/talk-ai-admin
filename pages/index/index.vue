@@ -10,12 +10,16 @@
 
         <el-radio-group v-model="tab" style="margin: 20px auto;">
             <el-radio-button :value="1">所有订单 （{{ orderCount }}）</el-radio-button>
-            <el-radio-button :value="2">今日订单 （{{ todayOrderList.length }}）</el-radio-button>
+            <el-radio-button :value="2">今日订单 （{{ todayOrderPayList.length }}）</el-radio-button>
             <el-radio-button :value="3">VIP （{{ vipCount }}）</el-radio-button>
         </el-radio-group>
 
+        <el-radio-group v-if="tab <= 2" v-model="payTab" style="margin: 20px">
+            <el-radio-button v-for="item in payEnumsList" :key="item.id" :value="item.id">{{ item.value }}</el-radio-button>
+        </el-radio-group>
+
         <template v-if="[1, 2].includes(tab)">
-            <el-table v-if="(tab === 1 ? orderList : todayOrderList).length" :data="tab === 1 ? orderList : todayOrderList" border>
+            <el-table v-if="(tab === 1 ? orderPayList : todayOrderPayList).length" :data="tab === 1 ? orderPayList : todayOrderPayList" border>
                 <el-table-column prop="avatar" label="头像" align="center" min-width="40px">
                     <template #default="{ row }">
                         <div style="display: flex;justify-content: center">
@@ -49,8 +53,17 @@
                 </el-table-column>
 
                 <el-table-column prop="title" label="标题" align="center" min-width="120px" />
-                <el-table-column prop="type" label="类型" align="center" min-width="60px" :formatter="(e) => (e.type || 'vip')" />
-                <el-table-column prop="type" label="充值数量" align="center" min-width="80px" :formatter="(e) => (e.recharge_day || e.recharge_cb)" />
+                <el-table-column prop="type" label="类型" align="center" min-width="60px" :formatter="(e) => payEnums[e.type]" />
+                <el-table-column prop="type" label="充值数量" align="center" min-width="80px" :formatter="(e) => (e.recharge_day || e.recharge_cb)" >
+                    <template #default="{ row }">
+                        <div>
+                            <div v-if="row.type === 'vip'">{{ row.recharge_day }}天</div>
+                            <div v-else-if=" row.type.includes('cb')">{{ row.recharge_cb }}个</div>
+                            <div v-if="row.type === 'card'">{{ parseInt(row.recharge_card / 60) }}小时</div>
+                            <div v-else></div>
+                        </div>
+                    </template>
+                </el-table-column>
 
                 <el-table-column prop="total_fee" label="充值金额" align="center" min-width="80px" :formatter="(e) => e.total_fee / 100" />
                 <el-table-column prop="osName" label="充值平台" align="center" min-width="80px" />
@@ -134,9 +147,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import {ref, onMounted, computed} from 'vue'
 import {dayjs, ElMessage, ElMessageBox} from 'element-plus'
-import {genderEnums, platformEnums} from "@/config/enums";
+import {genderEnums, payEnums, platformEnums, payEnumsList} from "@/config/enums";
 import {copyText} from "@/utils/common";
 
 const db = uniCloud.database()
@@ -146,6 +159,7 @@ const globalData = ref(getApp().globalData)
 const goPage = (url) => uni.navigateTo({ url })
 
 const tab = ref(1)
+const payTab = ref('')
 
 const orderCount = ref(0)
 const orderList = ref([])
@@ -158,10 +172,13 @@ const useVipList = ref([])
 const loading = ref(false)
 
 const getOrderList = async () => {
+    if (tab.value === 3) return
+
     loading.value = true
+
     const orders = dbJQL.collection('orders').getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
     const users = dbJQL.collection('users').getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
-    const { data, count } = await dbJQL.collection(orders, users).orderBy('create_time desc').limit(100).get({ getCount: true })
+    const { data, count } = await dbJQL.collection(orders, users).orderBy('create_time desc').limit(150).get({ getCount: true })
     loading.value = false
     if (!data) return
 
@@ -169,6 +186,18 @@ const getOrderList = async () => {
     orderCount.value = count || 0
     todayOrderList.value = orderList.value.filter(i => dayjs(i.create_time).isSame(dayjs(), 'day') && i.status === 1)
 }
+
+const orderPayList = computed(() => {
+    if (!payTab.value) return orderList.value
+
+    return orderList.value.filter(i => i.type === payTab.value)
+})
+
+const todayOrderPayList = computed(() => {
+    if (!payTab.value) return todayOrderList.value
+
+    return todayOrderList.value.filter(i => i.type === payTab.value)
+})
 
 const getVipList = async () => {
     loading.value = true
