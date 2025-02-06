@@ -9,6 +9,18 @@
             <el-radio-button :value="5">原创</el-radio-button>
             <el-radio-button :value="6">快捷（旧）</el-radio-button>
         </el-radio-group>
+
+        <el-radio-group v-model="category" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
+            <el-radio-button value="">全部</el-radio-button>
+            <el-radio-button v-for="item in categoryList" :key="item._id" :value="item._id">{{ item.name.slice(0, 2) }}</el-radio-button>
+        </el-radio-group>
+
+        <el-radio-group v-model="show" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
+            <el-radio-button value="">全部</el-radio-button>
+            <el-radio-button :value="true">上线</el-radio-button>
+            <el-radio-button :value="false">下线</el-radio-button>
+        </el-radio-group>
+
         <el-radio-group v-model="gender" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
             <el-radio-button :value="0">全部</el-radio-button>
             <el-radio-button :value="1">男</el-radio-button>
@@ -16,10 +28,13 @@
         </el-radio-group>
 
         <view style="margin: 12px;">
-            <el-button v-if="isAdmin" type="primary" :disabled="tab >= 3" style="margin-right: 12px" @click="openRoleDialog(null)">新增角色</el-button>
+            <el-button v-if="isAdmin" type="primary" :disabled="tab >= 3" @click="openRoleDialog(null)">新增角色</el-button>
+
+            <el-button type="primary" :disabled="!selectList.length" @click="setRoleShow(true)">批量上线</el-button>
+            <el-button type="danger" :disabled="!selectList.length" @click="setRoleShow(false)">批量下线</el-button>
         </view>
-        <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small">
-            <el-table-column type="index" label="排序" align="center" width="60px" />
+        <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small" @selection-change="selectionChange">
+            <el-table-column type="selection" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
@@ -257,6 +272,7 @@ const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
+const dbCmd = db.command
 const rolesDb = db.collection('roles')
 const rolesTestDb = db.collection('roles_test')
 const rolesMyDb = db.collection('roles_my')
@@ -267,10 +283,16 @@ const isAdmin = ref(globalData.value.name === 'xiaoli')
 
 const tab = ref(5)
 const gender = ref(0)
+const category = ref('')
+const show = ref('')
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 20, total: 0 })
 const list = ref([])
+
+const selectList = ref([])
+const selectionChange = (e) => (selectList.value = e)
+
 const categoryList = ref([
     {
         "_id": "6634e1558620667bb4fe5fc0",
@@ -361,6 +383,10 @@ const getList = async () => {
     }
 
     if (gender.value) whereObj.gender = gender.value
+
+    if (category.value) whereObj.category_id = category.value
+
+    if (show.value !== '') whereObj.show = show.value
 
     let res = {}
 
@@ -519,6 +545,19 @@ const deleteRole = ({ _id }) => {
                 ElMessage.success('删除成功')
                 await getList()
             })
+
+}
+
+const setRoleShow = (show = false) => {
+    const ids =  selectList.value.map(i => i._id)
+
+    ElMessageBox.confirm(`确定${show ? '上线' : '下线'}吗?`, '设置角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
+    .then(async () => {
+        /* 批量删除 */
+        await rolesDb.where({ _id: dbCmd.in(ids) }).update({ show })
+        ElMessage.success('删除成功')
+        await getList()
+    })
 
 }
 
