@@ -137,7 +137,12 @@ const deleteWords = (list = []) => {
     ElMessageBox.confirm('确定删除吗?', '删除搜索词', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
     .then(async () => {
         /* 批量删除 */
-        await searchsDb.where({ _id: dbCmd.in(ids) }).remove()
+        if (tab.value === 1) {
+            await searchsDb.where({ _id: dbCmd.in(ids) }).update({ today_count: 0 })
+        } else {
+            await searchsDb.where({ _id: dbCmd.in(ids) }).remove()
+        }
+
         ElMessage.success('删除成功')
         await getList()
     })
