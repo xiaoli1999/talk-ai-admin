@@ -55,6 +55,7 @@ export const htmlEnums = {
 	'春节福利': '春节福利',
 	'新春畅聊卡': '新春畅聊卡',
 	'新人必读': '新人必读',
+	'紧急通知': '紧急通知',
 }
 export const htmlEnumsList = enumsToList(htmlEnums)
 
