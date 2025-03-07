@@ -1,10 +1,9 @@
 <template>
 	<view v-loading="loading" class="page notice">
         <div style="display: flex; align-items: center;padding-bottom: 10px">
-            <el-radio-group v-model="themeTab" style="" @change="getList">
-                <el-radio-button :value="''">全部主题</el-radio-button>
-                <el-radio-button v-for="item in htmlEnumsList" :key="item.id" :value="item.id">{{ item.value }}</el-radio-button>
-            </el-radio-group>
+            <el-select v-model="themeTab" placeholder="请选择主体类型" filterable clearable style="width: 160px;" @change="getList">
+                <el-option v-for="item in htmlTypeList" :key="item" :label="item" :value="item" />
+            </el-select>
 
             <el-button v-if="themeTab" type="success" style="margin-left: 10px;" @click="goDoc">预览</el-button>
         </div>
@@ -14,15 +13,16 @@
         <el-table :data="list" border>
 
             <el-table-column prop="sort" label="排序" align="center" min-width="40px" />
-            <el-table-column prop="title" label="标题" align="center" min-width="80px" />
 
             <el-table-column prop="type" label="类型" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div>
-                        <el-tag type="primary">{{ htmlEnums[row.type] }}</el-tag>
+                        <el-tag type="primary">{{ row.type }}</el-tag>
                     </div>
                 </template>
             </el-table-column>
+
+            <el-table-column prop="title" label="标题" align="center" min-width="80px" />
 
             <el-table-column prop="content" label="提示词" align="center" min-width="140px">
                 <template #default="{ row }">
@@ -69,8 +69,8 @@
                     </el-form-item>
 
                     <el-form-item label="类型" prop="type">
-                        <el-select v-model="htmlData.type" placeholder="请选择类型" clearable style="width: 120px;">
-                            <el-option v-for="item in htmlEnumsList" :key="item.id" :label="item.value" :value="item.id" />
+                        <el-select v-model="htmlData.type" placeholder="请选择类型" filterable clearable allow-create style="width: 120px;">
+                            <el-option v-for="item in htmlTypeList" :key="item" :label="item" :value="item" />
                         </el-select>
                     </el-form-item>
 
@@ -115,10 +115,18 @@ const dbCmd = db.command
 
 
 const loading = ref(false)
+const htmlTypeList = ref([])
 const listParams = reactive({ pageNo: 1, pageSize: 10, total: 0 })
 const list = ref([])
 const themeTab = ref('')
 
+
+const getHtmlTypeList = async () => {
+    const { result: { data } } = await HtmlsDb.limit(1000).orderBy('create_time desc').get()
+
+    /* 对类型进行去重 */
+    htmlTypeList.value =  [...new Set(data.map(i => i.type))]
+}
 const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
@@ -236,6 +244,7 @@ const deleteHtml = ({ _id }) => {
 }
 
 onMounted(() => {
+    getHtmlTypeList()
     getList()
 })
 </script>
