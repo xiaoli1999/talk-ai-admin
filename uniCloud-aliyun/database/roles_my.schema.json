@@ -200,6 +200,25 @@
         "update_time": {
             "bsonType": "timestamp",
             "description": "更新时间"
+        },
+        /* 3.8 捏崽功能 新增 state、refuse_reason */
+        "state": {
+            "bsonType": "int",
+            "title": "状态",
+            "description": "角色当前状态：-1 草稿，0 审核中，1 审核完成",
+            "defaultValue": 0,
+            "enum": [
+                { "text": "草稿", "value": -1 },
+                { "text": "审核中", "value": 0 },
+                { "text": "审核完成（审核失败）", "value": 1 }
+            ]
+        },
+        "refuse_reason": {
+            "bsonType": "string",
+            "title": "审核失败原因",
+            "description": "审核失败原因",
+            "defaultValue": "",
+            "trim": "both"
         }
     },
     "version": "1.0.0"

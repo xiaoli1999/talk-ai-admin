@@ -1,1 +1,51 @@
-{"bsonType":"object","required":[],"permission":{"read":true,"create":true,"update":true,"delete":true},"properties":{"_id":{"description":"存储文档 ID（用户 ID），系统自动生成"},"title":{"bsonType":"string","description":"标题","trim":"both","defaultValue":""},"type":{"bsonType":"string","description":"类型","trim":"both","defaultValue":""},"content":{"bsonType":"string","description":"html内容","trim":"both","defaultValue":""},"use":{"bsonType":"bool","description":"是否启用","defaultValue":true},"create_time":{"bsonType":"timestamp","description":"创建时间","forceDefaultValue":{"$env":"now"}}},"version":"1.0.0"}
+{
+	"bsonType": "object",
+	"required": [],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": {
+			"description": "存储文档 ID（用户 ID），系统自动生成"
+		},
+		"title": {
+			"bsonType": "string",
+			"description": "标题",
+			"trim": "both",
+			"defaultValue": ""
+		},
+		"type": {
+			"bsonType": "string",
+			"description": "类型",
+			"trim": "both",
+			"defaultValue": ""
+		},
+		"content": {
+			"bsonType": "string",
+			"description": "html内容",
+			"trim": "both",
+			"defaultValue": ""
+		},
+		"use": {
+			"bsonType": "bool",
+			"description": "是否启用",
+			"defaultValue": true
+		},
+		"sort": {
+			"bsonType": "int",
+			"description": "排序",
+			"defaultValue": 0
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"description": "创建时间",
+			"forceDefaultValue": {
+				"$env": "now"
+			}
+		}
+	},
+	"version": "1.0.0"
+}
