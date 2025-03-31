@@ -20,22 +20,30 @@
 		},
 		{
 			"path" : "pages/roles/roles",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : "角色",
 				"enablePullDownRefresh" : false
 			}
 		},
 		{
+			"path" : "pages/check/check",
+			"style" :
+			{
+				"navigationBarTitleText" : "审核",
+				"enablePullDownRefresh" : false
+			}
+		},
+		{
 			"path" : "pages/search/search",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : "搜索词"
 			}
 		},
 		{
 			"path" : "pages/error/error",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : "404",
 				"enablePullDownRefresh" : false
@@ -43,7 +51,7 @@
 		},
 		{
 			"path" : "pages/copy/copy",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : "",
 				"enablePullDownRefresh" : false
@@ -51,28 +59,28 @@
 		},
 		{
 			"path" : "pages/magic/magic",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : ""
 			}
 		},
 		{
 			"path" : "pages/bg/bg",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : ""
 			}
 		},
 		{
 			"path" : "pages/notice/notice",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : ""
 			}
 		},
 		{
 			"path" : "pages/works/works",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : "搜索词",
 				"enablePullDownRefresh" : false
@@ -80,7 +88,7 @@
 		},
 		{
 			"path" : "pages/doc/doc",
-			"style" : 
+			"style" :
 			{
 				"navigationBarTitleText" : ""
 			}
@@ -111,12 +119,12 @@
 				"text": "访客"
 			},
 			{
-				"pagePath": "pages/chat/chat",
-				"text": "聊天"
-			},
-			{
 				"pagePath": "pages/roles/roles",
 				"text": "角色"
+			},
+			{
+				"pagePath": "pages/check/check",
+				"text": "审核"
 			},
 			{
 				"pagePath": "pages/search/search",

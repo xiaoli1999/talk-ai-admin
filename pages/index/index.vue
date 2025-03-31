@@ -6,6 +6,7 @@
             <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/magic/magic')">微调页</el-button>
             <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/bg/bg')">背景页</el-button>
             <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/notice/notice')">公告模版</el-button>
+            <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/chat/chat')">聊天记录</el-button>
         </view>
 
         <el-radio-group v-model="tab" style="margin: 20px auto;">
