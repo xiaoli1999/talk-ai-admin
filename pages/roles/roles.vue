@@ -405,7 +405,7 @@ const getList = async () => {
 
         res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
     } else if (tab.value === 5) {
-        whereObj.version = db.command.nin([undefined, null, '', 0])
+        whereObj.version = db.command.nin([undefined, null, '', 0]).and(db.command.lt(3.8))
         whereObj.update_time = db.command.nin([undefined, null, ''])
         res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').orderBy("user_cb_pay_num", "desc").get({ getCount: true })
     } else if (tab.value === 6) {
