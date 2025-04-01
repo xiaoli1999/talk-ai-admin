@@ -1,102 +1,39 @@
 <template>
-    <el-scrollbar v-loading="loading" class="roles page">
-        <el-radio-group v-model="tab" style="padding-bottom: 10px" @change="getList">
-            <el-radio-button :value="0">最新</el-radio-button>
-            <el-radio-button :value="1">最热</el-radio-button>
-            <el-radio-button :value="2">最近</el-radio-button>
-            <el-radio-button :value="3">搬家</el-radio-button>
-            <el-radio-button :value="4">未改写</el-radio-button>
-            <el-radio-button :value="5">原创</el-radio-button>
-            <el-radio-button :value="6">快捷（旧）</el-radio-button>
-        </el-radio-group>
+    <el-scrollbar v-loading="loading" class="check page">
+        <div style="display: flex; align-items: center; flex-wrap: wrap; padding-bottom: 10px">
+            <el-radio-group v-model="tab" @change="getList">
+                <el-radio-button :value="0">待审核<span v-if="totalObj['待审核']">（{{ totalObj['待审核'] }}）</span></el-radio-button>
+                <el-radio-button :value="1">审核未通过<span v-if="totalObj['已审核']">（{{ totalObj['已审核'] }}）</span></el-radio-button>
+                <el-radio-button :value="-1">草稿<span v-if="totalObj['草稿']">（{{ totalObj['草稿'] }}）</span></el-radio-button>
+            </el-radio-group>
 
-        <el-radio-group v-model="category" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
-            <el-radio-button value="">全部</el-radio-button>
-            <el-radio-button v-for="item in categoryList" :key="item._id" :value="item._id">{{ item.name.slice(0, 2) }}</el-radio-button>
-        </el-radio-group>
+            <el-select v-model="category" placeholder="分类" filterable clearable style="width: 80px;margin: 0 10px;" @change="getList">
+                <el-option v-for="item in categoryList" :key="item._id" :label="item.name.slice(0, 2)" :value="item._id" />
+            </el-select>
 
-        <el-radio-group v-model="show" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
-            <el-radio-button value="">全部</el-radio-button>
-            <el-radio-button :value="true">上线</el-radio-button>
-            <el-radio-button :value="false">下线</el-radio-button>
-        </el-radio-group>
+            <el-select v-model="category" placeholder="性别" filterable clearable style="width: 80px;" @change="getList">
+                <el-option label="男" :value="1" />
+                <el-option label="女" :value="2" />
+            </el-select>
+        </div>
 
-        <el-radio-group v-model="gender" style="padding-bottom: 10px;margin-left: 10px;" @change="getList">
-            <el-radio-button :value="0">全部</el-radio-button>
-            <el-radio-button :value="1">男</el-radio-button>
-            <el-radio-button :value="2">女</el-radio-button>
-        </el-radio-group>
-
-        <view style="margin: 12px;">
-            <el-button v-if="isAdmin" type="primary" :disabled="tab >= 3" @click="openRoleDialog(null)">新增角色</el-button>
-
-            <el-button type="primary" :disabled="!selectList.length" @click="setRoleShow(true)">批量上线</el-button>
-            <el-button type="danger" :disabled="!selectList.length" @click="setRoleShow(false)">批量下线</el-button>
-        </view>
         <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small" @selection-change="selectionChange">
             <el-table-column type="selection" label="排序" align="center" width="60px" />
             <el-table-column prop="avatar" label="头像" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
-                        <el-image v-if="row.avatar1" :src="row.avatar1" :preview-src-list="[row.avatar1]" preview-teleported fit="contain" style="border-radius: 50%;" />
+                        <el-image v-if="row.avatar" :src="montageImgUrl(row.avatar, 100)" :preview-src-list="[montageImgUrl(row.avatar, 300)]" preview-teleported fit="contain" style="border-radius: 50%;" />
                     </div>
                 </template>
             </el-table-column>
             <el-table-column prop="avatar" label="背景" align="center" min-width="60px">
                 <template #default="{ row }">
                     <div style="display: flex;justify-content: center">
-                        <el-image v-if="row.avatar_long1" :src="row.avatar_long1" :preview-src-list="[row.avatar_long1]" preview-teleported fit="contain" />
+                        <el-image v-if="row.avatar_long" :src="montageImgUrl(row.avatar_long, 100)" :preview-src-list="[montageImgUrl(row.avatar_long, 500)]" preview-teleported fit="contain" />
                     </div>
                 </template>
             </el-table-column>
             <el-table-column prop="name" label="名称" align="center" min-width="70px" />
-
-            <template v-if="[5, 6].includes(tab)">
-                <el-table-column prop="vip" label="会员" align="center" width="60px">
-                    <template #default="{ row }">
-                        <div>
-                            <el-tag v-if="row.vip" type="danger" size="small">会员</el-tag>
-                        </div>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="vip" label="采贝" align="center" width="80px">
-                    <template #default="{ row }">
-                        <div>
-                            <el-tag v-if="row.user_cb_pay_num" type="primary" size="small">{{ row.user_cb_pay_num }}</el-tag>
-                        </div>
-                    </template>
-                </el-table-column>
-            </template>
-
-            <el-table-column prop="category_id" label="分类" align="center" min-width="80px">
-                <template #default="{ row }">
-                    <view style="position: relative;padding: 10px 0;">
-                        <el-tag>{{ categoryObj[row.category_id] || row.name }}</el-tag>
-                        <view v-if="row.children && row.children.length"
-                              style="position: absolute;top: 6px;right: -6px; width: fit-content;line-height: 16px; min-width: 16px;font-size: 12px;background: #409EFF;color: #fff;border-radius: 16px;"
-                        >
-                            {{ row.children.length }}
-                        </view>
-                    </view>
-                </template>
-            </el-table-column>
-            <el-table-column prop="desc" label="简介" align="center" min-width="140px">
-                <template #default="{ row }">
-                    <el-tooltip placement="top">
-                        <template #content>
-                            <div style="max-width: 300px;">{{ row.desc }}</div>
-                        </template>
-                        <el-text truncated>{{ row.desc }}</el-text>
-                    </el-tooltip>
-                </template>
-            </el-table-column>
-            <el-table-column prop="tag_list" label="标签" align="center" min-width="140px">
-                <template #default="{ row }">
-                    <div>
-                        <el-tag v-for="(item, index) in row.tag_list" :key="index" type="warning" style="margin: 4px auto;">{{ item }}</el-tag>
-                    </div>
-                </template>
-            </el-table-column>
             <el-table-column prop="gender" label="性别" align="center" width="60px">
                 <template #default="{ row }">
                     <div>
@@ -104,35 +41,62 @@
                     </div>
                 </template>
             </el-table-column>
+
+            <el-table-column prop="vip" label="创建人" align="center" width="80px">
+                <template #default="{ row }">
+                    <div style="display: flex;flex-direction: column;align-items: center;">
+                        <div>{{ row.nickname }}</div>
+                        <el-tag v-if="row.vip" type="primary" size="small">会员</el-tag>
+                        <el-tag v-if="row.user_cb_pay_num" type="success" size="small">{{ row.user_cb_pay_num }}</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="category_id" label="分类" align="center" min-width="60px">
+                <template #default="{ row }">
+                    <view style="position: relative;padding: 10px 0;">
+                        <el-tag>{{ (categoryObj[row.category_id] || '').slice(0, 2) }}</el-tag>
+                    </view>
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="tag_list" label="标签" align="center" min-width="120px">
+                <template #default="{ row }">
+                    <div>
+                        <el-tag v-for="(item, index) in row.tag_list" :key="index" type="warning" style="margin: 4px auto;">{{ item }}</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="desc" label="简介" align="center" min-width="140px">
+                <template #default="{ row }">
+                    <el-tooltip placement="top">
+                        <template #content>
+                            <div style="max-width: 300px;">{{ row.desc }}</div>
+                        </template>
+                        <el-text :line-clamp="3">{{ row.desc }}</el-text>
+                    </el-tooltip>
+                </template>
+            </el-table-column>
+
+
             <el-table-column prop="prompt" label="提示词" align="center" min-width="140px">
                 <template #default="{ row }">
                     <el-tooltip placement="top">
                         <template #content>
                             <div style="max-width: 300px;">{{ row.prompt }}</div>
                         </template>
-                        <el-text truncated>{{ row.prompt }}</el-text>
+                        <el-text :line-clamp="3">{{ row.prompt }}</el-text>
                     </el-tooltip>
                 </template>
             </el-table-column>
             <el-table-column prop="guide_list" label="引导语" align="center" min-width="140px" :formatter="(e) => e.guide_list.join(';')" />
-            <el-table-column prop="show" label="启用" align="center" width="50px">
-                <template #default="{ row }">
-                    <div>
-                        <el-switch v-model="row.show" :disabled="true" size="small" />
-                    </div>
-                </template>
-            </el-table-column>
 
-            <template v-if="![5, 6].includes(tab)">
-                <el-table-column prop="hot_count" label="热度" align="center" min-width="60px" />
-                <el-table-column prop="talk_count" label="对话" align="center" min-width="60px" />
-            </template>
-
-            <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm:ss')" />
-            <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
+            <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm')" />
+            <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm')" />
             <el-table-column label="操作" align="center" width="130" fixed="right">
                 <template #default="{row}">
-                    <el-button type="primary" @click="openRoleDialog(row)" size="small">修改</el-button>
+                    <el-button v-if="tab !== -1" type="primary" @click="openRoleDialog(row)" size="small">审核</el-button>
                     <el-button v-if="isAdmin" type="danger" @click="deleteRole(row)" size="small">删除</el-button>
                 </template>
             </el-table-column>
@@ -150,83 +114,75 @@
             />
         </view>
 
-        <el-dialog class="dialog" v-model="roleShow" width="720px" :title="roleData._id ? '新增角色' : '修改角色'" align-center draggable>
-            <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="100px" :disabled="!isAdmin">
+        <el-dialog class="dialog" v-model="roleShow" width="880px" title="审核角色" align-center draggable :close-on-click-modal="false">
+            <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="80px" :disabled="!isAdmin">
                 <div style="display: flex;">
-                    <el-form-item label="角色名称" prop="name">
-                        <el-input v-model="roleData.name" :maxlength="10" placeholder="请输入角色名称" clearable show-word-limit />
+                    <el-form-item label="名称" prop="name" >
+                        <el-input v-model="roleData.name" :maxlength="10" placeholder="请输入角色名称" clearable show-word-limit style="width: 200px" />
                     </el-form-item>
-                    <el-form-item label="用户名称" prop="user_name">
-                        <el-input v-model="roleData.user_name" :maxlength="10" placeholder="请输入用户名称" clearable show-word-limit />
+                    <el-form-item label="主控名" prop="user_name">
+                        <el-input v-model="roleData.user_name" :maxlength="10" placeholder="请输入主控名称" clearable show-word-limit style="width: 140px" />
+                    </el-form-item>
+
+                    <el-form-item label="分类" prop="category_id">
+                        <el-select v-model="roleData.category_id" placeholder="请选择角色分类" style="width: 160px">
+                            <el-option v-for="item in categoryList" :key="item._id" :label="item.name" :value="item._id" />
+                        </el-select>
                     </el-form-item>
                 </div>
 
-                <el-form-item label="角色分类" prop="category_id">
-                    <el-select v-model="roleData.category_id" placeholder="请选择角色分类" :disabled="roleData._id && roleData.category_id === 'null' && roleData.children.length" clearable>
-                        <el-option v-for="item in categoryList" :key="item._id" :label="item.name" :value="item._id" />
-                        <el-option label="一级分类" value="null" />
-                    </el-select>
-                </el-form-item>
-
                 <div style="display: flex;">
-                    <el-form-item label="角色头像" prop="avatar">
-                        <div style="position: relative;width: 50px;height: 50px;padding: 4px; border: 1px dashed #DCDFE6; display: flex;justify-content: center;align-items: center;">
-                            <img v-if="roleData.avatar" :src="roleData.avatar" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 50%;" alt=""/>
-                            <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
-                            <button @click="uploadImg('avatar')" style="position: absolute;width: 100%;height: 100%; z-index: 2000;inset: 0;opacity: 0" />
-                            <div v-show="roleData.avatar" class="del-btn" @click="roleData.avatar = ''">❌︎</div>
+                    <el-form-item label="头像" prop="avatar" style="flex-shrink: 0;">
+                        <div style="display: flex;align-items: center;">
+                            <div style="position: relative;width: 50px;height: 50px;display: flex;justify-content: center;align-items: center;">
+                                <el-image v-if="roleData.avatar" :src="montageImgUrl(roleData.avatar, 100)" :preview-src-list="[montageImgUrl(roleData.avatar, 300), montageImgUrl(roleData.avatar_long, 500)]" preview-teleported fit="contain" style="border-radius: 50%;" />
+
+                                <div v-show="roleData.avatar" class="del-btn" @click="roleData.avatar = ''">✖</div>
+                                <div v-show="roleData.avatar" class="upload-btn" @click="uploadImg('avatar')" >✚</div>
+                            </div>
+                            <div style="position: relative;display: flex;justify-content: center;align-items: center;margin-left: 20px;" >
+                                <el-image v-if="roleData.avatar_long" :src="montageImgUrl(roleData.avatar_long, 40)" :preview-src-list="[montageImgUrl(roleData.avatar_long, 500), montageImgUrl(roleData.avatar, 300)]" preview-teleported fit="contain" />
+
+                                <div v-show="roleData.avatar_long" class="del-btn" @click="roleData.avatar_long = ''">✖</div>
+                                <div v-show="roleData.avatar_long" class="upload-btn" @click="uploadImg('avatar_long')">✚</div>
+                            </div>
                         </div>
                     </el-form-item>
-                    <el-form-item label="角色背景" prop="avatar_long">
-                        <div style="position: relative;width: 50px;height: 50px;padding: 4px;border: 1px dashed #DCDFE6; display: flex;justify-content: center;align-items: center;">
-                            <img v-if="roleData.avatar_long" :src="roleData.avatar_long" style="width: 100%; max-width: 50px;max-height: 50px;object-fit: contain;border-radius: 4px;" alt=""/>
-                            <div v-else style="font-size: 24px;color: #DCDFE6;">+</div>
-                            <button @click="uploadImg('avatar_long')" style="position: absolute;width: 100%;height: 100%; z-index: 2000;inset: 0;opacity: 0" />
-
-                            <div v-show="roleData.avatar_long" class="del-btn" @click="roleData.avatar_long = ''">❌︎</div>
+                    <div>
+                        <div style="display: flex;">
+                            <el-form-item label="性别" prop="gender">
+                                <el-radio-group v-model="roleData.gender">
+                                    <el-radio v-for="item in genderEnumsList" :key="item.id" :value="Number(item.id)">{{ item.value }}</el-radio>
+                                </el-radio-group>
+                            </el-form-item>
                         </div>
-                    </el-form-item>
-                </div>
-
-                <el-form-item label="角色简介" prop="desc">
-                    <el-input type="textarea" v-model="roleData.desc" :rows="5" :maxlength="1000" placeholder="请输入角色简介" clearable show-word-limit />
-                </el-form-item>
-
-                <el-form-item label="角色标签" prop="tag_list">
-                    <div style="display: flex;">
-                        <el-input v-model="roleData.tag_list[0]" :maxlength="6" placeholder="标签1" clearable show-word-limit />
-                        <div style="width: 10px;flex-shrink: 0"></div>
-                        <el-input v-model="roleData.tag_list[1]" :maxlength="6" placeholder="标签2" clearable show-word-limit />
-                        <div style="width: 10px;flex-shrink: 0"></div>
-                        <el-input v-model="roleData.tag_list[2]" :maxlength="6" placeholder="标签3" clearable show-word-limit />
-                        <div style="width: 10px;flex-shrink: 0"></div>
-                        <el-input v-model="roleData.tag_list[3]" :maxlength="6" placeholder="标签4" clearable show-word-limit />
+                        <el-form-item label="标签" prop="tag_list">
+                            <div style="display: flex;">
+                                <el-input v-model="roleData.tag_list[0]" :maxlength="6" placeholder="标签1" clearable />
+                                <div style="width: 5px;flex-shrink: 0"></div>
+                                <el-input v-model="roleData.tag_list[1]" :maxlength="6" placeholder="标签2" clearable />
+                                <div style="width: 5px;flex-shrink: 0"></div>
+                                <el-input v-model="roleData.tag_list[2]" :maxlength="6" placeholder="标签3" clearable />
+                                <div style="width: 5px;flex-shrink: 0"></div>
+                                <el-input v-model="roleData.tag_list[3]" :maxlength="6" placeholder="标签4" clearable />
+                            </div>
+                        </el-form-item>
                     </div>
-                </el-form-item>
-
-                <div style="display: flex;">
-                    <el-form-item label="角色性别" prop="gender">
-                        <el-radio-group v-model="roleData.gender">
-                            <el-radio v-for="item in genderEnumsList" :key="item.id" :value="Number(item.id)">{{ item.value }}</el-radio>
-                        </el-radio-group>
-                    </el-form-item>
-                    <el-form-item label="角色风格" prop="styles">
-                        <el-radio-group v-model="roleData.styles">
-                            <el-radio v-for="item in 4" :key="item" :value="item">
-                                <div :class="`tag tag-${item}`" />
-                            </el-radio>
-                        </el-radio-group>
-                    </el-form-item>
                 </div>
 
-                <el-form-item label="角色提示词" prop="prompt">
-                    <el-input type="textarea" v-model="roleData.prompt" :rows="5" :maxlength="1000" placeholder="请输入角色提示词" clearable show-word-limit />
+                <el-form-item label="简介" prop="desc">
+                    <el-input type="textarea" v-model="roleData.desc" :rows="6" :maxlength="1000" placeholder="请输入角色简介" clearable show-word-limit />
                 </el-form-item>
-                <el-form-item label="角色引导语" prop="guide_list">
+
+
+                <el-form-item label="提示词" prop="prompt">
+                    <el-input type="textarea" v-model="roleData.prompt" :rows="6" :maxlength="1000" placeholder="请输入角色提示词" clearable show-word-limit />
+                </el-form-item>
+                <el-form-item label="开场白" prop="guide_list">
                     <el-input type="textarea" v-model="roleData.guide_list[0]" :rows="3" :maxlength="300" placeholder="请输入角色引导语" clearable show-word-limit />
                 </el-form-item>
 
-                <el-form-item label="角色声音" prop="voice_id">
+                <el-form-item label="声音" prop="voice_url">
                     <div style="display: flex;align-items: center">
                         <el-select v-model="roleData.voice_id" placeholder="请选择音色" style="width: 280px;">
                             <el-option v-for="item in filterVoiceList()" :key="item.id" :label="item.name + '——' + item.tag.join('-')" :value="item.id">
@@ -242,20 +198,47 @@
                     </div>
                 </el-form-item>
 
-                <div style="display: flex;">
-                    <el-form-item label="角色排序" prop="sort">
-                        <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />
-                    </el-form-item>
-                    <el-form-item label="是否启用" prop="show">
-                        <el-switch v-model="roleData.show" />
-                    </el-form-item>
-                </div>
+                <!--                <div style="display: flex;">-->
+                <!--                    <el-form-item label="角色排序" prop="sort">-->
+                <!--                        <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />-->
+                <!--                    </el-form-item>-->
+                <!--                    <el-form-item label="是否启用" prop="show">-->
+                <!--                        <el-switch v-model="roleData.show" />-->
+                <!--                    </el-form-item>-->
+                <!--                </div>-->
             </el-form>
 
             <template #footer>
                 <div class="pb-[12px]">
                     <el-button type="info" plain @click="roleShow = false">取消</el-button>
-                    <el-button class="!ml-[14px]" type="primary" @click="saveRole">确认</el-button>
+                    <el-button class="!ml-[14px]" type="danger" @click="refuseShow = true">审核不通过</el-button>
+
+                    <el-button class="!ml-[14px]" type="primary" @click="saveRole(false)">审核通过</el-button>
+                    <el-button class="!ml-[14px]" type="success" @click="saveRole(true)">审核通过（优质）</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <el-dialog class="dialog" v-model="refuseShow" width="600px" title="拒绝原因" align-center draggable :close-on-click-modal="false">
+            <div>
+                <el-tabs v-model="refuseName">
+                    <el-tab-pane v-for="item in refuseData" :label="item.name" :name="item.name" />
+                </el-tabs>
+
+                <div style="height: 280px;">
+                    <div v-for="(item, i) in (refuseData.find(i => i.name === refuseName) || { list: [] }).list" :key="i" @click="roleData.refuse_reason += `${ item } \n`">
+                        <el-button type="info" text>{{ item }}</el-button>
+
+                    </div>
+                </div>
+
+                <el-input type="textarea" v-model="roleData.refuse_reason" :rows="6" :maxlength="300" placeholder="审核未通过原因" clearable show-word-limit />
+            </div>
+
+            <template #footer>
+                <div class="pb-[12px]">
+                    <el-button type="info" plain @click="refuseShow = false">取消</el-button>
+                    <el-button class="!ml-[14px]" type="primary" @click="refuseRole">确定</el-button>
                 </div>
             </template>
         </el-dialog>
@@ -281,14 +264,14 @@ const rolesMyDb = db.collection('roles_my')
 const globalData = ref(getApp().globalData)
 const isAdmin = ref(globalData.value.name === 'xiaoli')
 
-const tab = ref(5)
+const tab = ref(0)
 const gender = ref(0)
 const category = ref('')
-const show = ref('')
 
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 20, total: 0 })
 const list = ref([])
+const totalObj = ref({ '待审核': 0, '已审核': 0, '草稿': 0 })
 
 const selectList = ref([])
 const selectionChange = (e) => (selectList.value = e)
@@ -342,10 +325,40 @@ const roleDataDefault = () => ({
     voice_url: '',
     last_talk_time: '',
     update_time: '',
-    creator_id: ''
+    creator_id: '',
+    state: 0,
+    refuse_reason: ''
 })
 const roleShow = ref(false)
 const roleData = ref(roleDataDefault())
+
+const refuseShow = ref(false)
+const refuseName = ref('内容')
+const refuseData = reactive([
+    {
+        name: '内容',
+        list: [
+                '名称、简介、设定、标签、开场白等涉及低俗、血腥、暴力等内容，请进行修改。',
+                '简介、设定等存在凑字数等行为，请认真填写。',
+                '简介、设定等人称关系混乱，请进行修改。',
+        ]
+    },
+    {
+        name: '图片',
+        list: [
+            '形象图、头像涉及低俗、血腥、暴力等内容，请进行修改。',
+            '形象图、头像包含水印、模糊、低质量，请进行修改。',
+            '形象图尺寸有误，应为9:16比例，请进行修改。',
+            '未正确裁剪头像，请调整头像。',
+        ]
+    },
+    {
+        name: '分类',
+        list: [
+            '分类不符，请选择符合崽崽的分类。'
+        ]
+    }
+])
 
 const roleRef = ref();
 const roleRules = reactive({
@@ -379,39 +392,23 @@ const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
 
     const whereObj = {
-        category: db.command.neq('null')
+        state: tab.value
     }
 
     if (gender.value) whereObj.gender = gender.value
-
     if (category.value) whereObj.category_id = category.value
 
-    if (show.value !== '') whereObj.show = show.value
-
-    let res = {}
 
     loading.value = true
+    let res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').orderBy("user_cb_pay_num", "desc").orderBy("update_time", "asc").get({ getCount: true })
 
-    if (tab.value === 0) {
-        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-    } else if (tab.value === 1) {
-        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount:true })
-    } else if (tab.value === 2) {
-        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('last_talk_time desc').get({ getCount:true })
-    } else if (tab.value === 3) {
-        res = await rolesTestDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('create_time desc').get({ getCount:true })
-    } else if (tab.value === 4) {
-        whereObj.update_time = db.command.lt(dayjs('2024-09-04 00:00').valueOf())
+    /* 统计总数 */
+    // totalObj
+    const { result: { total: 待审核 } } = await rolesMyDb.where({ ...whereObj, state: 0 }).count()
+    const { result: { total: 已审核 } } = await rolesMyDb.where({ ...whereObj, state: 1 }).count()
+    const { result: { total: 草稿 } } = await rolesMyDb.where({ ...whereObj, state: -1 }).count()
 
-        res = await rolesDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('hot_count desc').get({ getCount: true })
-    } else if (tab.value === 5) {
-        whereObj.version = db.command.nin([undefined, null, '', 0])
-        whereObj.update_time = db.command.nin([undefined, null, ''])
-        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').orderBy("user_cb_pay_num", "desc").get({ getCount: true })
-    } else if (tab.value === 6) {
-        whereObj.version = db.command.in([undefined, null, ''])
-        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).get({ getCount: true })
-    }
+    totalObj.value = { 待审核, 已审核, 草稿 }
 
     loading.value = false
 
@@ -419,13 +416,6 @@ const getList = async () => {
 
     const data = res.result.data || []
     const count = res.result.count || 0
-
-
-    data.map(i => {
-        if (i.avatar) i.avatar1 = montageImgUrl(i.avatar, 100)
-        if (i.avatar_long) i.avatar_long1 = montageImgUrl(i.avatar_long, 500)
-        return i
-    })
 
     list.value = data
     listParams.total = count
@@ -478,52 +468,68 @@ const createSound = async () => {
     const params = { id: voice_id, name, text: guide_list[0] }
 
     const { data } = await TalkCloud.getRoleExampleSound(params)
-    if (!data) return
+    if (!data) return ElMessage.warning('声音生成失败')
 
     roleData.value.voice_url = data.url
 }
 
-const saveRole = async () => {
+const refuseRole = async () => {
+    const { _id, refuse_reason } = roleData.value
+    const params = { state: 1, refuse_reason, update_time: Date.now() }
+
+    const { errMsg } = await rolesMyDb.doc(_id).update(params).catch(e => e)
+    if (errMsg) return ElMessage.error(errMsg)
+
+    refuseShow.value = false
+    roleShow.value = false
+
+    ElMessage.success('操作成功')
+
+    await getList()
+}
+
+const saveRole = async (isGood = false) => {
     if (!roleRef.value) return;
     const valid = await roleRef.value.validate().catch(() => ({}));
     if (valid !== true) return ElMessage.warning('请填写信息')
 
+    /* 组装参数 */
     const params = JSON.parse(JSON.stringify(roleData.value))
 
-    const testRoleId = params._id
+    const roleId = params._id
 
-    if ([3, 5, 6].includes(tab.value)) {
-        delete params._id
-        delete params.create_time
-
-        if ([5, 6].includes(tab.value)) {
-            params.creator_id = params.creator_id || 'cc'
-            delete params.looks_prompt
-            delete params.username
-            delete params.nickname
-
-            /* 3.5 新增字段 */
-            delete params.vip
-            delete params.version
-            /* 3.52 新增字段 */
-            delete params.user_cb_pay_num
-        }
-    }
-
-    const id = params._id
+    /* 删除无用参数 */
     delete params._id
-    delete params.children
+    delete params.create_time
+    delete params.looks_prompt
+    delete params.username
+    delete params.nickname
     delete params.creator
 
+    /* 3.5 新增字段 */
+    delete params.vip
+    delete params.version
+    /* 3.52 新增字段 */
+    delete params.user_cb_pay_num
+    /* 3.8 新增字段 */
+    delete params.state
+    delete params.refuse_reason
+
+
+    /* 设置特殊参数 */
     /* 更新时间,多加10s */
     const time = dayjs().add(20, 'second').valueOf()
     params.update_time = time
     params.last_talk_time = time
+    /* 优质角色设置热度 */
+    params.today_hot_count = isGood ? 5000 : 0
 
-    /* 过滤无效标签 */
-    params.tag_list = params.tag_list.filter(i => i)
+    console.log(params)
 
-    const { errMsg } = id ? await rolesDb.doc(id).update(params).catch(e => e) : await rolesDb.add(params).catch(e => e)
+    if (params) return
+
+    /* 新增线上角色 */
+    const { errMsg } = await rolesDb.add(params).catch(e => e)
     if (errMsg) return ElMessage.error(errMsg)
 
     ElMessage.success('更新成功')
@@ -531,9 +537,7 @@ const saveRole = async () => {
     roleShow.value = false
 
     /* 删除测试角色 */
-    if (tab.value === 3) await rolesTestDb.doc(testRoleId).remove();
-
-    if ([5, 6].includes(tab.value)) await rolesMyDb.doc(testRoleId).remove();
+    await rolesMyDb.doc(roleId).remove();
 
     await getList()
 }
@@ -548,19 +552,6 @@ const deleteRole = ({ _id }) => {
 
 }
 
-const setRoleShow = (show = false) => {
-    const ids =  selectList.value.map(i => i._id)
-
-    ElMessageBox.confirm(`确定${show ? '上线' : '下线'}吗?`, '设置角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
-    .then(async () => {
-        /* 批量删除 */
-        await rolesDb.where({ _id: dbCmd.in(ids) }).update({ show })
-        ElMessage.success('删除成功')
-        await getList()
-    })
-
-}
-
 onMounted(async () => {
     await getList()
     getVoiceList()
@@ -568,7 +559,7 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-.roles {
+.check {
     .roles-table {
         :deep .el-text {
             font-size: 12px;

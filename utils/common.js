@@ -115,7 +115,7 @@ export const formatKNumber = (num) => {
 export const montageImgUrl = (url = '', w = 100) => {
 	if (!url) return url
 
-	let resizeUrl = 'x-oss-process=image/resize,'
+	let resizeUrl = 'x-oss-process=image/format,webp/resize,'
 	url += url.includes('?') ? '&' : '?'
 	resizeUrl += `w_${w}`
 

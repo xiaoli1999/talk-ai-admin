@@ -50,15 +50,36 @@
 
 .del-btn {
     position: absolute;
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     text-align: center;
-    line-height: 20px;
-    top: -12px;
-    right: -12px;
+    line-height: 18px;
+    top: -10px;
+    right: -10px;
     background: #F56C6C;
     border-radius: 50%;
-    font-size: 12px;
+    font-size: 10px;
+    color: #fff;
+    cursor: pointer;
+    z-index: 3000;
+    transition: all .24s;
+
+    &:hover {
+        opacity: 0.68;
+    }
+}
+
+.upload-btn {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    text-align: center;
+    line-height: 18px;
+    bottom: -10px;
+    right: -10px;
+    background: #409eff;
+    border-radius: 50%;
+    font-size: 10px;
     color: #fff;
     cursor: pointer;
     z-index: 3000;
