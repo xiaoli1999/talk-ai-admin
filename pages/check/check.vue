@@ -60,10 +60,10 @@
                 </template>
             </el-table-column>
 
-            <el-table-column prop="tag_list" label="标签" align="center" min-width="120px">
+            <el-table-column prop="tag_list" label="标签" align="center" min-width="100px">
                 <template #default="{ row }">
-                    <div>
-                        <el-tag v-for="(item, index) in row.tag_list" :key="index" type="warning" style="margin: 4px auto;">{{ item }}</el-tag>
+                    <div style="display: flex;flex-direction: column;align-items: center;">
+                        <el-tag v-for="(item, index) in row.tag_list" :key="index" type="warning" style="margin: 2px auto;">{{ item }}</el-tag>
                     </div>
                 </template>
             </el-table-column>
@@ -72,7 +72,7 @@
                 <template #default="{ row }">
                     <el-tooltip placement="top">
                         <template #content>
-                            <div style="max-width: 300px;">{{ row.desc }}</div>
+                            <div style="max-width: 360px;">{{ row.desc }}</div>
                         </template>
                         <el-text :line-clamp="3">{{ row.desc }}</el-text>
                     </el-tooltip>
@@ -84,13 +84,24 @@
                 <template #default="{ row }">
                     <el-tooltip placement="top">
                         <template #content>
-                            <div style="max-width: 300px;">{{ row.prompt }}</div>
+                            <div style="max-width: 360px;">{{ row.prompt }}</div>
                         </template>
                         <el-text :line-clamp="3">{{ row.prompt }}</el-text>
                     </el-tooltip>
                 </template>
             </el-table-column>
             <el-table-column prop="guide_list" label="引导语" align="center" min-width="140px" :formatter="(e) => e.guide_list.join(';')" />
+
+            <el-table-column v-if="tab === 1" prop="refuse_reason" label="拒绝原因" align="center" min-width="100px">
+                <template #default="{ row }">
+                    <el-tooltip placement="top">
+                        <template #content>
+                            <div style="max-width: 360px;">{{ row.refuse_reason }}</div>
+                        </template>
+                        <el-text :line-clamp="3">{{ row.refuse_reason }}</el-text>
+                    </el-tooltip>
+                </template>
+            </el-table-column>
 
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm')" />
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm')" />
@@ -341,6 +352,7 @@ const refuseData = reactive([
                 '名称、简介、设定、标签、开场白等涉及低俗、血腥、暴力等内容，请进行修改。',
                 '简介、设定等存在凑字数等行为，请认真填写。',
                 '简介、设定等人称关系混乱，请进行修改。',
+                '标签内容不符，请进行修改。',
         ]
     },
     {
@@ -523,16 +535,17 @@ const saveRole = async (isGood = false) => {
     params.last_talk_time = time
     /* 优质角色设置热度 */
     params.today_hot_count = isGood ? 5000 : 0
+    params.high_quality = isGood || false
 
-    console.log(params)
-
-    if (params) return
+    /* 获取主色 */
+    const { data } = await uni.request({ url: params.avatar_long + '?x-oss-process=image/average-hue', method: 'get' }).catch(() => ({}))
+    params.avatar_bg_color = data.RGB ? `#${ data.RGB.slice(2) }` : ''
 
     /* 新增线上角色 */
     const { errMsg } = await rolesDb.add(params).catch(e => e)
     if (errMsg) return ElMessage.error(errMsg)
 
-    ElMessage.success('更新成功')
+    ElMessage.success('上线成功')
 
     roleShow.value = false
 
