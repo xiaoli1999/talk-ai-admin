@@ -498,6 +498,13 @@ const saveRole = async () => {
 
         if ([5, 6].includes(tab.value)) {
             params.creator_id = params.creator_id || 'cc'
+            params.today_hot_count = 5000
+            params.high_quality = false
+
+            /* 获取主色 */
+            const { data } = await uni.request({ url: params.avatar_long + '?x-oss-process=image/average-hue', method: 'get' }).catch(() => ({}))
+            params.avatar_bg_color = data.RGB ? `#${ data.RGB.slice(2) }` : ''
+
             delete params.looks_prompt
             delete params.username
             delete params.nickname
