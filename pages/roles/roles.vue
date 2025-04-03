@@ -499,7 +499,7 @@ const saveRole = async () => {
         if ([5, 6].includes(tab.value)) {
             params.creator_id = params.creator_id || 'cc'
             params.today_hot_count = 5000
-            params.high_quality = false
+            params.high_quality = true
 
             /* 获取主色 */
             const { data } = await uni.request({ url: params.avatar_long + '?x-oss-process=image/average-hue', method: 'get' }).catch(() => ({}))
