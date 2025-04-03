@@ -36,8 +36,9 @@
             <el-table-column prop="name" label="名称" align="center" min-width="70px" />
             <el-table-column prop="gender" label="性别" align="center" width="60px">
                 <template #default="{ row }">
-                    <div>
+                    <div style="position: relative;padding: 5px 0;">
                         <el-tag type="success">{{ genderEnums[row.gender] }}</el-tag>
+                        <span v-if="row.styles > 1" style="position: absolute;top: 2px;right: -2px; width: 16px;height: 16px;text-align: center;line-height: 16px; font-size: 10px; border-radius: 20px;background: #f0f9eb;color: red;">{{ row.styles }}</span>
                     </div>
                 </template>
             </el-table-column>
@@ -222,6 +223,7 @@
             <template #footer>
                 <div class="pb-[12px]">
                     <el-button type="info" plain @click="roleShow = false">取消</el-button>
+                    <el-button class="!ml-[14px]" type="info" @click="setRoleDraft">打回草稿箱</el-button>
                     <el-button class="!ml-[14px]" type="danger" @click="refuseShow = true">审核不通过</el-button>
 
                     <el-button class="!ml-[14px]" type="primary" @click="saveRole(false)">审核通过</el-button>
@@ -350,9 +352,11 @@ const refuseData = reactive([
         name: '内容',
         list: [
                 '名称、简介、设定、标签、开场白等涉及低俗、血腥、暴力等内容，请进行修改。',
+                '简介、设定缺少崽崽详细信息，请进行修改。',
                 '简介、设定等存在凑字数等行为，请认真填写。',
                 '简介、设定等人称关系混乱，请进行修改。',
-                '标签内容不符，请进行修改。',
+                '标签不符合崽崽信息，请进行修改。',
+                '名称不够具体，请为崽崽起一个具体的名称。'
         ]
     },
     {
@@ -412,7 +416,16 @@ const getList = async () => {
 
 
     loading.value = true
-    let res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').orderBy("user_cb_pay_num", "desc").orderBy("update_time", "asc").get({ getCount: true })
+    let res = {}
+
+    if (tab.value === 0) {
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').orderBy("user_cb_pay_num", "desc").orderBy("update_time", "asc").get({ getCount: true })
+
+    } else if (tab.value === 1) {
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy("update_time", "desc").get({ getCount: true })
+    } else if (tab.value === -1) {
+        res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy("update_time", "desc").get({ getCount: true })
+    } else { /*  */ }
 
     /* 统计总数 */
     // totalObj
@@ -483,6 +496,19 @@ const createSound = async () => {
     if (!data) return ElMessage.warning('声音生成失败')
 
     roleData.value.voice_url = data.url
+}
+
+const setRoleDraft = async () => {
+    const params = { state: -1, update_time: Date.now() }
+
+    const { errMsg } = await rolesMyDb.doc(roleData.value._id).update(params).catch(e => e)
+    if (errMsg) return ElMessage.error(errMsg)
+
+    roleShow.value = false
+
+    ElMessage.success('已打回草稿箱')
+
+    await getList()
 }
 
 const refuseRole = async () => {
