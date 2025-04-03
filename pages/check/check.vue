@@ -558,7 +558,7 @@ const saveRole = async (isGood = false) => {
 const deleteRole = ({ _id }) => {
     ElMessageBox.confirm('确定删除吗?', '删除角色', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
             .then(async () => {
-                await ([5, 6].includes(tab.value) ? rolesMyDb : rolesDb).doc(_id).remove();
+                await rolesMyDb.doc(_id).remove();
                 ElMessage.success('删除成功')
                 await getList()
             })
