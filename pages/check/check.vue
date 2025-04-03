@@ -499,7 +499,7 @@ const createSound = async () => {
 }
 
 const setRoleDraft = async () => {
-    const params = { state: -1, update_time: Date.now() }
+    const params = { state: -1, styles: 0, update_time: Date.now() }
 
     const { errMsg } = await rolesMyDb.doc(roleData.value._id).update(params).catch(e => e)
     if (errMsg) return ElMessage.error(errMsg)
