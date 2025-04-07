@@ -152,8 +152,8 @@
                                 <div v-show="roleData.avatar" class="del-btn" @click="roleData.avatar = ''">✖</div>
                                 <div v-show="roleData.avatar" class="upload-btn" @click="uploadImg('avatar')" >✚</div>
                             </div>
-                            <div style="position: relative;display: flex;justify-content: center;align-items: center;margin-left: 20px;" >
-                                <el-image v-if="roleData.avatar_long" :src="montageImgUrl(roleData.avatar_long, 40)" :preview-src-list="[montageImgUrl(roleData.avatar_long, 500), montageImgUrl(roleData.avatar, 300)]" preview-teleported fit="contain" />
+                            <div style="position: relative;display: flex;justify-content: center;align-items: center;margin-left: 20px;width: 50px; height: 90px;border-radius: 4px;background: #dedede;" >
+                                <el-image v-if="roleData.avatar_long" :src="montageImgUrl(roleData.avatar_long, 100)" :preview-src-list="[montageImgUrl(roleData.avatar_long, 500), montageImgUrl(roleData.avatar, 300)]" preview-teleported fit="contain" />
 
                                 <div v-show="roleData.avatar_long" class="del-btn" @click="roleData.avatar_long = ''">✖</div>
                                 <div v-show="roleData.avatar_long" class="upload-btn" @click="uploadImg('avatar_long')">✚</div>
@@ -232,20 +232,19 @@
             </template>
         </el-dialog>
 
-        <el-dialog class="dialog" v-model="refuseShow" width="600px" title="拒绝原因" align-center draggable :close-on-click-modal="false">
+        <el-dialog class="dialog" v-model="refuseShow" width="660px" title="拒绝原因" align-center draggable :close-on-click-modal="false">
             <div>
                 <el-tabs v-model="refuseName">
                     <el-tab-pane v-for="item in refuseData" :label="item.name" :name="item.name" />
                 </el-tabs>
 
-                <div style="height: 280px;">
+                <div style="height: 250px;">
                     <div v-for="(item, i) in (refuseData.find(i => i.name === refuseName) || { list: [] }).list" :key="i" @click="roleData.refuse_reason += `${ item } \n`">
-                        <el-button type="info" text>{{ item }}</el-button>
-
+                        <el-button type="info" text size="small">{{ item }}</el-button>
                     </div>
                 </div>
 
-                <el-input type="textarea" v-model="roleData.refuse_reason" :rows="6" :maxlength="300" placeholder="审核未通过原因" clearable show-word-limit />
+                <el-input type="textarea" v-model="roleData.refuse_reason" :rows="5" :maxlength="300" placeholder="审核未通过原因" clearable show-word-limit />
             </div>
 
             <template #footer>
@@ -351,27 +350,37 @@ const refuseData = reactive([
     {
         name: '内容',
         list: [
-                '名称、简介、设定、标签、开场白等涉及低俗、血腥、暴力等内容，请进行修改。',
-                '简介、设定缺少崽崽详细信息，请进行修改。',
-                '简介、设定等存在凑字数等行为，请认真填写。',
-                '简介、设定等人称关系混乱，请进行修改。',
-                '标签不符合崽崽信息，请进行修改。',
-                '名称不够具体，请为崽崽起一个具体的名称。'
+            '【名称、简介、设定、标签、开场白】等涉及“低俗、色情、血腥、暴力、未成年”等内容，请进行修改。',
+            '【简介、设定】内容混淆，简介是给用户看的，设定才会直接影响崽崽性格、回复效果，请认真填写设定。',
+
+            '【简介】人物关系混乱，崽崽为第三人称（他/她/它/名称），用户为第二人称（你/主控/用户/名称），请进行修改。',
+            '【设定】人物关系混乱，崽崽为第二人称（你/名称），用户为第一称（我/主控/用户/名称），请进行修改。',
+
+            '【简介、设定、开场白】等语句不通顺，缺少标点符合，请进行修改。',
+
+            '【简介、设定】缺少崽崽详细信息，请进行修改。',
+            '【简介、设定】等存在凑字数等行为，请认真填写。',
+
+
+            '【名称】不够具体，请为崽崽起一个具体的名称。',
+            '【标签】不符合崽崽信息，请进行修改。',
+            '【标签】多个标签，请分开填写。',
         ]
     },
     {
         name: '图片',
         list: [
-            '形象图、头像涉及低俗、血腥、暴力等内容，请进行修改。',
-            '形象图、头像包含水印、模糊、低质量，请进行修改。',
-            '形象图尺寸有误，应为9:16比例，请进行修改。',
-            '未正确裁剪头像，请调整头像。',
+            '【形象图、头像】涉及“低俗、色情、血腥、暴力、未成年、素人、明星”等内容，请进行修改。',
+            '【形象图】存在“水印、模糊、低质量”等，请进行修改。',
+            '【形象图】尺寸有误，应为9:16比例，请进行修改。',
+            '【头像】未正确裁剪头像（需保证脸部清晰），请调整头像。',
         ]
     },
     {
         name: '分类',
         list: [
-            '分类不符，请选择符合崽崽的分类。'
+            '【动漫、小说、游戏】等分类，设定应含有相关《作品》名称、角色名称等，请进行补充。',
+            '【分类】不符和崽崽信息，请选择符合崽崽的分类。',
         ]
     }
 ])
