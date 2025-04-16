@@ -15,7 +15,7 @@
             }
         ],
         "path": "",
-        "runtime": "Nodejs8",
+        "runtime": "Nodejs16",
         "frequencyLimitEnable": false,
         "blackListEnable": false
     },

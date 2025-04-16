@@ -9,7 +9,7 @@
   "cloudfunction-config": {
     "concurrency": 1,
     "memorySize": 512,
-    "timeout": 30,
+    "timeout": 60,
     "path": "",
     "runtime": "Nodejs16"
   }

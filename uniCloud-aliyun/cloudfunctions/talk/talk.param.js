@@ -8,4 +8,6 @@ const clientInfo = { // 模拟clientInfo
   uniIdToken: 'xxx'
 }
 
-batchSetSoundUrl()
+// batchSetSoundUrl()
+
+getVoiceData()

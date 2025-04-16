@@ -35,28 +35,29 @@ module.exports = {
 		try {
 			const data = { ...homeData }
 
-			const whereData = { show: true }
-			if (gender) whereData.gender = gender === 1 ? 2 : 1
+			const whereData = {
+				show: true
+			}
 
-			/* 获取最新角色 */
-			const { data: newList } = await rolesDb.where(whereData).limit(5).orderBy('create_time', 'desc').get()
+			/* 获取最新角色（最新暂时不区分性别） */
+			const { data: newList } = await rolesDb.where(whereData).limit(30).orderBy('create_time', 'desc').get()
 			data.newList = newList || []
 
-			/* 获取最近在聊的角色 */
-			const { data: talkList } = await rolesDb.where(whereData).limit(2).orderBy('last_talk_time', 'desc').get()
-			data.talkList = talkList || []
+			if (gender) whereData.gender = gender === 1 ? 2 : 1
 
 			// /* 获取最喜欢的角色 */
 			// const roles = rolesJqlDb.getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
 			// const rolesLike = rolesLikeJqlDb.orderBy('create_time desc').limit(10).getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
 
 			/* 随机取最喜欢的角色 */
-			const skip =  Math.floor(Math.random() * 81)
+			const skip =  Math.floor(Math.random() * 100)
 
-			const { data: likeList } = await rolesJqlDb.where(whereData).orderBy('like_count desc').skip(skip).limit(3).get()
-			data.likeList = (likeList || []).map(i => ({ ...i, _id: { _value: i._id }, list: [] }))
-			console.log(data)
+			const { data: likeList } = await rolesJqlDb.where(whereData).orderBy('like_count desc').skip(skip).limit(5).get()
+			data.likeList = likeList || []
 
+			/* 获取最近在聊的角色 */
+			const { data: talkList } = await rolesDb.where(whereData).limit(2).orderBy('last_talk_time', 'desc').get()
+			data.talkList = talkList || []
 
 			return { data, errMsg: '获取成功' }
 		} catch ({ message }) {
@@ -73,10 +74,24 @@ module.exports = {
 		try {
 
 			const whereData = { show: true }
+
 			if (gender) whereData.gender = gender === 1 ? 2 : 1
 
-			/* 获取当天热度最高的角色 */
-			const { data } = await rolesDb.where(whereData).limit(9).orderBy('today_hot_count', 'desc').get()
+			/* 获取当天热度最高的男、女 */
+			const { data: menList } = await rolesDb.where({ show: true, gender: 1 }).limit(10).orderBy('today_hot_count', 'desc').orderBy('last_talk_time', 'desc').get()
+			const { data: womenList } = await rolesDb.where({ show: true, gender: 2 }).limit(10).orderBy('today_hot_count', 'desc').orderBy('last_talk_time', 'desc').get()
+
+			const data = []
+
+			menList.forEach((item, i) => {
+				if (gender === 1) {
+					data.push(womenList[i])
+					data.push(menList[i])
+				} else {
+					data.push(menList[i])
+					data.push(womenList[i])
+				}
+			})
 
 			return { data, errMsg: '获取成功' }
 		} catch ({ message }) {
@@ -113,6 +128,18 @@ module.exports = {
 			const data = { ...chatData, tipList: getTipList() }
 
 			return { data, errMsg: '获取成功' }
+		} catch ({ message }) {
+			return { errMsg: message }
+		}
+	},
+	/**
+	 * @function getVersion 获取当前版本
+	 * @returns { object } { errMsg: '', data: {} } 错误信息及url
+	 * @returns { object } data 聊天页基础数据
+	 */
+	async getVersion () {
+		try {
+			return { data: '3.6.2', errMsg: '获取成功' }
 		} catch ({ message }) {
 			return { errMsg: message }
 		}

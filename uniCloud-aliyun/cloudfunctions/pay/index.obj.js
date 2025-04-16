@@ -2,7 +2,7 @@ const unipay = require('./uni-pay')
 const path = require('path');
 const { appId, mchId, v3Key } = require('./config.js')
 const dayjs = require('./utils/dayjs.js')
-const { vipList, cbList, vipQyList, cbDocList, vipDocObj } = require('./utils/vip.js')
+const { vipList, cbList, vipQyList, cbDocList, vipDocObj, cardList, cardInfo } = require('./utils/vip.js')
 
 /* 数据库 */
 const db = uniCloud.database();
@@ -42,10 +42,16 @@ module.exports = {
 				vipQyList,
 				cbDocList,
 				vipDocObj,
+
+				/* 畅聊卡 */
+				cardList,
+				cardInfo,
+
+				/* ios相关信息 */
 				showIos: false, /* 是否展示ios */
 				version: '', /* 线上绕审核版本 */
 				showService: true, /* ios展示客服按钮 */
-				iosTip: '由于相关规范，ios功能暂不可用。\n \n 可登录安卓、电脑端充值。 \n \n 如遇到问题请咨询客服（备注手机型号）。'
+				iosTip: '由于平台相关规范，ios功能暂不可用。\n \n 可登录安卓、电脑端充值。 \n \n 如遇到问题请咨询客服（备注手机型号）。'
 			}
 
 			//返回数据给客户端
@@ -70,10 +76,11 @@ module.exports = {
 
 			if (type === 'vip') {
 				currentOrder = vipList.find(i => i.price === price)
-			} else {
-				console.log(cbList)
+			} else if (['cb', 'first-cb'].includes(type)) {
 				currentOrder = cbList.find(i => i.price === price)
-			}
+			} else if (type === 'card') {
+				currentOrder = cardList.find(i => i.price === price)
+			} else {}
 
 			if (!currentOrder) return { errMsg: '该套餐活动已结束，如有疑问请联系客服' }
 
@@ -88,6 +95,7 @@ module.exports = {
 				type,
 				recharge_day: currentOrder.day || 0,
 				recharge_cb: currentOrder.num ? currentOrder.num + currentOrder.gift : 0,
+				recharge_card: currentOrder.minute || 0,
 				osName: clientInfo.osName
 			}
 			/* 创建订单 */
@@ -95,7 +103,7 @@ module.exports = {
 
 			console.log('orderRes', orderRes);
 
-			const orderTypeEnums = { vip: '开通会员', cb: '充值采贝', 'first-cb': '采贝首充福利' }
+			const orderTypeEnums = { vip: '开通会员', cb: '充值采贝', 'first-cb': '采贝首充福利', card: '购买畅聊卡' }
 			const params = {
 				openid: event.openid, //这个是客户端上传的用户的openid
 				body: orderTypeEnums[type],
@@ -152,10 +160,10 @@ module.exports = {
 			if (!userId || !orderId) return { errMsg: '参数错误' }
 
 			const { data: userList } = await db.collection('users').doc(userId).get()
-		 	const { vip_end_time, cb_pay_num, cb_pay_count, pay_count, pay_total } = userList[0]
+		 	const { vip_end_time, cb_pay_num, cb_pay_count, pay_count, pay_total, talk_card_end_time } = userList[0]
 
 			const { data: orderList } = await db.collection('orders').doc(orderId).get()
-			const { total_fee, type, recharge_day, recharge_cb  } = orderList[0]
+			const { total_fee, type, recharge_day, recharge_cb, recharge_card  } = orderList[0]
 
 			const userParams = {
 				pay_count: pay_count + 1,
@@ -172,7 +180,7 @@ module.exports = {
 					userParams.vip_start_time = nowDate
 					userParams.vip_end_time = dayjs(nowDate).add(recharge_day, 'day').valueOf()
 				}
-			} else {
+			} else if (['cb', 'first-cb'].includes(type)){
 				/* 将当前付费向上取整 */
 				const cb_pay_num_int = Math.ceil(cb_pay_num || 0)
 				if (vip_end_time > nowDate) {
@@ -182,7 +190,17 @@ module.exports = {
 				}
 
 				userParams.cb_pay_count = (cb_pay_count || 0) + 1
-			}
+			} else if (type === 'card') {
+				/* 计算畅聊卡累加时间 */
+				const ms = recharge_card * 60 * 1000
+				if (talk_card_end_time > nowDate) {
+					userParams.talk_card_end_time = talk_card_end_time + ms
+				} else {
+					/* 设置畅聊到期时间 */
+					userParams.talk_card_end_time = nowDate + ms
+				}
+
+			} else {}
 
 			console.log('\n -----------支付成功要改变的参数----------- \n', userParams);
 

@@ -1,0 +1,12 @@
+{
+  "schedule": {
+    "__UNI__EA1DCA9": {
+      "enable": true,
+      "weixin-mp": {
+        "enable": true,
+        "tasks": ["accessToken"]
+      }
+    }
+  },
+  "ipWhiteList": ["0.0.0.0"]
+}

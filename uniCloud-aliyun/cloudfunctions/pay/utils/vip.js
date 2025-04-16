@@ -2,105 +2,114 @@ const vipList = [
 	{
 		name: '周卡',
 		day: 7,
-		originalPrice: 1398, // 998
-		price: 998, // 698
+		originalPrice: 1698, // 1398
+		price: 1298, // 998
 		hot: false,
 		desc: '新人尝鲜'
 	},
 	{
 		name: '月卡',
 		day: 30,
-		originalPrice: 3998, // 3698
-		price: 2498, // 1998
+		originalPrice: 4298, // 3998
+		price: 2898, // 2498
 		hot: true,
 		desc: '限时特价'
 	},
 	{
 		name: '季卡',
 		day: 90,
-		originalPrice: 9998, // 8998
-		price: 5998, // 4998
+		originalPrice: 11998, // 9998
+		price: 6898, // 5998
 		hot: false,
 		desc: '低至0.6/天'
 	},
 	{
 		name: '年卡',
 		day: 365,
-		originalPrice: 36998, // 32998
-		price: 19998, // 16898
+		originalPrice: 38998, // 36998
+		price: 22898, // 19998
 		hot: false
 	}
 ]
 
 const cbList = [
+	// {
+	// 	originalPrice: 668,
+	// 	price: 498, // 368
+	// 	num: 200,
+	// 	gift: 0,
+	// 	hot: false,
+	// },
 	{
-		originalPrice: 668,
-		price: 498, // 368
-		num: 200,
-		gift: 0,
+		originalPrice: 1398,
+		price: 996, // 368
+		num: 360, // 360
+		gift: 0, // 0 首充赠品不显示，数量必须为0
 		hot: false,
 	},
 	{
-		price: 600, // 600
-		num: 180,
-		gift: 0,
+		price: 998, // 600
+		num: 280,
+		gift: 0, // 0
 		hot: false,
 	},
 	{
 		price: 1800, // 1800
 		num: 540,
-		gift: 60,
+		gift: 60, // 60
 		hot: false
 	},
 	{
 		price: 3200, // 3200
 		num: 960,
-		gift: 150,
+		gift: 150, // 150
 		hot: true
 	},
 	{
 		price: 6800, // 6800
 		num: 2040,
-		gift: 360,
+		gift: 360, // 360
 		hot: false
 	},
 	{
 		price: 11800, // 11800
 		num: 3540,
-		gift: 810,
+		gift: 810, // 810
 		hot: false
 	},
 	{
 		price: 19800, // 19800
 		num: 5940,
-		gift: 1560,
+		gift: 1560, // 1560
 		hot: false
 	},
 	{
 		price: 32800, // 32800
 		num: 9840,
-		gift: 3060,
+		gift: 3060, // 3060
 		hot: false
 	},
 	{
 		price: 64800, // 64800
 		num: 19440,
-		gift: 7560,
+		gift: 7560, // 7560
 		hot: false
 	},
 ]
 
 const vipQyList = [
 	'每日多领3倍采贝',
-	'无限对话记忆',
+	'超长对话记忆',
 	'购买采贝多赠10%',
 	'采贝永久累积',
 	'会员社群资格',
 	'免费角色微调',
 	'100+音色体验',
 	'亲密值双倍增加',
-	'亲密值双倍保底'
-	// '高峰期优先回复',
+	'亲密值双倍保底',
+	'捏崽优先审核',
+	'高级模型体验',
+	'高峰期优先回复'
 ]
 
 const cbDocList = [
@@ -151,16 +160,54 @@ const cbDocList = [
 ]
 
 const vipDocObj = {
-	wxUrl: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/wx/wx.jpg?2024-10-02',
-	// info: '新版会员已取消无限聊天功能，改为按量扣费，请谅解。 \n 我们正在不断加强会员特权，为您提供会员专享权益！',
+	// wxVipUrl: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/wx/group-vip.jpg?2024-10-02',
+	wxVipUrl: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/wx/caili.jpg', // 暂存用
+	info: '扫描二维码，添加官方工作人员（备注付费用户入群）。' +
+		'\n 发送个人中心、会员中心截图入群。'
 	// info: '🍎用户长按“采贝余额”区域获取采贝'
 }
 
+const cardList = [
+	{
+		originalPrice: 2998,
+		price: 999, // 999
+		hour: 1, // 1
+		gift: 3, // 3
+		minute: 63, // 1*60 + 3
+		hot: false,
+	},
+	{
+		originalPrice: 8998,
+		price: 2899, // 2899
+		hour: 3,  // 3
+		gift: 15, // 15
+		minute: 195, // 3*60 + 15
+		hot: true,
+	},
+	{
+		originalPrice: 23998,
+		price: 7899, // 7899
+		hour: 8, // 16
+		gift: 45, // 45
+		minute: 525, // 8*60 + 45
+		hot: false,
+	},
+]
+
+const cardInfo = {
+	show: true,
+	cardTotal: 100,
+	title: '无限聊天 • 购买后立即生效 • 多次购买累积生效',
+	desc: '*购买前请先点击右侧阅读畅聊卡说明👉。'
+}
 
 module.exports = {
 	vipList,
 	cbList,
 	vipQyList,
 	cbDocList,
-	vipDocObj
+	vipDocObj,
+
+	cardList,
+	cardInfo
 }

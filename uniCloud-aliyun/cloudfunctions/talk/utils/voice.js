@@ -34,18 +34,6 @@ const manList = [
 		"text": "这个力度怎么样"
 	},
 	{
-		"id": "audiobook_male_1",
-		"name": "温柔男主",
-		"tag": [
-			"男",
-			"青年",
-			"温柔"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/温柔男主.wav",
-		"cb": 1,
-		"text": "下次还敢吗"
-	},
-	{
 		"id": "male-qn-qingse",
 		"name": "青涩学弟",
 		"tag": [
@@ -1302,18 +1290,6 @@ const womanList = [
 		"text": "猜猜我今天会做什么小恶作剧？"
 	},
 	{
-		"id": "female-tianmei",
-		"name": "呆萌女童",
-		"tag": [
-			"女",
-			"少年",
-			"呆萌"
-		],
-		"url": "https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/sound/example/呆萌女童.wav",
-		"cb": 1,
-		"text": "大哥哥，你可以给我买棒棒糖吃吗？"
-	},
-	{
 		"id": "keai_nvsheng",
 		"name": "可爱女生",
 		"tag": [
@@ -1429,5 +1405,9 @@ module.exports = {
 	list,
 	genderList,
 	ageList,
-	version: 1.1
+	/**
+	 * 1.1 补充音色
+	 * 1.2 音色去重
+	 */
+	version: 1.2
 }

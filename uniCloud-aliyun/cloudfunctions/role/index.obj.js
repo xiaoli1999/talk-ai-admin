@@ -59,46 +59,58 @@ module.exports = {
 	 * @param { Object } params { category_id, user_id, prompt } user_id用户id、role_id角色id，是否喜欢操作
 	 * @returns {object} { errMsg: '', data: true } 错误信息及创建结果
 	 */
-	async createRole ({ category_id, user_id, prompt, username, nickname }) {
+	async createRole (event) {
 		try {
+			let { _id, category_id, avatar, avatar_long, name, gender, tag_list, desc, prompt, guide_list, voice_id, create_time, state, user_id, username, nickname, vip, user_cb_pay_num, styles } = event
 
-			if (!category_id) return { data: null, errMsg: '请选择采崽分类' }
 			if (!user_id) return { data: null, errMsg: '请重新登录' }
-			if (!prompt) return { data: null, errMsg: '请填写采崽设定' }
+
+			/* 暂用styles代替提交审核次数 */
+			styles = state === 0 ? (styles || 0) + 1 : styles || 0
 
 			const roleObj = {
 				category_id,
 				sort: 0,
 				show: true,
-				name: '',
+				name,
 				user_name: '我',
-				avatar: '',
-				avatar_long: '',
-				gender: 0,
-				desc: '',
-				tag_list: [],
-				styles: 1,
+				avatar,
+				avatar_long,
+				gender,
+				desc,
+				tag_list,
+				styles,
 				prompt,
 				hide_prompt: '',
-				guide_list: [],
+				guide_list,
 				hot_count: 0,
 				talk_count: 0,
+
 				/* 2.5新增 */
 				today_hot_count: 0,
 				today_talk_count: 0,
 				like_count: 0,
-				voice_id: '',
+				voice_id,
 				voice_url: '',
 				last_talk_time: '',
-				create_time: Date.now(),
-				update_time: '',
+				create_time: create_time || Date.now(),
+				update_time: Date.now(),
 				creator_id: user_id,
 				looks_prompt: '',
 				username,
-				nickname
+				nickname,
+				/* 3.5新增 */
+				vip,
+				version: avatar_long ? 3.8 : 3.52,
+				/*3.52新增*/
+				user_cb_pay_num,
+
+				/* 3.8 todo 捏崽功能 */
+				state,
+				refuse_reason: ''
 			}
 
-			const { errMsg } = await rolesMyDb.add(roleObj).catch(e => e)
+			const { errMsg } = _id ? await rolesMyDb.doc(_id).update(roleObj).catch(e => e) : await rolesMyDb.add(roleObj).catch(e => e)
 			if (errMsg) return { data: null, errMsg }
 
 			return { data: true, errMsg: '创建成功' }
