@@ -1,3 +1,11 @@
+const UniSubscribemsg = require('uni-subscribemsg');
+
+// 初始化实例
+let uniSubscribemsg = new UniSubscribemsg({
+	dcloudAppid: "__UNI__EA1DCA9",
+	provider: "weixin-mp",
+});
+
 /* 数据库 */
 const db = uniCloud.database();
 const dbJQL = uniCloud.databaseForJQL(db)
@@ -117,5 +125,84 @@ module.exports = {
 		} catch ({ message }) {
 			return { errMsg: message }
 		}
-	}
+	},
+
+	/**
+	 * @function checkRoleAndNotice 审核角色并通知
+	 * @param { Object } event { category_id } 创作者id
+	 * @returns {object} { errMsg: '', data: true } 错误信息及创建结果
+	 */
+	async checkRoleAndNotice (event) {
+		try {
+			console.log(event)
+			const { state, roleInfo, date } = event
+			if (!roleInfo) return { errMsg: '缺少角色数据' }
+
+			/* 获取用户信息 */
+			const { data: userList } = await db.collection('users').doc(roleInfo.creator_id).get()
+			const userInfo = userList[0]
+			if (!userInfo) return { errMsg: '未找到该用户' }
+
+			let thing1 = roleInfo.name
+			let phrase2 = ''
+			let phrase3 = ''
+			let thing5 = ''
+			let page = ''
+
+			if (state === -1) {
+				/* 打回草稿 */
+				phrase2 = '驳回草稿箱'
+				phrase3 = ''
+				thing5 = '请阅读捏崽攻略，优化采崽信息。'
+				page = 'pages/create/draft/draft'
+
+			} else if (state === 1) {
+				/* 审核失败 */
+				phrase2 = '未通过'
+				phrase3 = ''
+				thing5 = '审核未通过，请根据驳回原因再次修改。'
+				page = 'pages/role/my/my?state=1'
+
+			} else if (state === 0) {
+				/* 审核成功 */
+				phrase2 = '已通过'
+				phrase3 = roleInfo.high_quality ? '优质采崽' : '普通采崽'
+				thing5 = roleInfo.high_quality ? '优质采崽！流量扶持！奖励20个采贝！' : '普通采崽，奖励5个采贝！期待你的优质采崽哦！'
+				page = `pages/role/talk/talk?id=${ roleInfo._id }`
+
+				/* 发放采贝奖励 */
+				const params = { cb_num: userInfo.cb_num }
+
+				params.cb_num = Math.ceil(params.cb_num + (roleInfo.high_quality ? 20 : 5))
+
+				await db.collection('users').doc(roleInfo.creator_id).update(params)
+			}
+
+			await uniSubscribemsg.sendSubscribeMessage({
+				touser: userInfo.openid,
+				template_id: "ZW7rs8CAPeezX7GeIjQl8uS2aDr5oqAhjY7IyZy9ALw",
+				page: page, // 小程序页面地址
+				miniprogram_state: "developer", // 跳转小程序类型：developer为开发版；trial为体验版；formal为正式版；默认为正式版
+				lang: "zh_CN",
+				data: {
+					thing1: { value: thing1 },
+					phrase2: { value: phrase2 },
+					phrase3: { value: phrase3 },
+					time4: { value: date },
+					thing5: { value: thing5 }
+
+					// thing1: { value: "张三" },
+					// phrase2: { value: "已通过" },
+					// phrase3: { value: "未推荐" },
+					// time4: { value: "2025-04-16 00:32:20" },
+					// thing5: { value: "审核测试哦" },
+				}
+			});
+
+			return { date: true }
+
+		} catch ({ message }) {
+			return { errMsg: message }
+		}
+	},
 }

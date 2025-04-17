@@ -264,6 +264,7 @@ import { createAvatarKey, montageImgUrl } from '../../utils/common'
 import { genderEnums, genderEnumsList } from "@/config/enums";
 
 const TalkCloud = uniCloud.importObject('talk', { customUI: true })
+const RoleCloud = uniCloud.importObject('role', { customUI: true })
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
