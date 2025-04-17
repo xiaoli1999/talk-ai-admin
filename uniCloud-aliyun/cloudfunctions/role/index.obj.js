@@ -16,6 +16,7 @@ const likesJQLDb = dbJQL.collection('roles_like')
 const rolesDb = db.collection('roles')
 
 const rolesMyDb = db.collection('roles_my')
+const UsersDb = db.collection('users')
 
 
 module.exports = {
@@ -134,7 +135,6 @@ module.exports = {
 	 */
 	async checkRoleAndNotice (event) {
 		try {
-			console.log(event)
 			const { state, roleInfo, date } = event
 			if (!roleInfo) return { errMsg: '缺少角色数据' }
 
@@ -145,44 +145,43 @@ module.exports = {
 
 			let thing1 = roleInfo.name
 			let phrase2 = ''
-			let phrase3 = ''
+			let phrase3 = '无'
 			let thing5 = ''
 			let page = ''
 
 			if (state === -1) {
 				/* 打回草稿 */
 				phrase2 = '驳回草稿箱'
-				phrase3 = ''
-				thing5 = '请阅读捏崽攻略，优化采崽信息。'
+				thing5 = '请认真阅读捏崽攻略，正确使用捏崽功能。'
 				page = 'pages/create/draft/draft'
 
 			} else if (state === 1) {
 				/* 审核失败 */
 				phrase2 = '未通过'
-				phrase3 = ''
-				thing5 = '审核未通过，请根据驳回原因再次修改。'
+				thing5 = '审核未通过，请根据驳回原因进行修改。'
 				page = 'pages/role/my/my?state=1'
 
 			} else if (state === 0) {
 				/* 审核成功 */
 				phrase2 = '已通过'
-				phrase3 = roleInfo.high_quality ? '优质采崽' : '普通采崽'
-				thing5 = roleInfo.high_quality ? '优质采崽！流量扶持！奖励20个采贝！' : '普通采崽，奖励5个采贝！期待你的优质采崽哦！'
+				phrase3 = roleInfo.high_quality ? '已推荐' : '未推荐'
+				// thing5 = roleInfo.high_quality ? '优质采崽！奖励20个采贝！\n流量扶持中~' : '普通采崽，奖励5个采贝！\n加油捏崽鸭！'
+				thing5 = `采崽已上线！\n点击和${roleInfo.name}聊天叭~`
 				page = `pages/role/talk/talk?id=${ roleInfo._id }`
 
-				/* 发放采贝奖励 */
-				const params = { cb_num: userInfo.cb_num }
-
-				params.cb_num = Math.ceil(params.cb_num + (roleInfo.high_quality ? 20 : 5))
-
-				await db.collection('users').doc(roleInfo.creator_id).update(params)
+				// todo 关闭奖励，等待放开
+				// /* 发放采贝奖励 */
+				// const params = { cb_num: userInfo.cb_num }
+				// params.cb_num = Math.ceil(params.cb_num + (roleInfo.high_quality ? 20 : 5))
+				//
+				// await UsersDb.doc(roleInfo.creator_id).update(params)
 			}
 
-			await uniSubscribemsg.sendSubscribeMessage({
+			const res = await uniSubscribemsg.sendSubscribeMessage({
 				touser: userInfo.openid,
 				template_id: "ZW7rs8CAPeezX7GeIjQl8uS2aDr5oqAhjY7IyZy9ALw",
 				page: page, // 小程序页面地址
-				miniprogram_state: "developer", // 跳转小程序类型：developer为开发版；trial为体验版；formal为正式版；默认为正式版
+				miniprogram_state: "formal", // 跳转小程序类型：developer为开发版；trial为体验版；formal为正式版；默认为正式版
 				lang: "zh_CN",
 				data: {
 					thing1: { value: thing1 },
@@ -199,7 +198,7 @@ module.exports = {
 				}
 			});
 
-			return { date: true }
+			return { data: res.errCode === 0 }
 
 		} catch ({ message }) {
 			return { errMsg: message }

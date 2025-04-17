@@ -357,7 +357,7 @@ const refuseData = reactive([
             '【简介】人物关系混乱，崽崽为第三人称（他/她/它/名称），用户为第二人称（你/主控/用户/名称），请进行修改。',
             '【设定】人物关系混乱，崽崽为第二人称（你/名称），用户为第一称（我/主控/用户/名称），请进行修改。',
 
-            '【简介、设定、开场白】等语句不通顺，缺少标点符合，请进行修改。',
+            '【简介、设定、开场白】等语句不通顺，缺少标点符号，请进行修改。',
 
             '【简介、设定】缺少崽崽详细信息，请进行修改。',
             '【简介、设定】等存在凑字数等行为，请认真填写。',
@@ -373,7 +373,7 @@ const refuseData = reactive([
         list: [
             '【形象图、头像】涉及“低俗、色情、血腥、暴力、未成年、素人、明星”等内容，请进行修改。',
             '【形象图】存在“水印、模糊、低质量”等，请进行修改。',
-            '【形象图】尺寸有误，应为9:16比例，请进行修改。',
+            '【形象图】尺寸有误，应为竖版构图，比例为9:16，请进行修改。',
             '【头像】未正确裁剪头像（需保证脸部清晰），请调整头像。',
         ]
     },
@@ -515,8 +515,10 @@ const setRoleDraft = async () => {
     if (errMsg) return ElMessage.error(errMsg)
 
     roleShow.value = false
-
     ElMessage.success('已打回草稿箱')
+
+    const checkNoticeRes = await RoleCloud.checkRoleAndNotice({ state: -1, roleInfo: roleData.value, date: dayjs().format('YYYY-MM-DD HH:mm:ss') }).catch(() => ({}))
+    if (!checkNoticeRes.data) ElMessage.error('通知失败！')
 
     await getList()
 }
@@ -532,6 +534,9 @@ const refuseRole = async () => {
     roleShow.value = false
 
     ElMessage.success('操作成功')
+
+    const checkNoticeRes = await RoleCloud.checkRoleAndNotice({ state: 1, roleInfo: roleData.value, date: dayjs().format('YYYY-MM-DD HH:mm:ss') }).catch(() => ({}))
+    if (!checkNoticeRes.data) ElMessage.error('通知失败！')
 
     await getList()
 }
@@ -566,7 +571,7 @@ const saveRole = async (isGood = false) => {
 
     /* 设置特殊参数 */
     /* 更新时间,多加10s */
-    const time = dayjs().add(20, 'second').valueOf()
+    const time = dayjs().add(10, 'second').valueOf()
     params.update_time = time
     params.last_talk_time = time
     /* 优质角色设置热度 */
@@ -578,7 +583,7 @@ const saveRole = async (isGood = false) => {
     params.avatar_bg_color = data.RGB ? `#${ data.RGB.slice(2) }` : ''
 
     /* 新增线上角色 */
-    const { errMsg } = await rolesDb.add(params).catch(e => e)
+    const { result: { id, errMsg } } = await rolesDb.add(params).catch(e => e)
     if (errMsg) return ElMessage.error(errMsg)
 
     ElMessage.success('上线成功')
@@ -587,6 +592,10 @@ const saveRole = async (isGood = false) => {
 
     /* 删除测试角色 */
     await rolesMyDb.doc(roleId).remove();
+
+    const { result: { data: roleInfo } } = await rolesDb.doc(id).get()
+    const checkNoticeRes = await RoleCloud.checkRoleAndNotice({ state: 0, roleInfo: roleInfo[0], date: dayjs().format('YYYY-MM-DD HH:mm:ss') }).catch(() => ({}))
+    if (!checkNoticeRes.data) ElMessage.error('通知失败！')
 
     await getList()
 }
