@@ -130,7 +130,7 @@ module.exports = {
 
 	/**
 	 * @function checkRoleAndNotice 审核角色并通知
-	 * @param { Object } event { category_id } 创作者id
+	 * @param { Object } event { state, roleInfo, date } 状态、角色信息、时间
 	 * @returns {object} { errMsg: '', data: true } 错误信息及创建结果
 	 */
 	async checkRoleAndNotice (event) {
@@ -153,13 +153,15 @@ module.exports = {
 				/* 打回草稿 */
 				phrase2 = '驳回草稿箱'
 				thing5 = '请认真阅读捏崽攻略，正确使用捏崽功能。'
-				page = 'pages/create/draft/draft'
+				page = 'pages/index/index'
+				// page = 'pages/create/draft/draft'
 
 			} else if (state === 1) {
 				/* 审核失败 */
 				phrase2 = '未通过'
 				thing5 = '审核未通过，请根据驳回原因进行修改。'
-				page = 'pages/role/my/my?state=1'
+				page = 'pages/index/index'
+				// page = 'pages/role/my/my?state=1'
 
 			} else if (state === 0) {
 				/* 审核成功 */
@@ -167,6 +169,7 @@ module.exports = {
 				phrase3 = roleInfo.high_quality ? '已推荐' : '未推荐'
 				// thing5 = roleInfo.high_quality ? '优质采崽！奖励20个采贝！\n流量扶持中~' : '普通采崽，奖励5个采贝！\n加油捏崽鸭！'
 				thing5 = `采崽已上线！\n点击和${roleInfo.name}聊天叭~`
+				// page = `pages/index/index`
 				page = `pages/role/talk/talk?id=${ roleInfo._id }`
 
 				// todo 关闭奖励，等待放开
