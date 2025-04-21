@@ -614,6 +614,32 @@ onMounted(async () => {
     await getList()
     getVoiceList()
 })
+
+// 更新角色主色
+// const updateRoleAvatarBgColor = async () => {
+//     try {
+//         /* 获取用户信息 .get({ getCount: true }) */
+//         const { result: { data, count } } = await db.collection('roles').where({ category_id: dbCmd.neq('null'), avatar_bg_color: db.command.in([undefined, null, '']) }).limit(10).get({ getCount: true })
+//
+//         console.log(`还剩${count}个，本地运行10个`)
+//
+//         for (let i = 0; i < data.length; i++) {
+//             const { data: imgData } = await uni.request({ url: data[i].avatar_long + '?x-oss-process=image/average-hue', method: 'get' }).catch(() => ({}))
+//             if (!imgData) return ElMessage.error(`第${i+1}个获取主色报错`)
+//
+//             const avatar_bg_color = imgData.RGB ? `#${ imgData.RGB.slice(2) }` : ''
+//
+//             const { errMsg } = await rolesDb.doc(data[i]._id).update({ avatar_bg_color }).catch(e => e)
+//             if (errMsg) return ElMessage.error(errMsg)
+//
+//             console.log(`第${i+1}个，【${data[i].name}】颜色为【${avatar_bg_color}】`)
+//         }
+//
+//
+//     } catch ({ message }) {
+//         return { errMsg: message }
+//     }
+// }
 </script>
 
 <style lang="scss" scoped>
