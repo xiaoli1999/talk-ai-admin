@@ -180,7 +180,7 @@ module.exports = {
 				touser: userInfo.openid,
 				template_id: "ZW7rs8CAPeezX7GeIjQl8uS2aDr5oqAhjY7IyZy9ALw",
 				page: page, // 小程序页面地址
-				miniprogram_state: "trial", // 跳转小程序类型：developer为开发版；trial为体验版；formal为正式版；默认为正式版
+				miniprogram_state: "formal", // 跳转小程序类型：developer为开发版；trial为体验版；formal为正式版；默认为正式版
 				lang: "zh_CN",
 				data: {
 					thing1: { value: thing1 },
