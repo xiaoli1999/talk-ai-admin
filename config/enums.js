@@ -69,6 +69,7 @@ export const payEnums = {
 	'cb': '采贝',
 	'vip': '会员',
 	'first-cb': '首充',
-	'card': '畅聊卡'
+	'card': '畅聊卡',
+	'gift-bag': '礼包',
 }
 export const payEnumsList = enumsToList(payEnums)

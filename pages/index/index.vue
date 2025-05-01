@@ -61,6 +61,7 @@
                             <div v-if="row.type === 'vip'">{{ row.recharge_day }}天</div>
                             <div v-else-if=" row.type.includes('cb')">{{ row.recharge_cb }}个</div>
                             <div v-if="row.type === 'card'">{{ parseInt(row.recharge_card / 60) }}小时</div>
+                            <div v-if="row.type === 'gift-bag'">1个</div>
                             <div v-else></div>
                         </div>
                     </template>
