@@ -24,6 +24,9 @@ export const platformEnums = {
 	'wxad-video': '广告-视频号',
 	'wxad-cover': '广告-小程序封面',
 	'wxad-popup': '广告-小程序插屏',
+	'pay': '广告-付费（旧）',
+	'wxad-pay': '广告-付费',
+	'wxad-order': '广告-下单',
 }
 
 export const genderEnums = {
