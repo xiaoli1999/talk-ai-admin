@@ -210,14 +210,17 @@
                     </div>
                 </el-form-item>
 
-                <!--                <div style="display: flex;">-->
-                <!--                    <el-form-item label="角色排序" prop="sort">-->
-                <!--                        <el-input-number v-model="roleData.sort" :min="0" :max="1000" :precision="0" :step="1" controls-position="right" />-->
-                <!--                    </el-form-item>-->
-                <!--                    <el-form-item label="是否启用" prop="show">-->
-                <!--                        <el-switch v-model="roleData.show" />-->
-                <!--                    </el-form-item>-->
-                <!--                </div>-->
+                <div style="display: flex;align-items: center;">
+                    <el-form-item label="是否启用" prop="show">
+                        <el-switch v-model="roleData.show" />
+                    </el-form-item>
+
+                    <el-form-item label="图片来源" prop="show" style="margin-right: 20px;">
+                        <el-tag v-if="roleData.avatar_long.includes('liblib')" type="primary">LibLib</el-tag>
+                        <el-tag v-else-if="roleData.avatar_long.includes('role-create/ai')" type="success">Coze</el-tag>
+                        <el-tag v-else type="info">上传</el-tag>
+                    </el-form-item>
+                </div>
             </el-form>
 
             <template #footer>
@@ -232,13 +235,13 @@
             </template>
         </el-dialog>
 
-        <el-dialog class="dialog" v-model="refuseShow" width="660px" title="拒绝原因" align-center draggable :close-on-click-modal="false">
+        <el-dialog class="dialog" v-model="refuseShow" width="760px" title="拒绝原因" align-center draggable :close-on-click-modal="false">
             <div>
                 <el-tabs v-model="refuseName">
                     <el-tab-pane v-for="item in refuseData" :label="item.name" :name="item.name" />
                 </el-tabs>
 
-                <div style="height: 250px;">
+                <div style="height: 300px;">
                     <div v-for="(item, i) in (refuseData.find(i => i.name === refuseName) || { list: [] }).list" :key="i" @click="roleData.refuse_reason += `${ item } \n`">
                         <el-button type="info" text size="small">{{ item }}</el-button>
                     </div>
@@ -351,7 +354,7 @@ const refuseData = reactive([
     {
         name: '内容',
         list: [
-            '【名称、简介、设定、标签、开场白】等涉及“低俗、色情、血腥、暴力、未成年”等内容，请进行修改。',
+            '【名称、简介、设定、标签、开场白】等涉及“低俗、色情、性暗示、血腥、暴力、未成年、政治、军事、明星”等内容，请进行修改。',
             '【简介、设定】内容混淆，简介是给用户看的，设定才会直接影响崽崽性格、回复效果，请认真填写设定。',
 
             '【简介】人物关系混乱，崽崽为第三人称（他/她/它/名称），用户为第二人称（你/主控/用户/名称），请进行修改。',
@@ -362,6 +365,9 @@ const refuseData = reactive([
             '【简介、设定】缺少崽崽详细信息，请进行修改。',
             '【简介、设定】等存在凑字数等行为，请认真填写。',
 
+            '【简介】中的作者寄语请写在最后面，放在（）里，请进行修改。',
+            '【设定】缺少【简介】中的剧情、崽崽信息、用户信息等，请进行补充。',
+
 
             '【名称】不够具体，请为崽崽起一个具体的名称。',
             '【标签】不符合崽崽信息，请进行修改。',
@@ -371,8 +377,8 @@ const refuseData = reactive([
     {
         name: '图片',
         list: [
-            '【形象图、头像】涉及“低俗、色情、血腥、暴力、未成年、素人、明星”等内容，请进行修改。',
-            '【形象图】存在“水印、模糊、低质量”等，请进行修改。',
+            '【形象图、头像】涉及“低俗、色情、性暗示、血腥、暴露、暴力、未成年、素人、明星”等内容，请进行修改。',
+            '【形象图】存在“水印、模糊、低质量、截图、黑边”等，请进行修改。',
             '【形象图】尺寸有误，应为竖版构图，比例为9:16，请进行修改。',
             '【头像】未正确裁剪头像（需保证脸部清晰），请调整头像。',
         ]
