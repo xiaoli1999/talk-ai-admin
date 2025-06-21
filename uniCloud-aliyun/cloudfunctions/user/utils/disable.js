@@ -20,6 +20,13 @@ const disableUserList = [
 	'oicrC61cCM0CnefaXfBth6BRDAEQ', // 未成年充值，家长要求禁用退款（共充值32元），未退款封号
 	'oicrC665HGl1NNly5CG9WuCzviJc', // 未成年充值，家长要求退款（共充值50.98元），先封号
 	'oicrC6-2XSK58L-eOCJyhW6KMXDc', // 未成年充值，家长要求退款（退款20元），封号
+	'oicrC69Z8vO3bC1B7c2rFsUhyGu8', // 未成年充值，家长要求退款（共充值39.93元），先封号
+	// 'oicrC61UeBaa39Yz6q2L8d1wRuFc', // 无故辱骂工作人员，封号
+	'oicrC6-hBumKu7dEkmdxGET90svo', // 未成年充值，家长要求退款（共充值81.86元），先封号
+	'oicrC6z0s45sMy2ccNMu1uCSoCD8', // 评价诋毁抄袭，封禁该账号
+	'oicrC68PPuORlNJThExQyBgHHAx8', // 未成年充值（共充值28.98元），封号
+	'oicrC60nsJBpyh2RbN2yQodGOHH4', // 未成年充值（共充值461.74元），封号
+	'oicrC60DHuranAYANd4PBjyMruiU', // 未成年充值（共充值276.66元），封号，退款一半
 ]
 
 module.exports = {

@@ -38,12 +38,18 @@ const MINIMAX = {
 
 const COZE = {
 	/* 采黎 */
-	TOKEN: 'pat_RT7SJi6GZaqnhbWD9UCQNqr3lGkF0tprlUL2OC0TgnBrN4wCZHL2zjPj4HKD484G', // 2025-04-16过期
+	TOKEN: 'pat_pG2wTaah6prZvVaP5KxQxDNC4Y74xmdwIv7iE6x7KvYrDZO9Sm2vDseuyxSconVk', // 2025-07-19过期
 	WORKID: '7482722877408051234'
+}
+
+const LibLib = {
+	AccessKey: 'z2ZpD88ZOXSjNes0impS_Q',
+	SecretKey: 'mxjNQWj1DTQCCb5dRg5deIDIO5H4t6nO'
 }
 
 module.exports = {
 	XF,
 	MINIMAX,
-	COZE
+	COZE,
+	LibLib
 }

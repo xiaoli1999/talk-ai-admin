@@ -233,7 +233,7 @@ const main = {
 			const current_time = Date.now()
 
 			console.log('\n ----清除非会员用户免费采贝/清除当天看视频广告次数/清除当天领取聊天奖励标记/清除过期的畅聊卡结束时间----', dayjs().add(8, 'hour').format('YYYY-MM-DD HH:mm:ss'));
-			// 免费采贝不重置
+			// 6月免费采贝不重置
 			// usersJqlDb.where(`cb_num > 0 && vip_end_time < ${ current_time }`).update({ cb_num: 0 })
 			usersJqlDb.where('today_video_ad_count > 0').update({ today_video_ad_count: 0 })
 			usersJqlDb.where('today_receive_talk_count > 0').update({ today_receive_talk_count: 0 })
@@ -464,59 +464,59 @@ const main = {
 		// // 会员采贝补偿 100
 		// console.log(`-----会员采贝补偿执行时间-----`, dayjs(1740063600000).format('YYYY-MM-DD HH:mm:ss'))
 		// const { data } = await usersDb.where({ last_login_date: dbCmd.gte(1739462400000), vip_end_time: dbCmd.gte(1740063600000) }).limit(1000).orderBy('last_login_date', 'desc').get({ count: true })
-		
+
 		// for (let i = 0; i < data.length; i++) {
 		// 	const user = data[i]
-		
+
 		// 	const num = Math.ceil(user.cb_num) + 100
-		
+
 		// 	console.log(`序号：${i+1}  |  `, user.nickname)
 		// 	console.log('付费采贝-更新前', user.cb_num)
 		// 	console.log('付费采贝-更新后', num)
-		
+
 		// 	await usersDb.doc(user._id).update({ cb_num: num })
 		// }
-		
+
 		// console.log('一共', data.length, '个', data)
-		
-		
+
+
 		// // 付费采贝用户补偿 100
 		// console.log(`-----付费采贝(非会员)用户补偿执行时间-----`, dayjs(1740063600000).format('YYYY-MM-DD HH:mm:ss'))
 		// const { data } = await usersDb.where({ last_login_date: dbCmd.gte(1739462400000), vip_end_time: dbCmd.lte(1740063600000), cb_pay_num: dbCmd.gt(0) }).limit(1000).orderBy('last_login_date', 'desc').get({ count: true })
-		
+
 		// for (let i = 0; i < data.length; i++) {
 		// 	const user = data[i]
-		
+
 		// 	const num = Math.ceil(user.cb_num) + 100
-		
+
 		// 	console.log(`序号：${i+1}  |  `, user.nickname)
 		// 	console.log('付费采贝-更新前', user.cb_pay_num, user.cb_num)
 		// 	console.log('付费采贝-更新后', num)
-		
+
 		// 	await usersDb.doc(user._id).update({ cb_num: num })
 		// }
-		
+
 		// console.log('一共', data.length, '个', data)
-		
-		
+
+
 		// 免费用户补偿采贝 50
 		// console.log(`-----免费用户(非会员，无付费采贝)用户补偿执行时间-----`, dayjs(1740063600000).format('YYYY-MM-DD HH:mm:ss'))
 		// const { data, count } = await usersDb.where({ last_login_date: dbCmd.gte(1739462400000), vip_end_time: dbCmd.lte(1740063600000), cb_pay_num: dbCmd.lte(0) }).skip(1000).limit(1000).orderBy('last_login_date', 'desc').get({ count: true })
-		
+
 		// console.log('-------count-------', data.length);
-		
+
 		// for (let i = 0; i < data.length; i++) {
 		// 	const user = data[i]
-		
+
 		// 	const num = Math.ceil(user.cb_num) + 50
-		
+
 		// 	console.log(`序号：${i+1}  |  `, user.nickname)
 		// 	console.log('付费采贝-更新前', user.cb_pay_num, user.cb_num)
 		// 	console.log('付费采贝-更新后', num)
-		
+
 		// 	await usersDb.doc(user._id).update({ cb_num: num })
 		// }
-		
+
 		// console.log('一共', data.length, '个', data)
 	}
 

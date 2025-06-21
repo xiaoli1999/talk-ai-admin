@@ -35,13 +35,42 @@ module.exports = {
 		try {
 			const data = { ...homeData }
 
-			const whereData = {
-				show: true
+			// const newWhereData = {
+			// 	_id: db.command.in(['67dd04322eea6559d2e0af65', '68386202fe975fd64c1ceced', '67f105f255b3373c729673e1'])
+			// }
+			// const { data: newManList } = await rolesDb.where(newWhereData).orderBy('hot_count', 'desc').get()
+			// data.newList = newManList || []
+			// data.newList = []
+
+			const newWhereData = {
+				show: true,
+				$or: [
+					{ high_quality: true },
+					{ talk_count: db.command.gte(1000) } // gte 表示 greater than or equal（大于等于）
+				]
 			}
 
 			/* 获取最新角色（最新暂时不区分性别） */
-			const { data: newList } = await rolesDb.where(whereData).limit(30).orderBy('create_time', 'desc').get()
-			data.newList = newList || []
+			const { data: newManList } = await rolesDb.where({ ...newWhereData, gender: 1 }).limit(18).orderBy('create_time', 'desc').get()
+			const { data: newWomanList } = await rolesDb.where({ ...newWhereData, gender: 2 }).limit(18).orderBy('create_time', 'desc').get()
+
+			let newList = []
+			for (let i = 0; i < Math.max(newManList.length, newWomanList.length); i++) {
+				if (gender === 1) {
+					if (newWomanList[i]) newList.push(newWomanList[i]);
+					if (newManList[i]) newList.push(newManList[i]);
+				} else {
+					if (newManList[i]) newList.push(newManList[i]);
+					if (newWomanList[i]) newList.push(newWomanList[i]);
+				}
+			}
+
+			data.newList = newList || [...newManList, ...newWomanList]
+
+
+			const whereData = {
+				show: true
+			}
 
 			if (gender) whereData.gender = gender === 1 ? 2 : 1
 
@@ -72,14 +101,21 @@ module.exports = {
 	 */
 	async getHomeHotList ({ gender }) {
 		try {
+			// let data = []
+			//
+			// const whereData = {
+			// 	_id: db.command.in(['68445eec4b92476e97e41cb5'])
+			// }
+			// const { data: list } = await rolesDb.where(whereData).get()
+			// data = list || []
 
 			const whereData = { show: true }
 
 			if (gender) whereData.gender = gender === 1 ? 2 : 1
 
 			/* 获取当天热度最高的男、女 */
-			const { data: menList } = await rolesDb.where({ show: true, gender: 1 }).limit(10).orderBy('today_hot_count', 'desc').orderBy('last_talk_time', 'desc').get()
-			const { data: womenList } = await rolesDb.where({ show: true, gender: 2 }).limit(10).orderBy('today_hot_count', 'desc').orderBy('last_talk_time', 'desc').get()
+			const { data: menList } = await rolesDb.where({ show: true, gender: 1 }).limit(20).orderBy('today_hot_count', 'desc').orderBy('last_talk_time', 'desc').get()
+			const { data: womenList } = await rolesDb.where({ show: true, gender: 2 }).limit(20).orderBy('today_hot_count', 'desc').orderBy('last_talk_time', 'desc').get()
 
 			const data = []
 

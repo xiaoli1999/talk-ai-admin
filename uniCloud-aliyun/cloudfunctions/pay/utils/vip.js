@@ -1,4 +1,12 @@
 const vipList = [
+	// {
+	// 	name: '3天会员',
+	// 	day: 3,
+	// 	originalPrice: 998, // 1398
+	// 	price: 798, // 998
+	// 	hot: false,
+	// 	desc: '周末限时福利'
+	// },
 	{
 		name: '周卡',
 		day: 7,
@@ -13,7 +21,7 @@ const vipList = [
 		originalPrice: 4298, // 3998
 		price: 2898, // 2498
 		hot: true,
-		desc: '限时特价'
+		desc: '超值特惠'
 	},
 	{
 		name: '季卡',
@@ -67,31 +75,31 @@ const cbList = [
 	},
 	{
 		price: 6800, // 6800
-		num: 2040,
+		num: 2060,
 		gift: 360, // 360
 		hot: false
 	},
 	{
 		price: 11800, // 11800
-		num: 3540,
+		num: 3560,
 		gift: 810, // 810
 		hot: false
 	},
 	{
 		price: 19800, // 19800
-		num: 5940,
+		num: 5980,
 		gift: 1560, // 1560
 		hot: false
 	},
 	{
 		price: 32800, // 32800
-		num: 9840,
+		num: 9880,
 		gift: 3060, // 3060
 		hot: false
 	},
 	{
 		price: 64800, // 64800
-		num: 19440,
+		num: 19580,
 		gift: 7560, // 7560
 		hot: false
 	},
@@ -162,8 +170,9 @@ const cbDocList = [
 const vipDocObj = {
 	// wxVipUrl: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/wx/group-vip.jpg?2024-10-02',
 	wxVipUrl: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/wx/caili.jpg', // 暂存用
-	info: '扫描二维码，添加官方工作人员（备注付费用户入群）。' +
-		'\n 发送个人中心、会员中心截图入群。'
+	info: '微信群聊正在升级中，请耐心等待！ \n'
+	// info: '扫描二维码，添加官方工作人员（备注付费用户入群）。' +
+	// 	'\n 发送个人中心、会员中心截图入群。'
 	// info: '🍎用户长按“采贝余额”区域获取采贝'
 }
 
@@ -193,12 +202,39 @@ const cardList = [
 		hot: false,
 	},
 ]
-
 const cardInfo = {
 	show: true,
 	cardTotal: 100,
 	title: '无限聊天 • 购买后立即生效 • 多次购买累积生效',
-	desc: '*购买前请先点击右侧阅读畅聊卡说明👉。'
+	desc: '*购买前请先点击右侧阅读畅聊卡说明👉。',
+	tipImg: ''
+}
+
+const giftBagList = [
+	{
+		name: '周末福利礼包',
+		originalPrice: 7998,
+		price: 3998, // 4998
+		freePrice: '40元',
+		vip: 7,
+		cb: 1200,
+		card: 3,
+		bg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/user/vip/gift-bag/week.png?date=05-09'
+	},
+	{
+		name: '周末豪华礼包',
+		originalPrice: 15998,
+		price: 7998, // 9998
+		freePrice: '80元',
+		vip: 30,
+		cb: 2500,
+		card: 6,
+		bg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/user/vip/gift-bag/week-pro.png?date=05-09',
+		isPro: true
+	}
+]
+const giftBagInfo = {
+	show: true
 }
 
 module.exports = {
@@ -209,5 +245,8 @@ module.exports = {
 	vipDocObj,
 
 	cardList,
-	cardInfo
+	cardInfo,
+
+	giftBagList,
+	giftBagInfo
 }

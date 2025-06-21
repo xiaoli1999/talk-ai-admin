@@ -2,15 +2,17 @@
   "name": "talk",
   "version": "1.1.0",
   "description": "对话",
-  "dependencies": {},
+  "dependencies": {
+    "liblibai": "^0.0.11"
+  },
   "extensions": {
     "uni-cloud-jql": {}
   },
   "cloudfunction-config": {
     "concurrency": 1,
     "memorySize": 512,
-    "timeout": 60,
+    "timeout": 300,
     "path": "",
-    "runtime": "Nodejs16"
+    "runtime": "Nodejs18"
   }
 }

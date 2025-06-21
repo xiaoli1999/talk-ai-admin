@@ -2,7 +2,7 @@ const unipay = require('./uni-pay')
 const path = require('path');
 const { appId, mchId, v3Key } = require('./config.js')
 const dayjs = require('./utils/dayjs.js')
-const { vipList, cbList, vipQyList, cbDocList, vipDocObj, cardList, cardInfo } = require('./utils/vip.js')
+const { vipList, cbList, vipQyList, cbDocList, vipDocObj, cardList, cardInfo, giftBagList, giftBagInfo } = require('./utils/vip.js')
 
 /* 数据库 */
 const db = uniCloud.database();
@@ -47,6 +47,10 @@ module.exports = {
 				cardList,
 				cardInfo,
 
+				/* 节日礼包 */
+				giftBagList,
+				giftBagInfo,
+
 				/* ios相关信息 */
 				showIos: false, /* 是否展示ios */
 				version: '', /* 线上绕审核版本 */
@@ -80,6 +84,9 @@ module.exports = {
 				currentOrder = cbList.find(i => i.price === price)
 			} else if (type === 'card') {
 				currentOrder = cardList.find(i => i.price === price)
+			} else if (type === 'gift-bag') {
+				/* 礼包充值 */
+				currentOrder = giftBagList.find(i => i.price === price)
 			} else {}
 
 			if (!currentOrder) return { errMsg: '该套餐活动已结束，如有疑问请联系客服' }
@@ -103,7 +110,7 @@ module.exports = {
 
 			console.log('orderRes', orderRes);
 
-			const orderTypeEnums = { vip: '开通会员', cb: '充值采贝', 'first-cb': '采贝首充福利', card: '购买畅聊卡' }
+			const orderTypeEnums = { vip: '开通会员', cb: '充值采贝', 'first-cb': '采贝首充福利', card: '购买畅聊卡', 'gift-bag': '购买节日礼包' }
 			const params = {
 				openid: event.openid, //这个是客户端上传的用户的openid
 				body: orderTypeEnums[type],
@@ -200,6 +207,29 @@ module.exports = {
 					userParams.talk_card_end_time = nowDate + ms
 				}
 
+			} else if (type === 'gift-bag') {
+				/* 充值礼包逻辑 */
+				const giftBgInfo = giftBagList.find(i => i.price === total_fee)
+
+				/* 更新会员 */
+				if (vip_end_time > nowDate) {
+					userParams.vip_end_time = dayjs(vip_end_time).add(giftBgInfo.vip, 'day').valueOf()
+				} else {
+					userParams.vip_start_time = nowDate
+					userParams.vip_end_time = dayjs(nowDate).add(giftBgInfo.vip, 'day').valueOf()
+				}
+
+				/* 更新采贝 */
+				userParams.cb_pay_num = Math.ceil(cb_pay_num || 0) + giftBgInfo.cb
+
+				/* 更新畅聊卡 */
+				const ms = giftBgInfo.card * 60 * 60 * 1000
+				if (talk_card_end_time > nowDate) {
+					userParams.talk_card_end_time = talk_card_end_time + ms
+				} else {
+					/* 设置畅聊到期时间 */
+					userParams.talk_card_end_time = nowDate + ms
+				}
 			} else {}
 
 			console.log('\n -----------支付成功要改变的参数----------- \n', userParams);
