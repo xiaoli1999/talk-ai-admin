@@ -24,9 +24,13 @@ const EP = {
 };
 
 /**
- * 服务端模型配置：id → { tier, model(端点), max_tokens, temperature, top_p, thinking }
+ * 服务端模型配置：id → { tier, model(端点), max_tokens, temperature, top_p, thinking, continuePrompt }
  * max_tokens 是输出上限（落地手册 §2.1）：T1=300 T2=450 T3=700 T4=1100 T5=1500 idea=700
  * 采样参数与思考开关【按档独立可调】（初值=原全档统一 0.95/0.92/关思考；调优直接改对应档位行）
+ * continuePrompt：「继续说」补到末尾的 user 引导——历史以 assistant 结尾时豆包无用户回合可接、会间歇返空
+ *   （前端显示"消息走丢了"，见 index.obj.js toMessages）；按档定制续写口吻，直接改对应档位行即可调。
+ *   ⚠️ 只引导"接着说什么"，别写"补细节/更沉浸/写长"这类扩写指令——篇幅由各档系统提示词的字数约定独立管
+ *   （T1 60-120｜T2 160-200｜T3 240-320｜T4 360-440｜T5 400-700），补尾文案须保持篇幅中性，否则继续说越写越长。
  *
  * thinking 思考开关可选值（doubao-seed 系列；index.obj.js 实际传 thinking:{type:此值}）：
  *   - 'disabled'：关闭思考，直接生成——最快最省，陪伴场景默认（当前全档）
@@ -37,11 +41,16 @@ const EP = {
  *     而思考内容用户看不到（等于白扣）。若试完决定某档开思考，需同步评估该档 price 倍率是否还合理。
  */
 const modelConfig = {
-  t1: { tier: '1', model: EP.t1, max_tokens: 300,  temperature: 0.96, top_p: 0.95, thinking: 'disabled' },
-  t2: { tier: '2', model: EP.t2, max_tokens: 450,  temperature: 0.96, top_p: 0.94, thinking: 'disabled' },
-  t3: { tier: '3', model: EP.t3, max_tokens: 700,  temperature: 0.96, top_p: 0.94, thinking: 'disabled' },
-  t4: { tier: '4', model: EP.t4, max_tokens: 1100, temperature: 0.96, top_p: 0.94, thinking: 'disabled' },
-  t5: { tier: '5', model: EP.t5, max_tokens: 1500, temperature: 0.95, top_p: 0.92, thinking: 'disabled' },
+  t1: { tier: '1', model: EP.t1, max_tokens: 300,  temperature: 0.96, top_p: 0.95, thinking: 'disabled',
+        continuePrompt: '顺着刚才的话题自然往下聊，像真人聊天一样自然随意，别硬转话题。' },
+  t2: { tier: '2', model: EP.t2, max_tokens: 450,  temperature: 0.96, top_p: 0.94, thinking: 'disabled',
+        continuePrompt: '顺着刚才的暧昧氛围自然接话或回应，让心动再进一步，篇幅照常就好。' },
+  t3: { tier: '3', model: EP.t3, max_tokens: 700,  temperature: 0.96, top_p: 0.94, thinking: 'disabled',
+        continuePrompt: '顺着刚才的话继续，多给我一点只对我的偏爱与在意，自然往下接，保持本档一贯的篇幅与节奏。' },
+  t4: { tier: '4', model: EP.t4, max_tokens: 1100, temperature: 0.96, top_p: 0.94, thinking: 'disabled',
+        continuePrompt: '顺着刚才的剧情自然往下推进一点，保持本档一贯的篇幅与节奏，别铺陈也别收尾。' },
+  t5: { tier: '5', model: EP.t5, max_tokens: 1500, temperature: 0.95, top_p: 0.92, thinking: 'disabled',
+        continuePrompt: '顺着刚才的剧情自然往下推进，维持原有的沉浸感即可，篇幅照常、别越写越长。' },
 };
 
 /* 灵感档（mini，1 采贝/次）· 采样按手册 v13：temp0.9/top_p0.9/max700（≠5档的0.95/0.92），关思考 */

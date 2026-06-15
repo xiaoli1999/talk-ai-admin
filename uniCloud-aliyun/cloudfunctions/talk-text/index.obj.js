@@ -164,14 +164,27 @@ function callArkStream(messages, cfg, onToken, { retry = 1 } = {}) {
   })();
 }
 
-/** 把前端 talkList 转成火山 messages（仅 {role,content}，缓存友好） */
-function toMessages(systemPrompt, talkList) {
+/* 「继续说」默认补尾文案：某档 continuePrompt 缺省时兜底（正常 5 档均已在 model.js 配置） */
+const DEFAULT_CONTINUE_PROMPT = '请顺着刚才的内容，自然地接着说下去。';
+
+/**
+ * 把前端 talkList 转成火山 messages（仅 {role,content}，缓存友好）。
+ * @param {string} [continuePrompt] 「继续说」补尾引导（仅聊天路传）：历史以 assistant 结尾（继续说场景）时，
+ *   豆包无用户回合可接、会间歇返回空回复（前端显示"消息走丢了"）。传了才补一条 user 指令收尾
+ *   （仅本次请求，不落历史；按档定制口吻，见 model.js）。与老 talk 云函数同策。
+ *   ⚠️ 灵感路自带末尾 user 触发指令，不传此参——否则会叠出两条 user。
+ */
+function toMessages(systemPrompt, talkList, continuePrompt) {
   const msgs = [{ role: 'system', content: systemPrompt }];
   (talkList || []).forEach((m) => {
     const content = (m && m.content != null) ? String(m.content) : '';
     if (!content) return;
     msgs.push({ role: m.role === 'ai' ? 'assistant' : 'user', content });
   });
+  /* 末条 assistant（继续说）且调用方要求补尾 → 补 user，保证模型永远有用户回合可接、不返空 */
+  if (continuePrompt && msgs[msgs.length - 1].role === 'assistant') {
+    msgs.push({ role: 'user', content: continuePrompt });
+  }
   return msgs;
 }
 
@@ -188,7 +201,7 @@ function prepareReply({ modelId, name, prompt, talkList, intimacy, userPersona, 
   const edgeLv = computeEdgeLevel(tier, intimacy);                                  // 擦边档（服务端硬帽，防客户端伪造）
   /* userPersona/user_name：用户（主控）设定独立结构段（不传则不注入，兼容老客户端把设定拼在 prompt 末尾的方式） */
   const systemPrompt = buildSystemPrompt(tier, { name, rawText: prompt, edgeLv, userPersona, userName: user_name });  // 角色原文 + 主控设定 + 本轮擦边档 + 该档协议
-  const messages = toMessages(systemPrompt, talkList);
+  const messages = toMessages(systemPrompt, talkList, cfg.continuePrompt || DEFAULT_CONTINUE_PROMPT);  // 继续说补尾按档定制（见 model.js continuePrompt），缺省兜底
 
   const ctxText = (talkList || []).slice(-6).map((m) => m && m.content).join('\n');
   const inspect = (r) => ({
