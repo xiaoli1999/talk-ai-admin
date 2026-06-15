@@ -119,6 +119,14 @@ module.exports = {
 				refuse_reason: ''
 			}
 
+			/* 重新提交审核(state=0 且为既有角色)：清掉上一次的驳回展示数据，避免后台/用户看到旧数据；
+			   ⚠️ need_manual 必须清(残留 true 会让定时器跳过、不再自动审)；ai_fail_count 保留(连续失败计数,人工驳回时才还原) */
+			if (_id && state === 0) {
+				roleObj.refuse_by = ''
+				roleObj.need_manual = false
+				roleObj.refuse_detail = db.command.remove()
+			}
+
 			const { errMsg } = _id ? await rolesMyDb.doc(_id).update(roleObj).catch(e => e) : await rolesMyDb.add(roleObj).catch(e => e)
 			if (errMsg) return { data: null, errMsg }
 

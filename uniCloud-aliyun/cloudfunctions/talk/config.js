@@ -1,25 +1,25 @@
 const XF = {
 	/* 3.5秘钥 */
 
-	VERSION: 'v3.5',
+	VERSION: 'v1.1',
 
-		/* 小黎 */
-		// APPID: "22b984c1",
-		// APISecret: "ZDg4ZjZhM2JhNWQxYmI3NGRlNGNhMDlj",
-		// APIKey: "f917bb19d6d0260cd5e19ec2ff334916",
-		// WSS: "wss://spark-api.xf-yun.com/v3.5/chat",
+	/* 小黎 */
+	// APPID: "22b984c1",
+	// APISecret: "ZDg4ZjZhM2JhNWQxYmI3NGRlNGNhMDlj",
+	// APIKey: "f917bb19d6d0260cd5e19ec2ff334916",
+	// WSS: "wss://spark-api.xf-yun.com/v3.5/chat",
 
-		/* 采黎 */
-		// APPID: "d249c9e8",
-		// APISecret: "OWYwYWE2NjRmNTFhNDQ2NmY2M2YyOTJh",
-		// APIKey: "99a0431228d73f13a689b9df444fa736",
-		// WSS: "wss://spark-api.xf-yun.com/v3.5/chat",
+	/* 采黎 */
+	// APPID: "d249c9e8",
+	// APISecret: "OWYwYWE2NjRmNTFhNDQ2NmY2M2YyOTJh",
+	// APIKey: "99a0431228d73f13a689b9df444fa736",
+	// WSS: "wss://spark-api.xf-yun.com/v3.5/chat",
 
-		/* 崔瑶-3.5 */
-		APPID: "a6d8f5c0",
-		APISecret: "MTc0Y2JjY2IwYWJhYmJjMDhjYWY2OTQ0",
-		APIKey: "043c4bc50d1ed817184a50304fa98bcb",
-		WSS: "wss://spark-api.xf-yun.com/v3.5/chat"
+	/* 崔瑶-3.5 */
+	APPID: "a6d8f5c0",
+	APISecret: "MTc0Y2JjY2IwYWJhYmJjMDhjYWY2OTQ0",
+	APIKey: "043c4bc50d1ed817184a50304fa98bcb",
+	WSS: "wss://spark-api.xf-yun.com/v1.1/chat"
 }
 
 const MINIMAX = {
@@ -38,7 +38,7 @@ const MINIMAX = {
 
 const COZE = {
 	/* 采黎 */
-	TOKEN: 'pat_pG2wTaah6prZvVaP5KxQxDNC4Y74xmdwIv7iE6x7KvYrDZO9Sm2vDseuyxSconVk', // 2025-07-19过期
+	TOKEN: 'sat_M3Bb21aYWUWPF5lLpqHddRWkc55qDEPvNp31RZkWUmGc4b4w6bEciMMKJP3BL9Hd', //不过期
 	WORKID: '7482722877408051234'
 }
 

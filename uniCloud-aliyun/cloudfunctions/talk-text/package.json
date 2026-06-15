@@ -1,0 +1,16 @@
+{
+  "name": "talk-text",
+  "version": "1.0.0",
+  "description": "文本对话（5档付费模型 · doubao-seed-2.0 系列 · prompt装配/擦边档/护栏）",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 120,
+    "runtime": "Nodejs18"
+  },
+  "extensions": {
+    "uni-cloud-push": {}
+  }
+}

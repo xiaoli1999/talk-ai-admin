@@ -4,6 +4,7 @@
             <el-radio-group v-model="tab" @change="getList">
                 <el-radio-button :value="0">待审核<span v-if="totalObj['待审核']">（{{ totalObj['待审核'] }}）</span></el-radio-button>
                 <el-radio-button :value="1">审核未通过<span v-if="totalObj['已审核']">（{{ totalObj['已审核'] }}）</span></el-radio-button>
+                <el-radio-button :value="2">今日审核<span v-if="totalObj['今日']">（{{ totalObj['今日'] }}）</span></el-radio-button>
                 <el-radio-button :value="-1">草稿<span v-if="totalObj['草稿']">（{{ totalObj['草稿'] }}）</span></el-radio-button>
             </el-radio-group>
 
@@ -15,6 +16,12 @@
                 <el-option label="男" :value="1" />
                 <el-option label="女" :value="2" />
             </el-select>
+
+            <el-button v-if="tab === 0 && isAdmin" type="warning" plain :loading="reauditing" @click="reauditPage" style="margin-left: 12px;">重新审核本页</el-button>
+            <el-button v-if="tab === 0 && isAdmin" type="danger" plain :loading="batchRejecting" @click="batchRejectAiFlagged" style="margin-left: 8px;">
+                批量驳回（AI建议驳回 {{ aiRejectCount }}）
+            </el-button>
+            <el-button v-if="isAdmin" type="info" plain @click="goEval" style="margin-left: 12px;">质量评测</el-button>
         </div>
 
         <el-table class="roles-table" :data="list" border :row-style="setRowBg" size="small" @selection-change="selectionChange">
@@ -93,7 +100,7 @@
             </el-table-column>
             <el-table-column prop="guide_list" label="引导语" align="center" min-width="140px" :formatter="(e) => e.guide_list.join(';')" />
 
-            <el-table-column v-if="tab === 1" prop="refuse_reason" label="拒绝原因" align="center" min-width="100px">
+            <el-table-column v-if="tab === 1 || tab === 2" prop="refuse_reason" label="拒绝原因" align="center" min-width="100px">
                 <template #default="{ row }">
                     <el-tooltip placement="top">
                         <template #content>
@@ -106,6 +113,31 @@
 
             <el-table-column prop="update_time" label="更新时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.update_time).format('MM-DD HH:mm')" />
             <el-table-column prop="create_time" label="注册时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm')" />
+            <el-table-column v-if="tab !== -1" label="AI建议" align="center" width="96px" fixed="right">
+                <template #default="{ row }">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                        <!-- 已驳回(state=1)：谁拍的板。AI=定时器自动驳回 / 人工=后台手动驳回 -->
+                        <el-tag v-if="row.state === 1" :type="row.refuse_by === 'ai' ? 'warning' : 'primary'" size="small" effect="plain">{{ row.refuse_by === 'ai' ? 'AI审核' : '人工审核' }}</el-tag>
+                        <!-- 转人工(state=0 且 need_manual)：AI 连续驳回达上限/全通过/异常 → 待后台人工拍板；连续失败≥3 即 AI 放弃、重点核 -->
+                        <template v-else-if="row.need_manual">
+                            <el-tag type="warning" size="small" effect="dark">待人工审核</el-tag>
+                            <span v-if="(row.ai_fail_count || 0) >= 3" style="font-size:10px;color:#f56c6c;">连续失败{{ row.ai_fail_count }}次</span>
+                        </template>
+                        <!-- AI 建议（有当前版本日志才显示，hover 看详细理由） -->
+                        <el-tooltip v-if="auditMap[row._id]" placement="left" :disabled="!auditMap[row._id].ai_not_reason">
+                            <template #content><div style="max-width:380px;white-space:pre-wrap;">{{ auditMap[row._id].ai_not_reason }}</div></template>
+                            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:default;">
+                                <el-tag :type="dimType(auditMap[row._id],'text')" size="small">设定{{ dimMark(auditMap[row._id],'text') }}</el-tag>
+                                <el-tag :type="dimType(auditMap[row._id],'image')" size="small">图片{{ dimMark(auditMap[row._id],'image') }}</el-tag>
+                                <span v-if="auditMap[row._id].ai_grade != null" style="font-size:11px;color:#E239DA;font-weight:600;">{{ auditMap[row._id].ai_grade }}分</span>
+                                <span v-if="lowConfidence(auditMap[row._id])" style="font-size:10px;color:#e6a23c;">低置信</span>
+                            </div>
+                        </el-tooltip>
+                        <!-- 既没驳回、没转人工、也没 AI 日志 → 待 AI 审（定时器还没轮到） -->
+                        <el-tag v-else-if="row.state === 0 && !row.need_manual" type="info" size="small">待AI审</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
             <el-table-column label="操作" align="center" width="130" fixed="right">
                 <template #default="{row}">
                     <el-button v-if="tab !== -1" type="primary" @click="openRoleDialog(row)" size="small">审核</el-button>
@@ -127,6 +159,32 @@
         </view>
 
         <el-dialog class="dialog" v-model="roleShow" width="880px" title="审核角色" align-center draggable :close-on-click-modal="false">
+            <div v-if="currentAudit" :style="`border:1px solid #ebeef5;border-left:4px solid ${auditColor(currentAudit)};border-radius:8px;padding:12px 14px;margin-bottom:14px;background:#fafafe;`">
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <span style="font-weight:700;color:#303133;">AI 审核结果</span>
+                    <el-tag v-if="currentAudit.ai_error" type="info" effect="dark" size="small">AI异常</el-tag>
+                    <template v-else>
+                        <span style="font-size:13px;color:#606266;">设定 <el-tag :type="dimType(currentAudit,'text')" effect="dark" size="small">{{ dimText(currentAudit,'text') }}</el-tag></span>
+                        <span style="font-size:13px;color:#606266;">图片 <el-tag :type="dimType(currentAudit,'image')" effect="dark" size="small">{{ dimText(currentAudit,'image') }}</el-tag></span>
+                        <span v-if="currentAudit.ai_grade != null" style="font-size:20px;font-weight:700;color:#E239DA;line-height:1;">{{ currentAudit.ai_grade }}<small style="font-size:12px;color:#909399;font-weight:400;"> 分 · {{ currentAudit.ai_grade >= 75 ? '优质' : '普通' }}</small></span>
+                        <span v-if="currentAudit.ai_confidence != null" style="font-size:13px;color:#606266;">置信 {{ (currentAudit.ai_confidence * 100).toFixed(0) }}%<i v-if="lowConfidence(currentAudit)" style="font-style:normal;color:#e6a23c;">（偏低，建议人工核）</i></span>
+                    </template>
+                </div>
+                <div v-if="currentAudit.text_reason" style="margin-top:8px;padding:8px 10px;background:#fff;border-radius:6px;white-space:pre-wrap;font-size:13px;color:#8a38f5;line-height:1.7;"><b style="color:#f56c6c;">设定问题：</b>{{ currentAudit.text_reason }}</div>
+                <div v-if="currentAudit.image_reason" style="margin-top:6px;padding:8px 10px;background:#fff;border-radius:6px;white-space:pre-wrap;font-size:13px;color:#8a38f5;line-height:1.7;"><b style="color:#f56c6c;">图片问题：</b>{{ currentAudit.image_reason }}</div>
+                <div v-if="currentAudit.ai_error" style="margin-top:8px;font-size:12px;color:#e6a23c;">⚠️ 模型异常：{{ currentAudit.ai_error }}（已转人工，不影响审核）</div>
+                <div v-if="currentAudit.ai_tag_list && currentAudit.ai_tag_list.length" style="margin-top:8px;font-size:13px;color:#606266;">
+                    建议标签：<el-tag v-for="(t, i) in currentAudit.ai_tag_list" :key="i" size="small" type="warning" style="margin-right:4px;">{{ t }}</el-tag>
+                    <el-button v-if="isAdmin" link type="primary" size="small" @click="useAiTags">应用</el-button>
+                </div>
+                <div style="margin-top:8px;font-size:12px;color:#909399;display:flex;gap:10px;flex-wrap:wrap;">
+                    <span v-if="currentAudit.wx_text_suggest">微信文本检测：{{ currentAudit.wx_text_suggest }}</span>
+                    <span v-if="currentAudit.cost_tokens">{{ currentAudit.cost_tokens }} tokens</span>
+                    <span v-if="currentAudit.latency_ms">耗时 {{ currentAudit.latency_ms }}ms</span>
+                    <span v-if="currentAudit.submit_count">第 {{ currentAudit.submit_count }} 次提交</span>
+                    <span v-if="currentAudit.create_time">{{ dayjs(currentAudit.create_time).format('MM-DD HH:mm') }} 审</span>
+                </div>
+            </div>
             <el-form ref="roleRef" class="role-form" :model="roleData" :rules="roleRules" label-width="80px" :disabled="!isAdmin">
                 <div style="display: flex;">
                     <el-form-item label="名称" prop="name" >
@@ -227,7 +285,7 @@
                 <div class="pb-[12px]">
                     <el-button type="info" plain @click="roleShow = false">取消</el-button>
                     <el-button class="!ml-[14px]" type="info" @click="setRoleDraft">打回草稿箱</el-button>
-                    <el-button class="!ml-[14px]" type="danger" @click="refuseShow = true">审核不通过</el-button>
+                    <el-button class="!ml-[14px]" type="danger" @click="useAiReason">审核不通过</el-button>
 
                     <el-button class="!ml-[14px]" type="primary" @click="saveRole(false)">审核通过</el-button>
                     <el-button class="!ml-[14px]" type="success" @click="saveRole(true)">审核通过（优质）</el-button>
@@ -261,13 +319,15 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from 'element-plus'
 import { createAvatarKey, montageImgUrl } from '../../utils/common'
 import { genderEnums, genderEnumsList } from "@/config/enums";
 
 const TalkCloud = uniCloud.importObject('talk', { customUI: true })
 const RoleCloud = uniCloud.importObject('role', { customUI: true })
+/* AI 审核助手(co-pilot)：定时器在云端预审写 role_audit_log，这里读建议 + 回写人工结论 */
+const RoleAuditCloud = uniCloud.importObject('role-audit', { customUI: true })
 
 /* 传统数据库集合 */
 const db = uniCloud.database()
@@ -275,6 +335,7 @@ const dbCmd = db.command
 const rolesDb = db.collection('roles')
 const rolesTestDb = db.collection('roles_test')
 const rolesMyDb = db.collection('roles_my')
+const auditLogDb = db.collection('role_audit_log')
 
 /* 权限 */
 const globalData = ref(getApp().globalData)
@@ -287,7 +348,103 @@ const category = ref('')
 const loading = ref(false)
 const listParams = reactive({ pageNo: 1, pageSize: 20, total: 0 })
 const list = ref([])
-const totalObj = ref({ '待审核': 0, '已审核': 0, '草稿': 0 })
+const totalObj = ref({ '待审核': 0, '已审核': 0, '草稿': 0, '今日': 0 })
+
+/* AI 审核建议：role_id → 最新一条 role_audit_log；currentAudit 为当前打开弹窗角色的建议 */
+const auditMap = ref({})
+const currentAudit = ref(null)
+
+/* 拉取当前列表角色的 AI 建议（定时器已在云端预审好，这里只读） */
+const loadAuditMap = async (rows) => {
+    auditMap.value = {}
+    const ids = (rows || []).map(r => r._id)
+    if (!ids.length) return
+    const { result } = await auditLogDb.where({ role_id: dbCmd.in(ids) }).orderBy('create_time', 'desc').limit(500).get().catch(() => ({ result: { data: [] } }))
+    const logs = (result && result.data) || []
+    /* 只认"当前提交版本(styles)"的最新日志：用户重提后(styles++)旧版日志不展示→显示"待AI审"，避免看到上一次旧数据 */
+    const styleOf = {}; (rows || []).forEach(r => { styleOf[r._id] = r.styles || 0 })
+    const map = {}, seen = new Set()
+    for (const lg of logs) {
+        if (seen.has(lg.role_id)) continue // 已按时间倒序，每角色只看最新一条
+        seen.add(lg.role_id)
+        if ((lg.submit_count || 0) === (styleOf[lg.role_id] || 0)) map[lg.role_id] = lg // 仅当前提交版本才采纳
+    }
+    auditMap.value = map
+}
+
+/* 列表用：把一条 AI 建议归纳成 {type,text}（type 控制标签颜色） */
+const aiVerdict = (row) => {
+    const a = auditMap.value[row._id]
+    if (!a) return { type: 'info', text: '待AI审' }
+    if (a.ai_error) return { type: 'info', text: 'AI异常' }
+    if (a.ai_pass === true) return { type: 'success', text: `建议通过 ${a.ai_grade != null ? a.ai_grade + '分' : ''}` }
+    if (a.ai_pass === false) return { type: 'danger', text: '建议驳回' }
+    return { type: 'warning', text: '建议人工' }
+}
+const lowConfidence = (a) => a && a.ai_confidence != null && a.ai_confidence < 0.6
+/* 文本/图片分离判定的取值与展示：dim='text'|'image' */
+const dimVal = (a, dim) => !a ? undefined : (dim === 'text' ? a.text_pass : a.image_pass)
+const dimType = (a, dim) => { if (a && a.ai_error) return 'info'; const v = dimVal(a, dim); return v === true ? 'success' : (v === false ? 'danger' : 'info') }
+const dimMark = (a, dim) => { if (a && a.ai_error) return '异常'; const v = dimVal(a, dim); return v === true ? '✓' : (v === false ? '✗' : '待') }
+const dimText = (a, dim) => { if (a && a.ai_error) return '异常'; const v = dimVal(a, dim); return v === true ? '通过' : (v === false ? '驳回' : '—') }
+/* 弹窗卡片左色条：异常橙 / 任一驳回红 / 均过绿 / 其余灰 */
+const auditColor = (a) => { if (!a) return '#909399'; if (a.ai_error) return '#e6a23c'; if (a.text_pass === false || a.image_pass === false) return '#f56c6c'; if (a.text_pass === true && a.image_pass === true) return '#67c23a'; return '#909399' }
+
+/* 跳转审核质量评测页 */
+const goEval = () => uni.navigateTo({ url: '/pages/audit-eval/audit-eval' })
+
+/* —— 重新审核：强制对当前页全部角色重跑 AI 审核（调已部署的 audit({roleId})，不看跳过规则） —— */
+const reauditing = ref(false)
+const reauditPage = async () => {
+    if (!list.value.length) return ElMessage.info('当前页没有角色')
+    try {
+        await ElMessageBox.confirm(`将对当前页 ${list.value.length} 个角色重新调用 AI 审核（顺序执行，约 ${list.value.length * 5} 秒），确定？`, '重新审核', { type: 'warning', confirmButtonText: '开始重审', cancelButtonText: '取消' })
+    } catch (e) { return }
+    reauditing.value = true
+    let ok = 0, fail = 0
+    for (const row of list.value) { // 顺序逐个，避免并发打满模型
+        try {
+            const { data } = await RoleAuditCloud.audit({ roleId: row._id })
+            data ? ok++ : fail++
+        } catch (e) { fail++ }
+    }
+    reauditing.value = false
+    ElMessage.success(`重新审核完成：成功 ${ok}，失败 ${fail}`)
+    await getList() // 刷新，loadAuditMap 取最新一条日志
+}
+
+/* —— 批量驳回：当前页中 AI 建议驳回(设定或图片未过、且非异常)的角色 —— */
+const batchRejecting = ref(false)
+const aiRejectTargets = () => list.value.filter(r => {
+    const a = auditMap.value[r._id]
+    return a && !a.ai_error && (a.text_pass === false || a.image_pass === false) && a.ai_not_reason
+})
+const aiRejectCount = computed(() => aiRejectTargets().length)
+const batchRejectAiFlagged = async () => {
+    const targets = aiRejectTargets()
+    if (!targets.length) return ElMessage.info('当前页没有「AI建议驳回」的角色')
+    try {
+        await ElMessageBox.confirm(`将驳回当前页 ${targets.length} 个 AI 建议驳回的角色，并依次发送微信通知，确定？`, '批量驳回', { type: 'warning', confirmButtonText: '确定驳回', cancelButtonText: '取消' })
+    } catch (e) { return }
+
+    batchRejecting.value = true
+    let ok = 0, fail = 0
+    /* 同步逐个驳回：因为每个都要发微信订阅消息，串行避免并发出问题 */
+    for (const row of targets) {
+        try {
+            const reason = auditMap.value[row._id].ai_not_reason
+            /* 人工驳回：refuse_by=human(信笺显示"真人复审") + 还原 AI 计数 + 清转人工标记 */
+            const { errMsg } = await rolesMyDb.doc(row._id).update({ state: 1, refuse_reason: reason, refuse_by: 'human', ai_fail_count: 0, need_manual: false, update_time: Date.now() }).catch(e => e)
+            if (errMsg) { fail++; continue }
+            await RoleCloud.checkRoleAndNotice({ state: 1, roleInfo: { ...row, refuse_reason: reason }, date: dayjs().format('YYYY-MM-DD HH:mm:ss') }).catch(() => {})
+            await RoleAuditCloud.setHumanDecision({ roleId: row._id, submitCount: row.styles, decision: 'reject' }).catch(() => {})
+            ok++
+        } catch (e) { fail++ }
+    }
+    batchRejecting.value = false
+    ElMessage.success(`批量驳回完成：成功 ${ok}，失败 ${fail}`)
+    await getList()
+}
 
 const selectList = ref([])
 const selectionChange = (e) => (selectList.value = e)
@@ -423,13 +580,20 @@ const filterVoiceList = () => {
 const getList = async () => {
     const start = (listParams.pageNo - 1) * listParams.pageSize
 
-    const whereObj = {
-        state: tab.value
+    /* 分类/性别筛选作为公共条件（各 tab 计数与列表共用，避免相互污染计数） */
+    const baseFilter = {}
+    if (gender.value) baseFilter.gender = gender.value
+    if (category.value) baseFilter.category_id = category.value
+
+    /* 今日零点(本地=北京时间)毫秒：「今日审核」按 update_time 过滤 */
+    const todayStart = dayjs().startOf('day').valueOf()
+
+    /* 列表查询条件；今日审核(tab=2) = 今日被驳回(state=1 且 update_time≥今日零点) */
+    const whereObj = { ...baseFilter, state: tab.value }
+    if (tab.value === 2) {
+        whereObj.state = 1
+        whereObj.update_time = dbCmd.gte(todayStart)
     }
-
-    if (gender.value) whereObj.gender = gender.value
-    if (category.value) whereObj.category_id = category.value
-
 
     loading.value = true
     let res = {}
@@ -437,19 +601,19 @@ const getList = async () => {
     if (tab.value === 0) {
         res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy('vip desc').orderBy("user_cb_pay_num", "desc").orderBy("update_time", "asc").get({ getCount: true })
 
-    } else if (tab.value === 1) {
+    } else if (tab.value === 1 || tab.value === 2) {
         res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy("update_time", "desc").get({ getCount: true })
     } else if (tab.value === -1) {
         res = await rolesMyDb.where(whereObj).skip(start).limit(listParams.pageSize).orderBy("update_time", "desc").get({ getCount: true })
     } else { /*  */ }
 
-    /* 统计总数 */
-    // totalObj
-    const { result: { total: 待审核 } } = await rolesMyDb.where({ ...whereObj, state: 0 }).count()
-    const { result: { total: 已审核 } } = await rolesMyDb.where({ ...whereObj, state: 1 }).count()
-    const { result: { total: 草稿 } } = await rolesMyDb.where({ ...whereObj, state: -1 }).count()
+    /* 各 tab 计数（用公共筛选，互不干扰）；今日 = 今日被驳回数 */
+    const { result: { total: 待审核 } } = await rolesMyDb.where({ ...baseFilter, state: 0 }).count()
+    const { result: { total: 已审核 } } = await rolesMyDb.where({ ...baseFilter, state: 1 }).count()
+    const { result: { total: 草稿 } } = await rolesMyDb.where({ ...baseFilter, state: -1 }).count()
+    const { result: { total: 今日 } } = await rolesMyDb.where({ ...baseFilter, state: 1, update_time: dbCmd.gte(todayStart) }).count()
 
-    totalObj.value = { 待审核, 已审核, 草稿 }
+    totalObj.value = { 待审核, 已审核, 草稿, 今日 }
 
     loading.value = false
 
@@ -460,6 +624,9 @@ const getList = async () => {
 
     list.value = data
     listParams.total = count
+
+    /* 读取这批角色的 AI 建议（不阻塞主流程） */
+    loadAuditMap(data)
 }
 
 const changePage = async (e) => {
@@ -472,10 +639,31 @@ const openRoleDialog = (row) => {
     roleShow.value = true
     const data = JSON.parse(JSON.stringify(row))
     roleData.value = { ...roleDataDefault(), ...data }
+    /* 当前角色的 AI 建议（供弹窗内参考/一键填充） */
+    currentAudit.value = auditMap.value[row._id] || null
     /* 删除展示字段 */
     delete roleData.value.avatar1
     delete roleData.value.avatar_long1
     setTimeout(() => roleRef.value.clearValidate())
+}
+
+/* 一键把 AI 建议的驳回理由填入并打开驳回弹窗 */
+const useAiReason = () => {
+    if (currentAudit.value && currentAudit.value.ai_not_reason) {
+        roleData.value.refuse_reason = currentAudit.value.ai_not_reason
+    }
+    refuseShow.value = true
+}
+/* 一键应用 AI 推荐标签（取前 4 个） */
+const useAiTags = () => {
+    const tags = (currentAudit.value && currentAudit.value.ai_tag_list) || []
+    if (tags.length) roleData.value.tag_list = tags.slice(0, 4)
+}
+/* 回写人工最终结论，供与 AI 建议比对一致率 */
+const writeHumanDecision = (decision) => {
+    const _id = roleData.value._id
+    if (!_id) return
+    RoleAuditCloud.setHumanDecision({ roleId: _id, submitCount: roleData.value.styles, decision }).catch(() => {})
 }
 
 const uploadImg = (avatar) => {
@@ -526,12 +714,14 @@ const setRoleDraft = async () => {
     const checkNoticeRes = await RoleCloud.checkRoleAndNotice({ state: -1, roleInfo: roleData.value, date: dayjs().format('YYYY-MM-DD HH:mm:ss') }).catch(() => ({}))
     if (!checkNoticeRes.data) ElMessage.error('通知失败！')
 
+    writeHumanDecision('draft')
     await getList()
 }
 
 const refuseRole = async () => {
     const { _id, refuse_reason } = roleData.value
-    const params = { state: 1, refuse_reason, update_time: Date.now() }
+    /* 人工驳回：refuse_by=human(信笺显示"真人复审") + 还原 AI 计数 + 清转人工标记 */
+    const params = { state: 1, refuse_reason, refuse_by: 'human', ai_fail_count: 0, need_manual: false, update_time: Date.now() }
 
     const { errMsg } = await rolesMyDb.doc(_id).update(params).catch(e => e)
     if (errMsg) return ElMessage.error(errMsg)
@@ -544,6 +734,7 @@ const refuseRole = async () => {
     const checkNoticeRes = await RoleCloud.checkRoleAndNotice({ state: 1, roleInfo: roleData.value, date: dayjs().format('YYYY-MM-DD HH:mm:ss') }).catch(() => ({}))
     if (!checkNoticeRes.data) ElMessage.error('通知失败！')
 
+    writeHumanDecision('reject')
     await getList()
 }
 
@@ -603,6 +794,7 @@ const saveRole = async (isGood = false) => {
     const checkNoticeRes = await RoleCloud.checkRoleAndNotice({ state: 0, roleInfo: roleInfo[0], date: dayjs().format('YYYY-MM-DD HH:mm:ss') }).catch(() => ({}))
     if (!checkNoticeRes.data) ElMessage.error('通知失败！')
 
+    writeHumanDecision(isGood ? 'pass_good' : 'pass')
     await getList()
 }
 

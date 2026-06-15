@@ -1,18 +1,19 @@
 {
-  "name": "role",
-  "version": "1.1.0",
-  "description": "角色",
-  "dependencies": {
-    "uni-subscribemsg": "file:../../../uni_modules/uni-subscribemsg/uniCloud/cloudfunctions/common/uni-subscribemsg"
-  },
-  "extensions": {
-    "uni-cloud-jql": {}
-  },
-  "cloudfunction-config": {
-    "concurrency": 1,
-    "memorySize": 512,
-    "timeout": 30,
-    "path": "",
-    "runtime": "Nodejs16"
-  }
+    "name": "role",
+    "version": "1.1.0",
+    "description": "角色",
+    "dependencies": {
+        "uni-subscribemsg": "file:../../../uni_modules/uni-subscribemsg/uniCloud/cloudfunctions/common/uni-subscribemsg"
+    },
+    "extensions": {
+        "uni-cloud-jql": {}
+    },
+    "cloudfunction-config": {
+        "concurrency": 5,
+        "memorySize": 512,
+        "timeout": 30,
+        "path": "",
+        "runtime": "Nodejs16",
+        "triggers": []
+    }
 }

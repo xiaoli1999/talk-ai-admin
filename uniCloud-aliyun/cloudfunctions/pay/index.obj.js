@@ -52,8 +52,8 @@ module.exports = {
 				giftBagInfo,
 
 				/* ios相关信息 */
-				showIos: false, /* 是否展示ios */
-				version: '', /* 线上绕审核版本 */
+				showIos: true, /* 是否展示ios */
+				version: '4.0.111112', /* 线上绕审核版本 */
 				showService: true, /* ios展示客服按钮 */
 				iosTip: '由于平台相关规范，ios功能暂不可用。\n \n 可登录安卓、电脑端充值。 \n \n 如遇到问题请咨询客服（备注手机型号）。'
 			}

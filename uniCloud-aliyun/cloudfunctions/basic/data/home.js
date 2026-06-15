@@ -4,9 +4,29 @@ const homeData = {
 	 */
 	swiperList: [
 		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/img-style.png',
-			pageUrl: '/pages/doc/doc?type=捏崽新画风'
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-model.png?x-oss-process=image/resize,w_800',
+			pageUrl: '/pages/explain/model/model'
 		},
+		{
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-invite.png?x-oss-process=image/resize,w_800',
+			pageUrl: '/pages/user/invite/invite'
+		},
+		{
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-ranking1.png?x-oss-process=image/resize,w_800',
+			pageUrl: '/pages/role/ranking/ranking?source=home'
+		},
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-26-year.png',
+		// 	pageUrl: '/pages/doc/doc?type=春节福利'
+		// },
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/danger-notice.png',
+		// 	pageUrl: '/pages/doc/doc?type=系统升级'
+		// },
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/img-style.png',
+		// 	pageUrl: '/pages/doc/doc?type=捏崽新画风'
+		// },
 		// {
 		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-61.png',
 		// 	pageUrl: '/pages/doc/doc?type=六一·端午宠粉福利'
@@ -36,29 +56,37 @@ const homeData = {
 	],
 	bannerList: [
 		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/reward.png',
-			pageUrl: '/pages/doc/doc?type=补偿奖励'
-		},
-		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/danger-notice.png',
-			pageUrl: '/pages/doc/doc?type=紧急通知'
-		},
-		// {
-		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/zgjl-dq.png',
-		// 	pageUrl: '/pages/doc/doc?type=补偿奖励结束通知'
-		// },
-		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/free-model.png',
-			pageUrl: '/pages/doc/doc?type=模型升级'
-		},
-		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/create-role.png',
-			pageUrl: '/pages/doc/doc?type=创建采崽'
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/survey.jpg',
+			pageUrl: '/pages/user/survey/survey?source=home'
 		},
 		{
 			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/create/guide.png',
 			pageUrl: '/pages/doc/doc?type=捏崽攻略'
 		},
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/reward.png',
+		// 	pageUrl: '/pages/doc/doc?type=补偿奖励'
+		// },
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/danger-notice.png',
+		// 	pageUrl: '/pages/doc/doc?type=紧急通知'
+		// },
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/zgjl-dq.png',
+		// 	pageUrl: '/pages/doc/doc?type=补偿奖励结束通知'
+		// },
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/free-model.png',
+		// 	pageUrl: '/pages/doc/doc?type=模型升级'
+		// },
+		{
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/create-role.png',
+			pageUrl: '/pages/doc/doc?type=创建采崽'
+		},
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/create/guide.png',
+		// 	pageUrl: '/pages/doc/doc?type=捏崽攻略'
+		// },
 		{
 			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/create/swiper/create-role-test.png',
 			pageUrl: '/pages/create/create'
@@ -106,8 +134,13 @@ const homeData = {
 		pageUrl: '/pages/index/customVoice/customVoice',
 		show: false
 	},
-	newBgImg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/new-bg.png?date=2',
-	// giftBgImg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/gift-bag-popup.png?date=test'
+	bg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/bg.png', // 原版
+	// bg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/bg-26-02-10.png?date=02-10', // 原版
+	newBgImg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/new-bg.png?date=20260302', // 原版
+	// newBgImg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/new-bg-26-02-11.png?date=02-10', // 春节冬季版
+	// giftBgImg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/gift-bag-popup-26.png?date=test',
+	// swiperImgBorder: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper-border.png',
+	swiperImgBorder: '',
 }
 
 module.exports = homeData

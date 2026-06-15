@@ -10,7 +10,7 @@ const vipList = [
 	{
 		name: '周卡',
 		day: 7,
-		originalPrice: 1698, // 1398
+		originalPrice: 1998, // 1398
 		price: 1298, // 998
 		hot: false,
 		desc: '新人尝鲜'
@@ -18,8 +18,8 @@ const vipList = [
 	{
 		name: '月卡',
 		day: 30,
-		originalPrice: 4298, // 3998
-		price: 2898, // 2498
+		originalPrice: 3998, // 3998
+		price: 2998, // 2498
 		hot: true,
 		desc: '超值特惠'
 	},
@@ -57,7 +57,7 @@ const cbList = [
 	},
 	{
 		price: 998, // 600
-		num: 280,
+		num: 280, // 280
 		gift: 0, // 0
 		hot: false,
 	},
@@ -187,24 +187,32 @@ const cardList = [
 	},
 	{
 		originalPrice: 8998,
-		price: 2899, // 2899
+		price: 2898, // 2899
 		hour: 3,  // 3
 		gift: 15, // 15
 		minute: 195, // 3*60 + 15
-		hot: true,
+		hot: false,
 	},
 	{
 		originalPrice: 23998,
-		price: 7899, // 7899
+		price: 7898, // 7899
 		hour: 8, // 16
 		gift: 45, // 45
 		minute: 525, // 8*60 + 45
-		hot: false,
+		hot: true,
 	},
+	// {
+	// 	originalPrice: 72998,
+	// 	price: 9998, // 7899
+	// 	hour: 24, // 16
+	// 	gift: 60, // 45
+	// 	minute: 1500, // 24*60 + 60
+	// 	hot: false,
+	// },
 ]
 const cardInfo = {
 	show: true,
-	cardTotal: 100,
+	cardTotal: 10000,
 	title: '无限聊天 • 购买后立即生效 • 多次购买累积生效',
 	desc: '*购买前请先点击右侧阅读畅聊卡说明👉。',
 	tipImg: ''
@@ -212,24 +220,24 @@ const cardInfo = {
 
 const giftBagList = [
 	{
-		name: '周末福利礼包',
-		originalPrice: 7998,
-		price: 3998, // 4998
-		freePrice: '40元',
+		name: '春节超值礼包',
+		originalPrice: 8998,
+		price: 4998, // 4998
+		freePrice: '50元',
 		vip: 7,
-		cb: 1200,
+		cb: 1800,
 		card: 3,
-		bg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/user/vip/gift-bag/week.png?date=05-09'
+		bg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/user/vip/gift-bag/26-year.png?date=26-15-22'
 	},
 	{
-		name: '周末豪华礼包',
-		originalPrice: 15998,
-		price: 7998, // 9998
-		freePrice: '80元',
+		name: '春节豪华礼包',
+		originalPrice: 22998,
+		price: 9998, // 9998
+		freePrice: '130元',
 		vip: 30,
-		cb: 2500,
-		card: 6,
-		bg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/user/vip/gift-bag/week-pro.png?date=05-09',
+		cb: 3800,
+		card: 8,
+		bg: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/user/vip/gift-bag/26-year-pro.png?date=26-15-22',
 		isPro: true
 	}
 ]

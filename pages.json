@@ -92,6 +92,14 @@
 			{
 				"navigationBarTitleText" : ""
 			}
+		},
+		{
+			"path" : "pages/audit-eval/audit-eval",
+			"style" :
+			{
+				"navigationBarTitleText" : "审核质量评测",
+				"enablePullDownRefresh" : false
+			}
 		}
 	],
 	"globalStyle": {

@@ -1,0 +1,21 @@
+[
+	{
+		"IndexName": "idx_role_version",
+		"MgoKeySchema": {
+			"MgoIndexKeys": [
+				{ "Name": "role_id", "Direction": "1" },
+				{ "Name": "submit_count", "Direction": "1" }
+			],
+			"MgoIsUnique": false
+		}
+	},
+	{
+		"IndexName": "idx_create_time",
+		"MgoKeySchema": {
+			"MgoIndexKeys": [
+				{ "Name": "create_time", "Direction": "-1" }
+			],
+			"MgoIsUnique": false
+		}
+	}
+]

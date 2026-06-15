@@ -1,0 +1,22 @@
+{
+  "name": "invite",
+  "version": "1.0.0",
+  "description": "邀新有礼（有门槛+进度制邀请：周榜/战绩/里程碑/逐条领取，可插拔）",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "extensions": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 600,
+    "path": "",
+    "runtime": "Nodejs18",
+    "triggers": [
+      {
+        "name": "weekRankSettle",
+        "type": "timer",
+        "config": "0 10 0 * * * *"
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "ranking",
+  "version": "1.0.0",
+  "description": "排行榜（热门榜：日/周/月/历史 + 性别筛选，1 分钟内存缓存）",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "extensions": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 10,
+    "path": "",
+    "runtime": "Nodejs16"
+  }
+}

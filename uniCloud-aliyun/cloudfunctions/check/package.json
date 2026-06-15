@@ -4,14 +4,14 @@
         "uni-sec-check": "file:../../../uni_modules/uni-sec-check/uniCloud/cloudfunctions/common/uni-sec-check"
     },
     "extensions": {
-        "uni-cloud-jql": []
+        "uni-cloud-jql": {}
     },
     "cloudfunction-config": {
-        "memorySize": 1024,
+        "memorySize": 512,
         "timeout": 5,
         "triggers": [],
         "path": "",
         "runtime": "Nodejs16",
-        "concurrency": 1
+        "concurrency": 5
     }
 }

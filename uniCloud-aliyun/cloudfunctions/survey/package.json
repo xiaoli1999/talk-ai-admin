@@ -1,0 +1,16 @@
+{
+  "name": "answer",
+  "version": "1.0.0",
+  "description": "问卷",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  },
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 512,
+    "timeout": 300,
+    "path": "",
+    "runtime": "Nodejs18"
+  }
+}

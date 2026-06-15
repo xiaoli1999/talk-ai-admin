@@ -1,0 +1,20 @@
+{
+  "name": "role-audit",
+  "version": "1.0.0",
+  "description": "捏崽角色 AI 审核（v1 后台 co-pilot 预审）：多模态合规 + 质量打分 + 荐标签，写 role_audit_log 供人工参考",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 600,
+    "runtime": "Nodejs18",
+    "triggers": [
+      {
+        "name": "auditPending",
+        "type": "timer",
+        "config": "0 */2 * * * * *"
+      }
+    ]
+  }
+}

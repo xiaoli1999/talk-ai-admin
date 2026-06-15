@@ -27,6 +27,10 @@ const disableUserList = [
 	'oicrC68PPuORlNJThExQyBgHHAx8', // 未成年充值（共充值28.98元），封号
 	'oicrC60nsJBpyh2RbN2yQodGOHH4', // 未成年充值（共充值461.74元），封号
 	'oicrC60DHuranAYANd4PBjyMruiU', // 未成年充值（共充值276.66元），封号，退款一半
+	'oicrC6yY2LGsF7osU6d4yMiFsLAU', // 家长要求关闭封号
+	'oicrC641XfTuc-Va6SOspVufUceA', // 家长要求关闭封号
+	'oicrC64AW2SrE1mliOkuVHFRO15Y', // 未成年，家长要求关闭封号
+	'oicrC63O2TM0pECRrDg31UpktKhg', // 家长要求
 ]
 
 module.exports = {

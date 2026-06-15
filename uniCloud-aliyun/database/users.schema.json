@@ -203,6 +203,16 @@
 			"description": "畅聊卡结束时间",
 			"defaultValue": 0
 		},
+		"chat_total": {
+			"bsonType": "int",
+			"description": "用户累计聊天次数（付费对话每次回复 +1，由 talk.deductUserTalkCount 搭车自增）。通用计数，邀请达标判定(聊天满N次)读取此字段",
+			"defaultValue": 0
+		},
+		"add_mp_reward_time": {
+			"bsonType": "timestamp",
+			"description": "领取「添加到我的小程序」一次性奖励的时间（0/不存在=未领，>0=已领；前端按真值判断已领取，服务端按此做防重复领闸门）",
+			"defaultValue": 0
+		},
 	},
 	"version": "1.0.0"
 }

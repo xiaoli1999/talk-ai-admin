@@ -1,0 +1,41 @@
+// 文档教程: https://uniapp.dcloud.net.cn/uniCloud/schema
+{
+  "bsonType": "object",
+  "required": [],
+  "permission": {
+  	"read": true,
+  	"create": true,
+  	"update": true,
+  	"delete": true
+  },
+  "properties": {
+    "_id": {
+      "description": "记录ID",
+      "bsonType": "string"
+    },
+    "user_id": {
+      "description": "填写用户ID",
+      "bsonType": "string",
+	  "foreignKey": "users._id"
+    },
+    "source": {
+      "description": "页面来源",
+      "bsonType": "string"
+    },
+    "answers": {
+      "description": "问卷答案(KV结构)",
+      "bsonType": "object"
+    },
+    "duration": {
+      "description": "填写时长(秒)",
+      "bsonType": "int"
+    },
+    "created_time": {
+      "description": "提交时间",
+      "bsonType": "timestamp",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

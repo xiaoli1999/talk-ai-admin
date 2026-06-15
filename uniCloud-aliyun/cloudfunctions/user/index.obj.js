@@ -1,4 +1,4 @@
-const { AppID, AppSecret, inviteCb, cbNum, videoAdCb, rewardCb, rewardPayCb, rewardTodayTalkCb, userBasicData } = require('./config.js')
+const { AppID, AppSecret, inviteCb, cbNum, videoAdCb, rewardCb, rewardPayCb, rewardTodayTalkCb, addMpRewardCb, userBasicData } = require('./config.js')
 const { createToken, verifyToken } = require('./utils/token.js')
 const dayjs = require('./utils/dayjs.js')
 const { disableUserList } = require('./utils/disable.js')
@@ -58,6 +58,14 @@ const main = {
 			const { data: userList } = await usersJqlDb.where({ openid }).get()
 
 			if (!userList || !userList.length) return { errMsg: '找不到该用户' }
+
+			/* 每天首次登录强制走 login 流程，确保 session_key 刷新 */
+			const lastLogin = userList[0].last_login_date
+			const todayStart = new Date(dayjs().add(8, 'hour').format('YYYY-MM-DD')).getTime()
+			if (!lastLogin || lastLogin < todayStart) {
+				console.log(`\n----------用户【${userList[0].nickname}】今日首次登录，刷新session_key----------\n`)
+				return { errMsg: '今日首次登录，刷新session_key' }
+			}
 
 			const last_login_date = Date.now()
 			const login_count = userList[0].login_count + 1
@@ -143,13 +151,10 @@ const main = {
 				/* 添加用户唯一名称 */
 				userData.username = `cl${ dayjs().add(8, 'hour').format('YYYYMMDDHHmmssSSS') }`
 
-				/* 注册时若携带inviteUid，则代表为受邀用户 */
+				/* 注册时若携带inviteUid，则记录邀请关系 */
 				if (event.inviteUid) {
 					userData.inviter_uid = event.inviteUid
 					userData.invite_time = Date.now()
-
-					/* 邀请者发放奖励（异步会不执行） */
-					await usersDb.doc(event.inviteUid).update({ cb_num: db.command.inc(inviteCb), receive_cb_total: db.command.inc(inviteCb) })
 				}
 
 				/* 注册时若携带platform，则记录下平台并发放奖励 */
@@ -159,9 +164,29 @@ const main = {
 				userData.cb_num = 0
 
 				await usersJqlDb.add(userData)
+
+				/* 旧版「注册即发 10 采贝」已下线，改为有门槛 + 进度制邀请：
+				 * 此处仅建立 pending 邀请关系、不发任何奖励，奖励延迟到被邀请人达标后手动领取。
+				 * 邀请关系的建立见下方 newUserList 之后的可插拔钩子（需要新用户 _id）。 */
 			}
 
 			const { data: newUserList } = await usersJqlDb.where({ openid }).get()
+
+			/* 新用户且携带邀请码：建立邀请关系（不发奖）。
+			 * 可插拔：交给 invite 云对象处理，try-catch 包裹——删除 invite 云对象不影响注册主流程。 */
+			if (!userList.length && event.inviteUid && newUserList[0]) {
+				try {
+					const inviteObj = uniCloud.importObject('invite')
+					await inviteObj.onInviteeRegister({
+						inviterUid: event.inviteUid,
+						inviteeUid: newUserList[0]._id,
+						nickname: newUserList[0].nickname || '',
+						avatar: newUserList[0].avatar || ''
+					})
+				} catch (e) {
+					console.error('[invite] onInviteeRegister hook failed:', e && e.message)
+				}
+			}
 
 			return { data: newUserList[0], errMsg: userList.length ? '登录成功' : '注册成功' }
 		} catch ({ message }) {
@@ -192,7 +217,19 @@ const main = {
 
 			const data = await usersDb.where({ openid }).updateAndReturn(params)
 
-			return { data: data.doc, errMsg: '更新成功' }
+			/* 被邀请人完善资料后，复核其邀请是否达标（可插拔钩子，try-catch 包裹）。
+			 * 仅在「有邀请人且已填性别(完善资料)」时触发，避免无谓调用；
+			 * 删除 invite 云对象后此处静默降级，不影响资料更新主流程。 */
+			const doc = data.doc
+			if (doc && doc.inviter_uid && doc.gender) {
+				try {
+					await uniCloud.importObject('invite').evaluateInvitee({ uid: doc._id })
+				} catch (e) {
+					console.error('[invite] evaluateInvitee hook failed:', e && e.message)
+				}
+			}
+
+			return { data: doc, errMsg: '更新成功' }
 		} catch ({ message }) {
 			console.log('\n----------更新用户信息异常----------\n', message);
 			return { errMsg: message }
@@ -433,6 +470,36 @@ const main = {
 			return { data: doc, errMsg: '领取成功' }
 		} catch ({ message }) {
 			console.log('\n----------记录用户领取每天聊天奖励异常----------\n', message);
+			return { errMsg: message }
+		}
+	},
+
+	/**
+	 * @function claimAddMpReward 领取「添加到我的小程序」一次性奖励
+	 * @param { Object } event { id 用户id }
+	 * @returns {object} { errMsg, data } data=更新后的用户信息
+	 * 说明：是否已添加由前端 uni.checkIsAddedToMyMiniProgram 校验（服务端无法校验）；本方法只按 add_mp_reward_time 做一次性闸门，防重复领取
+	 */
+	async claimAddMpReward ({ id }) {
+		try {
+			if (!id) return { errMsg: '无效用户' }
+
+			const { data } = await usersDb.doc(id).get()
+			const { add_mp_reward_time, receive_cb_total, cb_num } = data[0]
+
+			if (add_mp_reward_time) return { errMsg: '已经领取过了' }
+
+			const params = {
+				add_mp_reward_time: Date.now(),
+				receive_cb_total: (receive_cb_total || 0) + addMpRewardCb,
+				cb_num: (cb_num || 0) + addMpRewardCb
+			}
+
+			const { doc } = await usersDb.doc(id).updateAndReturn(params)
+
+			return { data: doc, errMsg: '领取成功' }
+		} catch ({ message }) {
+			console.log('\n----------领取添加小程序奖励异常----------\n', message);
 			return { errMsg: message }
 		}
 	},

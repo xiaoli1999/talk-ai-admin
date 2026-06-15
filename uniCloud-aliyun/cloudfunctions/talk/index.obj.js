@@ -11,6 +11,9 @@ const { LiblibAI } = require('liblibai');
 
 const { getTalkTextRealValue } = require('./utils/common')
 
+/* 排行榜热度上报（可插拔：删除本行 require + 下方 3 处 reportHot 调用即可下线） */
+const { reportHot: reportRankingHot } = require('./utils/ranking-report.js')
+
 /* 数据库 */
 const db = uniCloud.database();
 const dbJQL = uniCloud.databaseForJQL(db)
@@ -103,8 +106,16 @@ module.exports = {
 			/* 获取对话信息 */
 			const res = await dbJQL.collection(type).doc(id).get()
 			const data = res && res.data && res.data.length ? res.data[0] : {}
-			/* 增加该模型热度 */
-			await db.collection(type).doc(id).update({ hot_count: db.command.inc(10), today_hot_count: db.command.inc(10) })
+			/* 增加该模型热度
+			 * 权重设计：进入 +1 / 文字 +1 / 语音 +2。
+			 * Why 进入仅 +1：避免来回切角色卡刷热度，鼓励真实对话产生权重。 */
+			await db.collection(type).doc(id).update({ hot_count: db.command.inc(1), today_hot_count: db.command.inc(1) })
+
+			/* 排行榜上报（仅 roles 表生效，其他 type 跳过）
+			 * Why await：云函数返回后未完成的异步 IO 会被 serverless 运行时立即终止，
+			 *   不 await 会导致 period 表写入丢失（已踩坑，见 md/排行榜.md §9.4）。
+			 *   reportRankingHot 内部已吞掉所有错误，await 不会影响主流程稳定性。 */
+			if (type === 'roles') await reportRankingHot(db, { role_id: id, gender: data.gender || 0, add: 1 })
 
 			return { data , errMsg: '获取成功' }
 		} catch ({ message }) {
@@ -143,7 +154,11 @@ module.exports = {
 	 */
 	async getRolesModelReply ({ modelId, name, user_name, prompt, talkList } = {}) {
 		try {
-			const { model, apiKey, max_tokens, temperature, top_p } = modelConfig[modelId]
+			if (!modelConfig[modelId]) {
+				return { data: { base_resp: { status_code: 1000, status_msg: '该模型已下线，请切换其他模型' }, reply: '', usage: {} } }
+			}
+
+			const { model, apiKey, max_tokens, temperature, top_p, thinking } = modelConfig[modelId]
 
 			/* minmax */
 			const ababList = ['abab6.5t-chat', 'abab5.5s-chat', 'MiniMax-Text-01']
@@ -228,10 +243,14 @@ module.exports = {
 				if (messages[messages.length - 1].role === 'assistant') {
 					messages.push({ role: 'user', sender_name: user_name, content: '渐进式推进剧情。' })
 				} else {
-					if (['new-pro', 'new-max', 'new-sex'].includes(modelId)) {
+					if (['new-basic', 'new-pro', 'new-max', 'new-sex'].includes(modelId)) {
 						let content = ''
 
-						if (modelId === 'new-max') {
+						if (modelId === 'new-basic') {
+							content = '你回复时，必须将环境、动作细节、微表情、微动作、神态、表情等细节，放在（）中来表示。' +
+								'回复字数在60字~120字之间.'
+
+						} else if (modelId === 'new-max') {
 							content = '你回复时，必须将环境、动作细节、肢体细节、姿势、触感、微表情、微动作、外貌、服饰、神态、表情等细节，放在（）中来表示。' +
 								'将心理活动放在（os：）中来表示。' +
 								'你要用细腻的词汇通过器官的学名／称呼／质地／大小／气味／形状等方面来详细描写器官的内部与外部的状态以及器官互动详细细节和体液流动细节。' +
@@ -261,7 +280,10 @@ module.exports = {
 					model, max_tokens, temperature, top_p,
 
 					/* 对话消息 */
-					messages
+					messages,
+					"thinking":{
+						"type": thinking || 'enabled'
+					}
 
 				}
 
@@ -460,6 +482,11 @@ module.exports = {
 
 			const params = { cb_num, cb_pay_num }
 
+			/* chat_total 通用累计聊天次数：搭车本就要写的用户文档更新，零新增请求/查询。
+			 * 仅文字回复(tokens)计 1 次；语音播放(sound_tokens)不计，避免同一条消息重复累加。
+			 * 与 addRoleHot 分支互斥，不会重复。邀请达标判定「聊天满 N 次」读取此字段；删邀请功能后保留无害。 */
+			if (tokens) params.chat_total = db.command.inc(1)
+
 			if ((cb_num + cb_pay_num) > useCbNum) {
 				/* 先使用免费采贝 */
 				if (cb_num >= useCbNum) {
@@ -489,6 +516,9 @@ module.exports = {
 					last_talk_time: Date.now()
 				}
 				await db.collection('roles').doc(role_id).update(rolesParams)
+
+				/* 排行榜上报（必须 await，serverless 不等未完成的 IO） */
+				await reportRankingHot(db, { role_id, add: addCount })
 			}
 
 
@@ -499,11 +529,11 @@ module.exports = {
 	},
 
 	/**
-	 * @function addRoleHot 增加角色热度
-	 * @param { Object } params { id } 用户id、表类型
+	 * @function addRoleHot 增加角色热度（畅聊卡 / 免费模型对话走此分支，不消耗采贝）
+	 * @param { Object } params { role_id, user_id } 角色id、用户id（用于累计聊天次数）
 	 * @returns { object } { errMsg: '', data： {}} 用户对话次数及错误信息
 	 */
-	async addRoleHot ({ role_id } = {}) {
+	async addRoleHot ({ role_id, user_id } = {}) {
 		try {
 			if (!role_id) return { data: false,  errMsg: '角色id不能为空' }
 
@@ -517,6 +547,20 @@ module.exports = {
 				last_talk_time: Date.now()
 			}
 			await db.collection('roles').doc(role_id).update(rolesParams)
+
+			/* chat_total：卡/免费模型对话不走 deductUserTalkCount，这里给用户累计聊天次数补计一次。
+			 * 💰 成本网关：前端**仅在用户有 inviter_uid（被邀请来的）时才传 user_id**，
+			 *    所以这次额外的 users 写只落在“被邀请用户”身上（唯一需要计数的人群）；
+			 *    占绝大多数的无邀请人用户不传 user_id → 此处直接跳过，零额外读写、零隐性成本。
+			 * 与 deductUserTalkCount 的文字分支互斥，不会重复计数。非致命：失败仅日志、不阻断聊天。 */
+			if (user_id) {
+				await db.collection('users').doc(user_id).update({ chat_total: db.command.inc(1) }).catch(e => {
+					console.error('[invite] addRoleHot chat_total inc failed:', e && e.message)
+				})
+			}
+
+			/* 排行榜上报（必须 await，serverless 不等未完成的 IO） */
+			await reportRankingHot(db, { role_id, add: addCount })
 
 
 			return { data: true,  errMsg: '热度聊天数增加成功' }

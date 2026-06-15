@@ -219,6 +219,30 @@
             "description": "审核失败原因",
             "defaultValue": "",
             "trim": "both"
+        },
+        /* 3.9 自动审核：审核方 + AI连续驳回计数 + 转人工标记 + 结构化驳回详情 */
+        "refuse_by": {
+            "bsonType": "string",
+            "title": "审核方",
+            "description": "本次驳回来源：ai=AI审核 / human=真人复审",
+            "defaultValue": ""
+        },
+        "ai_fail_count": {
+            "bsonType": "int",
+            "title": "AI连续驳回次数",
+            "description": "AI 连续自动驳回次数，达 3 转人工；人工驳回时还原为 0",
+            "defaultValue": 0
+        },
+        "need_manual": {
+            "bsonType": "bool",
+            "title": "转人工待审",
+            "description": "true=已转人工复审（定时器跳过、后台人工队列查它）",
+            "defaultValue": false
+        },
+        "refuse_detail": {
+            "bsonType": "object",
+            "title": "结构化驳回详情",
+            "description": "信笺逐字段展示用：{ groups:[{kind,name,items:[{field,reason,keyword}]}] }"
         }
     },
     "version": "1.0.0"
