@@ -764,6 +764,11 @@ const saveRole = async (isGood = false) => {
     /* 3.8 新增字段 */
     delete params.state
     delete params.refuse_reason
+    /* 3.9 自动审核新增字段：roles 集合 schema 无此字段，不剔除会导致 add 校验失败 */
+    delete params.refuse_by
+    delete params.ai_fail_count
+    delete params.need_manual
+    delete params.refuse_detail
 
 
     /* 设置特殊参数 */
@@ -780,8 +785,9 @@ const saveRole = async (isGood = false) => {
     params.avatar_bg_color = data.RGB ? `#${ data.RGB.slice(2) }` : ''
 
     /* 新增线上角色 */
-    const { result: { id, errMsg } } = await rolesDb.add(params).catch(e => e)
-    if (errMsg) return ElMessage.error(errMsg)
+    const addRes = await rolesDb.add(params).catch(e => e)
+    const { id, errMsg } = (addRes && addRes.result) || {}
+    if (errMsg || !id) return ElMessage.error(errMsg || (addRes && addRes.errMsg) || '上线失败，请重试')
 
     ElMessage.success('上线成功')
 
