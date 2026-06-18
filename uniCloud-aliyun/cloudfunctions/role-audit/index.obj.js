@@ -20,9 +20,10 @@ const RolesMyDb = db.collection('roles_my');
 const UsersDb = db.collection('users');
 const AuditLogDb = db.collection('role_audit_log');
 
-const AGREE_RUNS = 3;   // 每个角色固定审 3 次，3/3 一致驳回才自动驳回（不提前停）
-const MAX_AI_FAIL = 3;  // AI 连续自动驳回达此次数 → 转人工（人工驳回时还原计数）
-const BATCH_LIMIT = 3;  // 每次定时器最多处理角色数（每个角色 ×3 调用，控单次时长）
+const MAX_AI_FAIL = 3;  // AI 连续驳回达此次数 → 前端弹「继续修改/转人工」二选一（auditOnSubmit 回传给客户端判断）
+// 兜底清扫常量：P2 同步秒审上线后，正常提交都被 auditOnSubmit 当场定死；只有「秒审网络失败残留」或「上线前历史积压」会卡在 state=0
+const SWEEP_STALE_MS = 10 * 60 * 1000; // 卡在审核中超过 10 分钟视为残留（顺带避开正在秒审的几秒窗口）
+const SWEEP_LIMIT = 20;                // 每次定时器最多清扫数
 
 // doubao-seed-1.6-vision <32K 档价（元 / 百万 tokens）：输入 0.8 / 输出 8。换模型或档位时同步这里。
 const PRICE_IN = 0.8;
@@ -31,11 +32,11 @@ const PRICE_OUT = 8;
 module.exports = {
   _before() {},
 
-  /** 定时器入口：批量预审待审角色 */
+  /** 定时器入口：兜底清扫——只把卡在 state=0 的残留角色转人工，不审核、不自动驳回 */
   _timing: async function () {
     try {
-      const r = await runPendingAudits();
-      console.log('[role-audit][_timing]', JSON.stringify(r));
+      const r = await sweepStuckToManual();
+      console.log('[role-audit][_timing] 兜底清扫', JSON.stringify(r));
     } catch (e) {
       console.error('[role-audit][_timing] 异常', e && e.message);
     }
@@ -76,83 +77,113 @@ module.exports = {
     await AuditLogDb.doc(log._id).update({ human_decision: decision });
     return { data: true, errMsg: 'ok' };
   },
-};
 
-/** 扫描待审（state=0 且未转人工）的角色，逐个做"3 次一致"自动决策 */
-async function runPendingAudits() {
-  const { data: pending } = await RolesMyDb
-    .where({ state: 0, need_manual: dbCmd.neq(true) })
-    .orderBy('update_time', 'asc')
-    .limit(BATCH_LIMIT)
-    .get();
-  if (!pending || !pending.length) return { scanned: 0, reject: 0, manual: 0, err: 0 };
+  /**
+   * 【P2 前端秒审】提交即同步审核（复用底层 auditOne 审核核心；驳回在此当场完成，不再依赖定时器自动驳回）。
+   * 决策只写 roles_my、绝不碰线上 roles 表，保持「AI 永不自动放行」——通过=放行进人工终审队列。
+   * @param {object} p
+   * @param {string} p.roleId roles_my 文档 _id（客户端 createRole 后回传）
+   * @returns {Promise<{data:object|null, errMsg:string}>}
+   *   data.status：
+   *     'pass'        —— 通过 / 模型异常兜底：置 need_manual 进人工终审，前端表现为「提交成功，等待审核」
+   *     'reject'      —— 驳回：已写 state=1+信笺详情+计数，返回 { failCount, maxFail, detail, reason } 供原地回填
+   *     'need_choice' —— 已连续失败达上限：不跑 AI，由前端弹「继续修改 / 提交人工复审」
+   */
+  async auditOnSubmit({ roleId } = {}) {
+    if (!roleId) return { data: null, errMsg: '缺少 roleId' };
+    const { data } = await RolesMyDb.doc(roleId).get();
+    const role = data && data[0];
+    if (!role) return { data: null, errMsg: '角色不存在' };
 
-  const tally = { reject: 0, manual: 0, err: 0 };
-  for (const role of pending) {
-    try {
-      const r = await autoDecideRole(role);
-      if (r === 'reject') tally.reject++; else if (r === 'manual') tally.manual++;
-    } catch (e) {
-      tally.err++;
-      console.error('[role-audit] 自动审核异常', role._id, e && e.message);
+    // 每次提交都跑单轮多模态审核（写 role_audit_log 留痕 + 微信文本快闸 + vision）；
+    // 连续失败达 MAX_AI_FAIL 次的「转人工」由前端在驳回时弹窗交互，云端不提前跳过 AI（用户改了内容仍给 AI 复审机会）
+    const log = await auditOne(role, { write: true, wx: true });
+
+    // 模型异常 / 解析失败（ai_pass 落库时被 dropNull 丢成 undefined）→ fail-to-human：不卡用户，转人工终审
+    if (log.ai_error || log.ai_pass === null || log.ai_pass === undefined) {
+      await RolesMyDb.doc(roleId).update({ need_manual: true, update_time: Date.now() });
+      return { data: { status: 'pass' }, errMsg: 'ok' };
     }
-  }
-  return { scanned: pending.length, ...tally };
-}
 
-/**
- * 单角色"3 次一致"自动决策（AI 只做驳回；通过/边界一律转人工，人工继续审）：
- *   - AI 连续驳回已达 MAX_AI_FAIL → 转人工（置 need_manual，不再跑 AI）；
- *   - 否则固定审 AGREE_RUNS 次：3/3 全驳回 → 自动驳回（写 roles_my + 发订阅消息 + 计数+1）；
- *     全通过 / 任意翻转 / 出错 → 转人工。
- * @returns {Promise<'reject'|'manual'>}
- */
-async function autoDecideRole(role) {
-  // 已连续失败达上限 → 转人工
-  if ((role.ai_fail_count || 0) >= MAX_AI_FAIL) {
-    await RolesMyDb.doc(role._id).update({ need_manual: true, update_time: Date.now() });
-    return 'manual';
-  }
+    // 通过 → 转人工终审队列（need_manual=true，定时器因 need_manual 跳过；AI 不自动放行到线上）
+    if (log.ai_pass === true) {
+      await RolesMyDb.doc(roleId).update({ need_manual: true, update_time: Date.now() });
+      return { data: { status: 'pass' }, errMsg: 'ok' };
+    }
 
-  // 固定审 3 次（首次带微信文本快闸；每次照常写 role_audit_log 留痕）
-  const runs = [];
-  for (let i = 0; i < AGREE_RUNS; i++) {
-    runs.push(await auditOne(role, { write: true, wx: i === 0 }));
-  }
-  const oks = runs.filter(r => r && !r.ai_error && r.ai_pass !== undefined && r.ai_pass !== null);
-  const allReject = oks.length === AGREE_RUNS && oks.every(r => r.ai_pass === false);
-
-  if (allReject) {
-    const rep = oks[oks.length - 1]; // 用最后一次的结构化结果
+    // 驳回 → 写 roles_my（state=1 + 结构化信笺详情 + 连续失败计数 +1）
+    const failCount = (role.ai_fail_count || 0) + 1;
+    const reason = log.ai_not_reason || '审核未通过，请根据建议修改后重新提交。';
     const upd = {
       state: 1,
-      refuse_reason: rep.ai_not_reason || '审核未通过，请根据建议修改后重新提交。',
+      refuse_reason: reason,
       refuse_by: 'ai',
       ai_fail_count: dbCmd.inc(1),
       need_manual: false,
       update_time: Date.now(),
     };
-    if (rep._detail) upd.refuse_detail = rep._detail; // 结构化分组（信笺逐字段展示）
-    await RolesMyDb.doc(role._id).update(upd);
-    // 订阅消息（与人工驳回同一条链路：role.checkRoleAndNotice state=1）
+    if (log._detail) upd.refuse_detail = log._detail; // 结构化分组（信笺逐字段展示）
+    await RolesMyDb.doc(roleId).update(upd);
+    // 同步场景用户当场即见信笺，不再发订阅消息（一次授权留给后续真人终审的「已通过/未通过」推送消费）
+    return {
+      data: { status: 'reject', failCount, maxFail: MAX_AI_FAIL, detail: log._detail || null, reason },
+      errMsg: 'ok',
+    };
+  },
+
+  /**
+   * 【P2 前端秒审】「提交人工复审」选项落库：连续 MAX_AI_FAIL 次 AI 未过后，用户选择转真人。
+   * 角色回到「审核中」(state=0) 并置 need_manual=true 进真人队列（定时器跳过）。
+   * @param {object} p
+   * @param {string} p.roleId roles_my._id
+   */
+  async escalateToHuman({ roleId } = {}) {
+    if (!roleId) return { data: null, errMsg: '缺少 roleId' };
+    const { data } = await RolesMyDb.doc(roleId).get();
+    if (!data || !data[0]) return { data: null, errMsg: '角色不存在' };
+    await RolesMyDb.doc(roleId).update({ need_manual: true, state: 0, update_time: Date.now() });
+    return { data: true, errMsg: 'ok' };
+  },
+
+  /**
+   * 【P2】「继续修改」开启新一轮审核周期：连续失败计数清零。
+   * 每 MAX_AI_FAIL 次失败为一个周期，到第 MAX_AI_FAIL 次弹「转人工」二选一；
+   * 用户选「继续修改」即重置，需再连续失败 MAX_AI_FAIL 次才会再次弹出。
+   * @param {object} p
+   * @param {string} p.roleId roles_my._id
+   */
+  async resetAiFailCount({ roleId } = {}) {
+    if (!roleId) return { data: null, errMsg: '缺少 roleId' };
+    await RolesMyDb.doc(roleId).update({ ai_fail_count: 0, update_time: Date.now() });
+    return { data: true, errMsg: 'ok' };
+  },
+};
+
+/**
+ * 兜底清扫：把「卡在 state=0(审核中)、未转人工、且超过 SWEEP_STALE_MS 没更新」的残留角色转人工(need_manual=true)。
+ * P2 同步秒审上线后，正常提交都会被 auditOnSubmit 当场定死（驳回 state=1 / 通过·转人工 need_manual=true）；
+ * 只有「秒审网络失败的残留」或「上线前一期遗留的待审积压」会留在 state=0。本任务只负责把它们转人工，
+ * 绝不跑 AI、不自动驳回（驳回已改为提交时同步进行）。10 分钟阈值顺带避开正在秒审的几秒窗口，消除抢角色竞态。
+ */
+async function sweepStuckToManual() {
+  const staleBefore = Date.now() - SWEEP_STALE_MS;
+  const { data: stuck } = await RolesMyDb
+    .where({ state: 0, need_manual: dbCmd.neq(true), update_time: dbCmd.lt(staleBefore) })
+    .orderBy('update_time', 'asc')
+    .limit(SWEEP_LIMIT)
+    .get();
+  if (!stuck || !stuck.length) return { swept: 0 };
+
+  let swept = 0;
+  for (const role of stuck) {
     try {
-      await uniCloud.importObject('role').checkRoleAndNotice({
-        state: 1,
-        roleInfo: { ...role, refuse_reason: upd.refuse_reason },
-        date: beijingNow(),
-      });
-    } catch (e) { console.error('[role-audit] 订阅消息发送失败', role._id, e && e.message); }
-    return 'reject';
+      await RolesMyDb.doc(role._id).update({ need_manual: true, update_time: Date.now() });
+      swept++;
+    } catch (e) {
+      console.error('[role-audit] 兜底转人工失败', role._id, e && e.message);
+    }
   }
-
-  // 全通过 / 翻转 / 出错 → 转人工（AI 不自动放行）
-  await RolesMyDb.doc(role._id).update({ need_manual: true, update_time: Date.now() });
-  return 'manual';
-}
-
-/** 服务端(UTC)→北京时间字符串 YYYY-MM-DD HH:mm:ss（订阅消息 time4 用） */
-function beijingNow() {
-  return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+  return { scanned: stuck.length, swept };
 }
 
 /** 审核单个角色（不改 roles_my）。opts.write=false 不写日志、opts.wx=false 跳过微信快闸（评测 dryRun 用） */

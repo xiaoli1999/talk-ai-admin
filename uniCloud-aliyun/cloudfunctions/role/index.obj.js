@@ -127,10 +127,12 @@ module.exports = {
 				roleObj.refuse_detail = db.command.remove()
 			}
 
-			const { errMsg } = _id ? await rolesMyDb.doc(_id).update(roleObj).catch(e => e) : await rolesMyDb.add(roleObj).catch(e => e)
-			if (errMsg) return { data: null, errMsg }
+			const dbRes = _id ? await rolesMyDb.doc(_id).update(roleObj).catch(e => e) : await rolesMyDb.add(roleObj).catch(e => e)
+			if (dbRes && dbRes.errMsg) return { data: null, errMsg: dbRes.errMsg }
 
-			return { data: true, errMsg: '创建成功' }
+			/* P2 秒审：回传 _id（新增取 add 的 id，更新取既有 _id），供客户端提交后同步调 role-audit.auditOnSubmit；
+			   行为不变——仅把返回值由 true 增强为 _id，唯一调用方 role.vue 仅做 !data 真值判断 */
+			return { data: _id || dbRes.id, errMsg: '创建成功' }
 		} catch ({ message }) {
 			return { errMsg: message }
 		}
