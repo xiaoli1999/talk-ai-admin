@@ -41,15 +41,15 @@ const EP = {
  *     而思考内容用户看不到（等于白扣）。若试完决定某档开思考，需同步评估该档 price 倍率是否还合理。
  */
 const modelConfig = {
-  t1: { tier: '1', model: EP.t1, max_tokens: 300,  temperature: 0.96, top_p: 0.95, thinking: 'disabled',
+  t1: { tier: '1', model: EP.t1, max_tokens: 200,  temperature: 0.96, top_p: 0.95, thinking: 'disabled',
         continuePrompt: '顺着刚才的话题自然往下聊，像真人聊天一样自然随意，别硬转话题。' },
-  t2: { tier: '2', model: EP.t2, max_tokens: 450,  temperature: 0.96, top_p: 0.94, thinking: 'disabled',
+  t2: { tier: '2', model: EP.t2, max_tokens: 300,  temperature: 0.96, top_p: 0.94, thinking: 'disabled',
         continuePrompt: '顺着刚才的暧昧氛围自然接话或回应，让心动再进一步，篇幅照常就好。' },
-  t3: { tier: '3', model: EP.t3, max_tokens: 700,  temperature: 0.96, top_p: 0.94, thinking: 'disabled',
+  t3: { tier: '3', model: EP.t3, max_tokens: 500,  temperature: 0.96, top_p: 0.94, thinking: 'disabled',
         continuePrompt: '顺着刚才的话继续，多给我一点只对我的偏爱与在意，自然往下接，保持本档一贯的篇幅与节奏。' },
-  t4: { tier: '4', model: EP.t4, max_tokens: 1100, temperature: 0.96, top_p: 0.94, thinking: 'disabled',
+  t4: { tier: '4', model: EP.t4, max_tokens: 800, temperature: 0.96, top_p: 0.94, thinking: 'disabled',
         continuePrompt: '顺着刚才的剧情自然往下推进一点，保持本档一贯的篇幅与节奏，别铺陈也别收尾。' },
-  t5: { tier: '5', model: EP.t5, max_tokens: 1500, temperature: 0.95, top_p: 0.92, thinking: 'disabled',
+  t5: { tier: '5', model: EP.t5, max_tokens: 1200, temperature: 0.95, top_p: 0.92, thinking: 'disabled',
         continuePrompt: '顺着刚才的剧情自然往下推进，维持原有的沉浸感即可，篇幅照常、别越写越长。' },
 };
 
@@ -59,7 +59,7 @@ const ideaModel = { model: EP.idea, max_tokens: 700, temperature: 0.9, top_p: 0.
 /**
  * 前端模型列表（UI 元数据）
  * 字段沿用现有 modelList 约定，新增 en/tagline/soul/tier/keepRounds：
- *   - price：采贝倍率（采贝 = ceil(total_tokens × price / 1000)）
+ *   - price：每次回复固定扣费的采贝数（按次计费：T1-T5 = 1/2/3/4/5 采贝/次，与本轮 token 多少无关）
  *   - memory：上下文高水位字数（撞顶才批量截断；这是真预算）
  *   - cardMemory：用畅聊卡时的高水位字数（刻意小于 memory：卡是平价不限量，压上下文控成本）
  *   - keepRounds：低水位"轮数上限"（撞顶后砍回最近 N 轮；若该 N 轮字数仍超高水位——典型如从高档切回低档——
@@ -74,35 +74,35 @@ const modelList = [
     id: 't1', tier: '1', name: '日常', en: 'DAILY', tagline: '随时都在的那个 Ta', soul: '真人闲聊感',
     desc: '入门首选，像真人一样随时秒回，陪你聊好每一句日常——有人一直在的踏实。',
     tagList: ['真人感', '秒回', '暖心陪伴'],
-    price: 1, memory: 5000, cardMemory: 4000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 24,
+    price: 1, memory: 4000, cardMemory: 3000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 20,
     cdRange: [0, 2], closeValue: 0, isVip: false, allowDefault: true, allowUseCard: true, waitTime: 0, stream: false,
   },
   {
     id: 't2', tier: '2', name: '恋爱', en: 'ROMANCE', tagline: '和 Ta 暧昧拉扯', soul: '恋爱拉扯',
     desc: '恋爱进阶，Ta 会撩你、也等你撩回来，一来一回都是心动暴击。',
     tagList: ['心动暧昧', '会撩', '小鹿乱撞'],
-    price: 1.5, memory: 6000, cardMemory: 5000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 18,
+    price: 2, memory: 5000, cardMemory: 4000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 18,
     cdRange: [0, 4], closeValue: 0, isVip: false, allowDefault: false, allowUseCard: true, waitTime: 0, stream: false,
   },
   {
     id: 't3', tier: '3', name: '梦女', en: 'DARLING', tagline: 'Ta 唯独对你破例', soul: '被偏爱叙事',
     desc: '专属模型，Ta 的世界只为你破例、记得你的每件小事——你是唯一的例外。',
     tagList: ['独宠唯一', '为你破例', '记得你'],
-    price: 2, memory: 8000, cardMemory: 6000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 12,
+    price: 3, memory: 6000, cardMemory: 5000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 15,
     cdRange: [0, 6], closeValue: 0, isVip: true, allowDefault: false, allowUseCard: true, waitTime: 0, stream: true,
   },
   {
     id: 't4', tier: '4', name: '剧情', en: 'STORY', tagline: 'Ta 带你入戏，走着走着就当真', soul: '剧情感最浓',
     desc: '剧情大片，Ta 带你沉进正在发生的故事，每一幕都勾着你遐想接下来，忍不住想一直聊下去。',
     tagList: ['沉浸剧情', '悬念感', '欲罢不能'],
-    price: 3, memory: 12000, cardMemory: 8000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 10,
+    price: 4, memory: 8000, cardMemory: 6000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 12,
     cdRange: [0, 10], closeValue: 0, isVip: true, allowDefault: false, allowUseCard: true, waitTime: 0, stream: true,
   },
   {
     id: 't5', tier: '5', name: '梦境', en: 'DREAM', tagline: '分不清是梦，还是 Ta 真的来了', soul: '沉浸到沉沦',
     desc: '最强模型，极致沉浸，每一幕都写得淋漓尽致，带你陷进一场分不清真假的梦。',
     tagList: ['极致沉浸', '细腻饱满', '越陷越深'],
-    price: 4, memory: 16000, cardMemory: 10000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 8,
+    price: 5, memory: 10000, cardMemory: 8000, memoryTalk: 0, cardMemoryTalk: 0, keepRounds: 10,
     cdRange: [0, 20], closeValue: 0, isVip: true, allowDefault: false, allowUseCard: true, waitTime: 0, stream: true,
   },
 ];

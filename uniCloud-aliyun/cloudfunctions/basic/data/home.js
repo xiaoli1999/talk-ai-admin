@@ -4,16 +4,16 @@ const homeData = {
 	 */
 	swiperList: [
 		{
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/surve-swiper-v2.png?x-oss-process=image/resize,w_800',
+			pageUrl: '/pages/user/survey/survey?source=home'
+		},
+		{
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-duanwu-3.png?x-oss-process=image/resize,w_800',
+			pageUrl: '/pages/explain/duanwu/duanwu'
+		},
+		{
 			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-model.png?x-oss-process=image/resize,w_800',
 			pageUrl: '/pages/explain/model/model'
-		},
-		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-invite.png?x-oss-process=image/resize,w_800',
-			pageUrl: '/pages/user/invite/invite'
-		},
-		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-ranking1.png?x-oss-process=image/resize,w_800',
-			pageUrl: '/pages/role/ranking/ranking?source=home'
 		},
 		// {
 		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-26-year.png',
@@ -56,13 +56,21 @@ const homeData = {
 	],
 	bannerList: [
 		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/survey.jpg',
-			pageUrl: '/pages/user/survey/survey?source=home'
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-ranking-2.png?x-oss-process=image/resize,w_800',
+			pageUrl: '/pages/role/ranking/ranking?source=home'
 		},
 		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/create/guide.png',
-			pageUrl: '/pages/doc/doc?type=捏崽攻略'
+			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/swiper-invite-2.png?x-oss-process=image/resize,w_800',
+			pageUrl: '/pages/user/invite/invite'
 		},
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/survey.jpg',
+		// 	pageUrl: '/pages/user/survey/survey?source=home'
+		// },
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/create/guide.png',
+		// 	pageUrl: '/pages/doc/doc?type=捏崽攻略'
+		// },
 		// {
 		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/reward.png',
 		// 	pageUrl: '/pages/doc/doc?type=补偿奖励'
@@ -79,18 +87,18 @@ const homeData = {
 		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/free-model.png',
 		// 	pageUrl: '/pages/doc/doc?type=模型升级'
 		// },
-		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/create-role.png',
-			pageUrl: '/pages/doc/doc?type=创建采崽'
-		},
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/create-role.png',
+		// 	pageUrl: '/pages/doc/doc?type=创建采崽'
+		// },
 		// {
 		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/create/guide.png',
 		// 	pageUrl: '/pages/doc/doc?type=捏崽攻略'
 		// },
-		{
-			url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/create/swiper/create-role-test.png',
-			pageUrl: '/pages/create/create'
-		},
+		// {
+		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/create/swiper/create-role-test.png',
+		// 	pageUrl: '/pages/create/create'
+		// },
 		// {
 		// 	url: 'https://mp-544657ac-b0d5-44ca-838d-e1ba5e17094f.cdn.bspapp.com/assets/home/swiper/create-off.png',
 		// 	pageUrl: '/pages/doc/doc?type=投稿下线通知'

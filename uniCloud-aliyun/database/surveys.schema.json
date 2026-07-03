@@ -22,6 +22,10 @@
       "description": "页面来源",
       "bsonType": "string"
     },
+    "version": {
+      "description": "问卷版本(如 v1/v2)，用于多版本并存与按版本判定是否已填；历史无此字段的记录按 v1 处理",
+      "bsonType": "string"
+    },
     "answers": {
       "description": "问卷答案(KV结构)",
       "bsonType": "object"

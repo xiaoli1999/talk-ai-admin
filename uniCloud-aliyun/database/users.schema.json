@@ -158,6 +158,16 @@
 			"description": "付费采贝数量",
 			"defaultValue": 0
 		},
+		"comp_free_time": {
+			"bsonType": "timestamp",
+			"description": "端午全员补偿(免费采贝)领取时间戳，>0 即已领，用于防重领",
+			"defaultValue": 0
+		},
+		"comp_paid_time": {
+			"bsonType": "timestamp",
+			"description": "端午付费额外补偿(付费采贝)领取时间戳，>0 即已领，用于防重领",
+			"defaultValue": 0
+		},
 		"receive_cb_date": {
 			"bsonType": "string",
 			"description": "上次用户领取免费采贝时间",

@@ -1,4 +1,4 @@
-const { AppID, AppSecret, inviteCb, cbNum, videoAdCb, rewardCb, rewardPayCb, rewardTodayTalkCb, addMpRewardCb, userBasicData } = require('./config.js')
+const { AppID, AppSecret, inviteCb, cbNum, videoAdCb, rewardCb, rewardPayCb, rewardTodayTalkCb, addMpRewardCb, duanwu, userBasicData } = require('./config.js')
 const { createToken, verifyToken } = require('./utils/token.js')
 const dayjs = require('./utils/dayjs.js')
 const { disableUserList } = require('./utils/disable.js')
@@ -14,6 +14,22 @@ const usersCopyJqlDb = dbJQL.collection('users_copy')
 const usersPromptJqlDb = dbJQL.collection('users_prompt')
 const RolesJqlDb = dbJQL.collection('roles')
 const SearchsJqlDb = dbJQL.collection('searchs')
+
+/* 端午付费补偿资格：查用户在 [payStart, payEnd]（北京日含当天）内是否有「成功付费订单」（任意类型、真实金额>0）。
+ * 只读 orders 表，limit 1，多次付费只算一次。时间用 +08:00 偏移构造 UTC 瞬间，时区无关。 */
+async function paidInDuanwuWindow (userId) {
+	if (!duanwu || !duanwu.payStart || !duanwu.payEnd) return false
+	const startTs = new Date(duanwu.payStart + 'T00:00:00+08:00').getTime()
+	const endTs = new Date(duanwu.payEnd + 'T23:59:59.999+08:00').getTime()
+	const dbCmd = db.command
+	const { data } = await db.collection('orders').where({
+		user_id: userId,
+		status: 1,
+		total_fee: dbCmd.gt(0),
+		paid_time: dbCmd.gte(startTs).and(dbCmd.lte(endTs))
+	}).limit(1).get()
+	return !!(data && data.length)
+}
 
 const main = {
 	_before: function () { // 通用预处理器
@@ -420,16 +436,22 @@ const main = {
 			if (!isVip && date === receive_cb_date) return { errMsg: '已经领取过了' }
 			if (isVip && date === receive_vip_cb_date) return { errMsg: '已经领取过了' }
 
+			/* 端午双倍登录：服务端按北京日(UTC+8)判活动期，倍率读 config——不信前端 date，防伪造日期骗双倍 */
+			const today = dayjs().add(8, 'hour').format('YYYY-MM-DD')
+			const mult = (duanwu && duanwu.show && today >= duanwu.claimStart && today <= duanwu.claimEnd) ? (duanwu.loginMultiplier || 1) : 1
+
 			let params = {}
 
 			if (isVip) {
+				const reward = rewardPayCb * mult
 				params.receive_vip_cb_date = date
-				params.receive_cb_total = (receive_cb_total || 0) + rewardPayCb
-				params.cb_num = (cb_num || 0) + rewardPayCb
+				params.receive_cb_total = (receive_cb_total || 0) + reward
+				params.cb_num = (cb_num || 0) + reward
 			} else {
+				const reward = cbNum * mult
 				params.receive_cb_date = date
-				params.receive_cb_total = (receive_cb_total || 0) + cbNum
-				params.cb_num = (cb_num || 0) + cbNum
+				params.receive_cb_total = (receive_cb_total || 0) + reward
+				params.cb_num = (cb_num || 0) + reward
 
 				params.receive_cb_count = (receive_cb_count || 0) + 1
 			}
@@ -500,6 +522,81 @@ const main = {
 			return { data: doc, errMsg: '领取成功' }
 		} catch ({ message }) {
 			console.log('\n----------领取添加小程序奖励异常----------\n', message);
+			return { errMsg: message }
+		}
+	},
+
+	/**
+	 * @function claimCompensation 端午补偿领取（领取式；跨表：写 users + 付费档读 orders）
+	 * @param {Object} event { id 用户id, type 'free'|'paid' }
+	 * @returns {Object} { data: { user, amount }, errMsg }
+	 * 闸门：活动开 → 领取期(北京日 [claimStart,claimEnd]) → 已领闸(comp_free_time/comp_paid_time) → (付费档)orders 付费资格
+	 */
+	async claimCompensation ({ id, type } = {}) {
+		try {
+			if (!id) return { errMsg: '无效用户' }
+			if (type !== 'free' && type !== 'paid') return { errMsg: '参数错误' }
+			if (!duanwu || !duanwu.show) return { errMsg: '活动未开启' }
+
+			/* 领取期闸：服务端按北京日(UTC+8)判定，不信前端 */
+			const today = dayjs().add(8, 'hour').format('YYYY-MM-DD')
+			if (today < duanwu.claimStart) return { errMsg: '活动还没开始哦' }
+			if (today > duanwu.claimEnd) return { errMsg: '领取已结束' }
+
+			const { data } = await usersDb.doc(id).get()
+			const u = data && data[0]
+			if (!u) return { errMsg: '找不到该用户' }
+
+			if (type === 'free') {
+				/* 全员补偿 → 免费采贝 cb_num */
+				if (u.comp_free_time) return { errMsg: '已经领取过了' }
+				const amount = duanwu.freeCb || 0
+				const { doc } = await usersDb.doc(id).updateAndReturn({
+					comp_free_time: Date.now(),
+					cb_num: (u.cb_num || 0) + amount,
+					receive_cb_total: (u.receive_cb_total || 0) + amount
+				})
+				return { data: { user: doc, amount }, errMsg: '领取成功' }
+			}
+
+			/* 付费额外 → 付费采贝 cb_pay_num，仅近一周付费用户 */
+			if (u.comp_paid_time) return { errMsg: '已经领取过了' }
+			const eligible = await paidInDuanwuWindow(id)
+			if (!eligible) return { errMsg: '仅近一周付费用户可领取' }
+			const amount = duanwu.payCb || 0
+			const { doc } = await usersDb.doc(id).updateAndReturn({
+				comp_paid_time: Date.now(),
+				cb_pay_num: (u.cb_pay_num || 0) + amount,
+				receive_cb_total: (u.receive_cb_total || 0) + amount
+			})
+			return { data: { user: doc, amount }, errMsg: '领取成功' }
+		} catch ({ message }) {
+			console.log('\n----------端午补偿领取异常----------\n', message);
+			return { errMsg: message }
+		}
+	},
+
+	/**
+	 * @function getCompensationStatus 端午补偿领取状态（说明页 onLoad 调，决定是否显示付费领取行 + 按钮态）
+	 * @param {Object} event { id 用户id }
+	 * @returns {Object} { data: { freeClaimed, paidClaimed, payEligible } }
+	 */
+	async getCompensationStatus ({ id } = {}) {
+		try {
+			if (!id) return { errMsg: '无效用户' }
+			if (!duanwu || !duanwu.show) return { data: { freeClaimed: false, paidClaimed: false, payEligible: false } }
+
+			const { data } = await usersDb.doc(id).get()
+			const u = data && data[0]
+			if (!u) return { errMsg: '找不到该用户' }
+
+			const freeClaimed = !!u.comp_free_time
+			const paidClaimed = !!u.comp_paid_time
+			/* 已领过付费补偿 → 该行仍显示(显已领取)；未领过才查 orders 付费资格 */
+			const payEligible = paidClaimed ? true : await paidInDuanwuWindow(id)
+
+			return { data: { freeClaimed, paidClaimed, payEligible } }
+		} catch ({ message }) {
 			return { errMsg: message }
 		}
 	},

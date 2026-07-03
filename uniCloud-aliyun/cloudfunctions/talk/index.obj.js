@@ -1,13 +1,11 @@
-const { XF, MINIMAX, COZE,LibLib } = require('./config.js')
+const { XF, MINIMAX } = require('./config.js')
 const voiceData = require('./utils/voice')
-const { modelList, modelConfig, ideaReplyModel, imgPromptPerfModel } = require('./utils/model.js')
-const { imgList, imgData } = require('./utils/img.js')
+const { modelList, modelConfig, ideaReplyModel } = require('./utils/model.js')
+// AI 出图风格卡/预设/提示词优化已迁至 talk-img 云对象（解耦），talk 不再持有这些数据
 
 const CryptoJS = require("./utils/crypto-js.js")
 const base64 = require("./utils/base64.js")
 const dayjs = require('./utils/dayjs.js')
-
-const { LiblibAI } = require('liblibai');
 
 const { getTalkTextRealValue } = require('./utils/common')
 
@@ -43,48 +41,6 @@ const createTalkUrl  = (url) => {
 	return {
 		url: `${url}?authorization=${authorization}&date=${encodeURI(date)}&host=${host}`,
 		appid: APPID
-	}
-}
-
-/**
- * @function DeductUserCbCount 扣除用户对话次数
- * @param { String } id 用户id
- * @param { Number } useCbNum 要扣减采贝的数量
- * @returns { object } { errMsg: '', data： {}} 用户对话次数及错误信息
- */
-const DeductUserCbCount = async (id, useCbNum) => {
-	try {
-		useCbNum = Number(useCbNum)
-
-		console.log('扣减采贝', id, useCbNum + '个采贝')
-
-		const { data: userList } = await db.collection('users').doc(id).get()
-		let { cb_num, cb_pay_num } = userList[0]
-		cb_num = cb_num || 0
-		cb_pay_num = cb_pay_num || 0
-
-		const params = { cb_num, cb_pay_num }
-
-		if ((cb_num + cb_pay_num) > useCbNum) {
-			/* 先使用免费采贝 */
-			if (cb_num >= useCbNum) {
-				params.cb_num = parseInt((cb_num - useCbNum) * 100) / 100
-			} else {
-				const num = useCbNum - cb_num
-				params.cb_pay_num = parseInt((cb_pay_num - num) * 100) / 100
-
-				params.cb_num = 0
-			}
-		} else {
-			params.cb_num = 0
-			params.cb_pay_num = 0
-		}
-
-		const { doc } = await db.collection('users').doc(id).updateAndReturn(params)
-
-		return { data: doc,  errMsg: '采贝扣减成功' }
-	} catch ({ message }) {
-		return { errMsg: message }
 	}
 }
 
@@ -458,18 +414,28 @@ module.exports = {
 	 * @param { Object } params { id } 用户id、表类型
 	 * @returns { object } { errMsg: '', data： {}} 用户对话次数及错误信息
 	 */
-	async deductUserTalkCount ({ id, role_id, tokens, sound_tokens } = {}) {
+	async deductUserTalkCount ({ id, role_id, tokens, sound_tokens, cb, sound } = {}) {
 		try {
 			if (!id) return { errMsg: '找不到该用户' }
 
 			tokens = tokens || 0
 			sound_tokens = sound_tokens || 0
 			let useCbNum = 0
+			/* isSound：本次是否语音播放扣费——决定不计 chat_total、角色热度 +2（文字回复 +1）*/
+			let isSound = false
 
-			if (tokens) {
+			if (cb != null) {
+				/* 按次计费（新口径）：前端按模型档位算好定额采贝直接传 cb，与本轮 token 多少无关。
+				 * 文字回复传 cb=档位价(T1-T5=1/2/3/4/5)；灵感/语音传 cb=1（语音另传 sound:true）。*/
+				useCbNum = Number(cb) || 0
+				isSound = !!sound
+			} else if (tokens) {
+				/* 旧版本客户端兼容：文字 token 口径（采贝 = tokens/1000）*/
 				useCbNum = (tokens / 1000).toFixed(2) - 0
 			} else if (sound_tokens) {
+				/* 旧版本客户端兼容：语音字符口径（采贝 = sound_tokens/20）*/
 				useCbNum = (sound_tokens / 20).toFixed(2) - 0
+				isSound = true
 			} else {
 				useCbNum = 1
 			}
@@ -483,9 +449,9 @@ module.exports = {
 			const params = { cb_num, cb_pay_num }
 
 			/* chat_total 通用累计聊天次数：搭车本就要写的用户文档更新，零新增请求/查询。
-			 * 仅文字回复(tokens)计 1 次；语音播放(sound_tokens)不计，避免同一条消息重复累加。
+			 * 仅文字回复/灵感计 1 次；语音播放(isSound)不计，避免同一条消息重复累加。
 			 * 与 addRoleHot 分支互斥，不会重复。邀请达标判定「聊天满 N 次」读取此字段；删邀请功能后保留无害。 */
-			if (tokens) params.chat_total = db.command.inc(1)
+			if (!isSound) params.chat_total = db.command.inc(1)
 
 			if ((cb_num + cb_pay_num) > useCbNum) {
 				/* 先使用免费采贝 */
@@ -507,7 +473,7 @@ module.exports = {
 			/* 兼容旧版本 */
 			if (role_id) {
 				/* 增加该模型热度 */
-				let addCount = sound_tokens ? 2 : 1
+				let addCount = isSound ? 2 : 1
 				const rolesParams = {
 					talk_count: db.command.inc(addCount),
 					hot_count: db.command.inc(addCount),
@@ -831,151 +797,25 @@ module.exports = {
 	 */
 
 	/**
-	 * @function getAiImgStyleList 获取ai图片风格列表
-	 * @returns { object } { errMsg: '', data： {}} 错误信息及对话信息
+	 * @function getAiImgStyleList 【已迁移】AI 出图风格列表已搬到 talk-img.getAiImgStyleList。
+	 *   此处留空壳转调，兼容历史调用方（旧版本/缓存）；前端新代码已直连 talk-img。日后清掉。
 	 */
 	async getAiImgStyleList () {
 		try {
-			return { data: imgList, errMsg: '获取成功' }
+			return await uniCloud.importObject('talk-img').getAiImgStyleList()
 		} catch ({ message }) {
 			return { errMsg: message }
 		}
 	},
 
 	/**
-	 * @function textCreateImg ai根据文本创建图片
-	 * @returns { object } { errMsg: '', data： {}} 错误信息及对话信息
+	 * @function getAiImgTextPerf 【已迁移】文生图提示词优化已搬到 talk-img.getAiImgTextPerf。
+	 *   留空壳转调兼容；前端新代码已直连 talk-img。
+	 * @param { Object } params { prompt, roleContext? }
 	 */
-	async textCreateImg ({ userId, prompt, perf, styleId } = {}) {
+	async getAiImgTextPerf (params = {}) {
 		try {
-			/* todo 文生图 */
-			if (!userId) return { errMsg: '账号登录异常，请退出重新登录' }
-			if (!(styleId in imgData)) return { errMsg: '找不到该风格，请重新选择风格' }
-			const imgInfo = imgData[styleId]
-
-			let url = ''
-
-			if (imgInfo.type === 'liblib') {
-				const client = new LiblibAI({
-					interval: 1000,
-					apiKey: LibLib.AccessKey,
-					apiSecret: LibLib.SecretKey,
-					baseURL: 'https://openapi.liblibai.cloud'
-				})
-
-				const params = imgInfo.config
-				params.generateParams.prompt = prompt + '.' + imgInfo.style
-
-				console.log('params', params)
-
-				const { images, errMsg } = await client.text2img(params).catch((errMsg) => ({ images: [], errMsg }))
-
-				console.log('errMsg', errMsg)
-
-				if (images.length && images[0].imageUrl) url = images[0].imageUrl
-			} else {
-				const requestBody = {
-					workflow_id: COZE.WORKID,
-					parameters: {
-						prompt: imgInfo.style + prompt,
-						perf
-					}
-				}
-
-				const params = {
-					url: `https://api.coze.cn/v1/workflow/run`,
-					method: 'POST',
-					header: {
-						"Content-Type": "application/json",
-						"Authorization": `Bearer ${COZE.TOKEN}`,
-					},
-					data: requestBody
-				}
-
-				const { data } = await uniCloud.request(params)
-				const urlData = JSON.parse(data.data)
-				url = urlData.url || ''
-			}
-
-			if (!url) return { errMsg : '生成图片涉及违规内容，请重新生成！' }
-
-			/* 将图片转存一下 */
-			const res = await uniCloud.request({ url, method: 'GET', responseType: 'arraybuffer' });
-			if (!res.data) return { errMsg: '生成图片失败，请重新生成！' }
-
-			const cloudPath = `/img/create-role/ai/${imgInfo.type}/${dayjs().add(8, 'hour').format('YYYY-MM-DD-HH-mm-ss')}.png`
-			const { fileID } = await uniCloud.uploadFile({ cloudPath, fileContent: res.data, cloudPathAsRealPath: true });
-			url = fileID
-
-			if (!url) return { errMsg: '生成图片失败，请重新生成！' }
-
-			/* 同步扣减采贝，获取用户实时数据 */
-			const { data } = await DeductUserCbCount(userId, imgInfo.cb)
-
-			const userData = { cb_num: data.cb_num, cb_pay_num: data.cb_pay_num }
-
-			return { data: { url, userData }, errMsg: url ? '获取成功' : '生成图片涉及违规内容，请重新生成！' }
-		} catch ({ message }) {
-			console.log('message', message)
-			return { errMsg: message }
-		}
-	},
-
-	/**
-	 * @function getAiImgTextPerf todo 获取ai文生图提示词优化
-	 * @param { Object } params { prompt } 提示词内容
-	 * @returns { object } { errMsg: '', data： {}} 错误信息及对话信息
-	 */
-	async getAiImgTextPerf ({ prompt } = {}) {
-		try {
-			const content = `
-				你是一位专业的文生图提示专家，你的任务是根据给定的原始提示词，对其进行优化。
-				以下是原始提示词：
-				<原始提示词>
-				${ prompt }
-				</原始提示词>
-				在优化时，请考虑以下方面的细节：
-				- 人物主体：明确性别、年龄。确定主体是全身还是特写，若无明确要求则为全身特写。主体数量，若无明确要求多个主体，则默认一个主体。
-				- 服装特征：具体说明材质、颜色和款式。
-				- 面部细节：详细描述脸部、眼睛、五官、表情、妆容、身材体态、脸型、发型和发色等细节。
-				- 肢体语言：明确神态、情感、动作、姿态等细节。
-				- 背景环境：描述场景元素、背景细节、空间层次、光影效果（包括光源类型、投射角度和氛围）。
-				
-				同时，请遵循以下要求：
-				- 明确主体性别，请勿混淆男女性别及特征。
-				- 明确主体环境、姿态、动作等细节。
-				- <原始提示词>的括号里面的内容为重要内容，优化后继续写在括号里。
-				- 保持原意，避免抽象的词语，使用精准、简洁的词语，避免使用修饰词和手法。
-				- 避免色情、低俗、血腥、暴力等引起不适的词语，用相近意思的词语进行替代。
-				
-				直接输出优化后的提示词。
-			`
-
-			const { model, apiKey, max_tokens, temperature, top_p } = imgPromptPerfModel
-
-			const requestBody = {
-				model, max_tokens, temperature, top_p,
-
-				/* 对话消息 */
-				messages: [{ role: 'system', content }]
-
-			}
-
-			const params = {
-				url: `https://ark.cn-beijing.volces.com/api/v3/chat/completions`,
-				method: 'POST',
-				header: {
-					"Content-Type": "application/json",
-					"Authorization": `Bearer ${apiKey}`
-				},
-				data: requestBody
-			}
-
-			const { data: { choices } } = await uniCloud.request(params)
-
-			const data = choices && choices.length ? choices[0].message.content : ''
-
-			return { data , errMsg: '获取成功' }
+			return await uniCloud.importObject('talk-img').getAiImgTextPerf(params)
 		} catch ({ message }) {
 			return { errMsg: message }
 		}

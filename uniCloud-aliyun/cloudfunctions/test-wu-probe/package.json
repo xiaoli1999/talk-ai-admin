@@ -1,0 +1,13 @@
+{
+  "name": "test-wu-probe",
+  "version": "1.0.0",
+  "description": "【临时·测完即删】WU/RU 计费粒度实测：探测 push进增长文档/小push进大文档/add单条/inc标量/set大文档/读全量/投影读 各操作的写读成本，定死 A(增量)/B(整文档) 计费口径与各操作成本排名。",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 120,
+    "runtime": "Nodejs18"
+  }
+}

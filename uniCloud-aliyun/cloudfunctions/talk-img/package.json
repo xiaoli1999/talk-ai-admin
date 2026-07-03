@@ -1,0 +1,20 @@
+{
+  "name": "talk-img",
+  "version": "1.0.0",
+  "description": "AI 出图（火山即梦免费额度路由 + GPT image2 兜底 · 全量落库资产 users_ai_imgs · 采贝计费）",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 120,
+    "runtime": "Nodejs18",
+    "triggers": [
+      {
+        "name": "cleanupRecords",
+        "type": "timer",
+        "config": "0 10 0 * * * *"
+      }
+    ]
+  }
+}
