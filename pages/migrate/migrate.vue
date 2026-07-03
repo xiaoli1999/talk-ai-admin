@@ -17,23 +17,20 @@
         <div class="filters">
             <div class="fr">
                 <span class="fl">时间</span>
-                <el-radio-group v-model="timePreset" @change="onPresetChange">
-                    <el-radio-button value="5m">最近5分钟</el-radio-button>
-                    <el-radio-button value="1h">最近1小时</el-radio-button>
-                    <el-radio-button value="3h">最近3小时</el-radio-button>
-                    <el-radio-button value="today">今天</el-radio-button>
-                    <el-radio-button value="all">全部</el-radio-button>
-                </el-radio-group>
                 <el-date-picker
-                    v-model="customRange"
+                    v-model="timeRange"
                     type="datetimerange"
+                    :shortcuts="timeShortcuts"
+                    :default-time="defaultTime"
                     range-separator="至"
                     start-placeholder="开始时间"
                     end-placeholder="结束时间"
                     value-format="x"
-                    style="margin-left:12px;width:360px;"
-                    @change="onCustomChange"
+                    clearable
+                    style="width: 400px;"
+                    @change="loadAll"
                 />
+                <span class="fl" style="margin-left: 10px; color: #c0c4cc;">清空 = 全部时间</span>
             </div>
             <div class="fr">
                 <span class="fl">状态</span>
@@ -165,8 +162,18 @@ const autoRefresh = ref(false)
 let timer = null
 
 /* 筛选态 */
-const timePreset = ref('today')   // 5m/1h/3h/today/all
-const customRange = ref(null)      // [fromMs, toMs] 字符串（value-format=x）
+/* 时间区间 [fromMs, toMs]（value-format=x 为字符串毫秒）；默认今天 00:00:00 ~ 23:59:59；清空=全部 */
+const timeRange = ref([String(dayjs().startOf('day').valueOf()), String(dayjs().endOf('day').valueOf())])
+/* 手动选日期时的默认时间：开始 00:00:00、结束 23:59:59 */
+const defaultTime = [new Date(2000, 0, 1, 0, 0, 0), new Date(2000, 0, 1, 23, 59, 59)]
+/* 预设收进日期组件的快捷面板（中文） */
+const timeShortcuts = [
+    { text: '最近5分钟', value: () => [dayjs().subtract(5, 'minute').toDate(), new Date()] },
+    { text: '最近1小时', value: () => [dayjs().subtract(1, 'hour').toDate(), new Date()] },
+    { text: '最近3小时', value: () => [dayjs().subtract(3, 'hour').toDate(), new Date()] },
+    { text: '今天', value: () => [dayjs().startOf('day').toDate(), dayjs().endOf('day').toDate()] },
+    { text: '近7天', value: () => [dayjs().subtract(6, 'day').startOf('day').toDate(), dayjs().endOf('day').toDate()] }
+]
 const status = ref('all')          // all/need/success/fail
 const env = ref('')                // ''/release/trial/develop
 const limit = ref(50)
@@ -174,19 +181,12 @@ const limit = ref(50)
 const statsRows = ref([])
 const list = ref([])
 
-/* 把筛选态翻译成云对象入参：自定义区间优先，否则预设滚动窗 */
+/* 把时间区间翻译成云对象入参：有区间→fromMs/toMs，清空→不限时间 */
 const buildTimeParams = () => {
-    if (customRange.value && customRange.value.length === 2) {
-        return { fromMs: Number(customRange.value[0]), toMs: Number(customRange.value[1]) }
+    if (timeRange.value && timeRange.value.length === 2) {
+        return { fromMs: Number(timeRange.value[0]), toMs: Number(timeRange.value[1]) }
     }
-    const map = {
-        '5m': 5,
-        '1h': 60,
-        '3h': 180,
-        'today': Math.max(1, dayjs().diff(dayjs().startOf('day'), 'minute')),
-        'all': 0
-    }
-    return { sinceMinutes: map[timePreset.value] || 0 }
+    return {}
 }
 
 const baseParams = () => ({ key: STATS_KEY, ...buildTimeParams(), env: env.value })
@@ -242,10 +242,6 @@ const loadAll = async () => {
     loading.value = false
     lastUpdate.value = dayjs().format('HH:mm:ss')
 }
-
-/* 选预设时清掉自定义区间，避免冲突 */
-const onPresetChange = () => { customRange.value = null; loadAll() }
-const onCustomChange = (val) => { if (val && val.length === 2) timePreset.value = ''; loadAll() }
 
 const onAutoChange = (on) => {
     if (timer) { clearInterval(timer); timer = null }

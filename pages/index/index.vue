@@ -20,26 +20,23 @@
             <el-radio-button v-for="item in payEnumsList" :key="item.id" :value="item.id">{{ item.value }}</el-radio-button>
         </el-radio-group>
 
-        <!-- 订单时间筛选：预设区间 + 自定义；空=保持默认(近150条) -->
+        <!-- 订单时间筛选：预设收进日期组件快捷面板；清空=全部(默认近150条) -->
         <div v-if="tab === 1" class="time-filter">
             <span class="tf-lb">下单时间</span>
-            <el-radio-group v-model="orderPreset" @change="onOrderPreset">
-                <el-radio-button value="all">全部</el-radio-button>
-                <el-radio-button value="today">今天</el-radio-button>
-                <el-radio-button value="7d">近7天</el-radio-button>
-                <el-radio-button value="30d">近30天</el-radio-button>
-            </el-radio-group>
             <el-date-picker
                 v-model="orderRange"
                 type="datetimerange"
+                :shortcuts="orderShortcuts"
+                :default-time="orderDefaultTime"
                 range-separator="至"
                 start-placeholder="开始时间"
                 end-placeholder="结束时间"
                 value-format="x"
-                style="margin-left:12px;width:360px;"
-                @change="onOrderRange"
+                clearable
+                style="width:400px;"
+                @change="getOrderList"
             />
-            <span v-if="orderPreset !== 'all' || orderRange" class="tf-hint">当前区间共 {{ orderCount }} 单</span>
+            <span class="tf-hint">{{ orderRange && orderRange.length === 2 ? `当前区间共 ${orderCount} 单` : '清空 = 全部（默认近150条）' }}</span>
         </div>
 
         <template v-if="[1, 2].includes(tab)">
@@ -186,19 +183,21 @@ const goPage = (url) => uni.navigateTo({ url })
 const tab = ref(1)
 const payTab = ref('')
 
-/* 订单时间筛选：预设(all/today/7d/30d) + 自定义区间[fromMs,toMs]；为空(all 且无区间)时保持默认近150条 */
-const orderPreset = ref('all')
+/* 订单时间筛选：区间 [fromMs,toMs]（value-format=x 字符串毫秒）；默认 null=全部(近150条)。预设收进日期组件快捷面板 */
 const orderRange = ref(null)
-/* 把筛选态翻成 [from, to] 毫秒；无筛选返回 null */
+/* 手动选日期时的默认时间：开始 00:00:00、结束 23:59:59 */
+const orderDefaultTime = [new Date(2000, 0, 1, 0, 0, 0), new Date(2000, 0, 1, 23, 59, 59)]
+const orderShortcuts = [
+    { text: '今天', value: () => [dayjs().startOf('day').toDate(), dayjs().endOf('day').toDate()] },
+    { text: '昨天', value: () => [dayjs().subtract(1, 'day').startOf('day').toDate(), dayjs().subtract(1, 'day').endOf('day').toDate()] },
+    { text: '近7天', value: () => [dayjs().subtract(6, 'day').startOf('day').toDate(), dayjs().endOf('day').toDate()] },
+    { text: '近30天', value: () => [dayjs().subtract(29, 'day').startOf('day').toDate(), dayjs().endOf('day').toDate()] }
+]
+/* 把区间翻成 [from, to] 毫秒；未选返回 null(保持默认近150条) */
 const orderTimeSpan = () => {
     if (orderRange.value && orderRange.value.length === 2) return [Number(orderRange.value[0]), Number(orderRange.value[1])]
-    if (orderPreset.value === 'today') return [dayjs().startOf('day').valueOf(), dayjs().endOf('day').valueOf()]
-    if (orderPreset.value === '7d') return [dayjs().subtract(7, 'day').valueOf(), Date.now()]
-    if (orderPreset.value === '30d') return [dayjs().subtract(30, 'day').valueOf(), Date.now()]
     return null
 }
-const onOrderPreset = () => { orderRange.value = null; getOrderList() }
-const onOrderRange = (val) => { if (val && val.length === 2) orderPreset.value = 'all'; getOrderList() }
 
 const orderCount = ref(0)
 const orderList = ref([])
