@@ -1,0 +1,15 @@
+{
+  "name": "chat-migrate",
+  "version": "1.0.0",
+  "description": "聊天搬迁·灰度上报（P0 可插拔：新表 chat_migrate_reports + 本对象自成一体，删除不影响主流程）",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "extensions": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 60,
+    "path": "",
+    "runtime": "Nodejs18"
+  }
+}

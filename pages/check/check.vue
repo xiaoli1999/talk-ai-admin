@@ -296,16 +296,29 @@
         <el-dialog class="dialog" v-model="refuseShow" width="760px" title="拒绝原因" align-center draggable :close-on-click-modal="false">
             <div>
                 <el-tabs v-model="refuseName">
-                    <el-tab-pane v-for="item in refuseData" :label="item.name" :name="item.name" />
+                    <el-tab-pane v-for="item in refuseData" :label="item.title" :name="item.title" />
                 </el-tabs>
 
-                <div style="height: 300px;">
-                    <div v-for="(item, i) in (refuseData.find(i => i.name === refuseName) || { list: [] }).list" :key="i" @click="roleData.refuse_reason += `${ item } \n`">
-                        <el-button type="info" text size="small">{{ item }}</el-button>
+                <div style="height: 260px; overflow-y: auto;">
+                    <div v-for="(item, i) in (refuseData.find(i => i.title === refuseName) || { list: [] }).list" :key="i" style="margin-bottom: 2px;">
+                        <el-button type="info" text size="small" @click="pickPreset(refuseData.find(t => t.title === refuseName), item)">
+                            <b style="color:#8a38f5;">【{{ item.field }}】</b>{{ item.reason }}
+                        </el-button>
                     </div>
                 </div>
 
-                <el-input type="textarea" v-model="roleData.refuse_reason" :rows="5" :maxlength="300" placeholder="审核未通过原因" clearable show-word-limit />
+                <!-- 已选结构化理由：小程序信笺将按此分组精美展示（分组/序号/关键词高亮） -->
+                <div v-if="pickedItems.length" style="margin: 8px 0; padding: 8px 10px; background: #faf7ff; border: 1px solid #ece3ff; border-radius: 6px;">
+                    <div style="font-size: 12px; color: #909399; margin-bottom: 6px;">
+                        已选 {{ pickedItems.length }} 条 · 小程序信笺按此分组展示
+                        <el-button link type="danger" size="small" @click="clearPicked">清空</el-button>
+                    </div>
+                    <el-tag v-for="(p, i) in pickedItems" :key="i" closable size="small" style="margin: 2px;" :type="p.kind === 'image' ? 'warning' : 'primary'" @close="removePicked(i)">
+                        【{{ p.field }}】{{ p.reason.length > 14 ? p.reason.slice(0, 14) + '…' : p.reason }}
+                    </el-tag>
+                </div>
+
+                <el-input type="textarea" v-model="roleData.refuse_reason" :rows="4" :maxlength="500" placeholder="审核未通过原因（点上方预设自动填入，也可手动补充；纯文本用于微信通知与兜底展示）" clearable show-word-limit />
             </div>
 
             <template #footer>
@@ -432,9 +445,11 @@ const batchRejectAiFlagged = async () => {
     /* 同步逐个驳回：因为每个都要发微信订阅消息，串行避免并发出问题 */
     for (const row of targets) {
         try {
-            const reason = auditMap.value[row._id].ai_not_reason
-            /* 人工驳回：refuse_by=human(信笺显示"真人复审") + 还原 AI 计数 + 清转人工标记 */
-            const { errMsg } = await rolesMyDb.doc(row._id).update({ state: 1, refuse_reason: reason, refuse_by: 'human', ai_fail_count: 0, need_manual: false, update_time: Date.now() }).catch(e => e)
+            const audit = auditMap.value[row._id]
+            const reason = audit.ai_not_reason
+            /* 人工驳回：refuse_by=human(信笺显示"真人复审") + 还原 AI 计数 + 清转人工标记；结构化详情由 AI 分路结果构建，无则清除旧详情 */
+            const detail = buildDetailFromAudit(audit)
+            const { errMsg } = await rolesMyDb.doc(row._id).update({ state: 1, refuse_reason: reason, refuse_detail: detail || dbCmd.remove(), refuse_by: 'human', ai_fail_count: 0, need_manual: false, update_time: Date.now() }).catch(e => e)
             if (errMsg) { fail++; continue }
             await RoleCloud.checkRoleAndNotice({ state: 1, roleInfo: { ...row, refuse_reason: reason }, date: dayjs().format('YYYY-MM-DD HH:mm:ss') }).catch(() => {})
             await RoleAuditCloud.setHumanDecision({ roleId: row._id, submitCount: row.styles, decision: 'reject' }).catch(() => {})
@@ -507,47 +522,73 @@ const roleData = ref(roleDataDefault())
 
 const refuseShow = ref(false)
 const refuseName = ref('内容')
+/* 已选结构化驳回条目（点击预设累积）：提交时组装成 roles_my.refuse_detail={groups}，小程序信笺按分组精美展示。
+   与 talk-ai/role-audit 的 buildAuditDetail 同一 shape：{kind:'text'|'image', name, items:[{field,reason,keyword}]} */
+const pickedItems = ref([])
+/* 预设升级为结构化：field=命中字段 / reason=理由正文 / keyword=信笺高亮关键词。tab 携带 kind(text|image)+分组名 name */
 const refuseData = reactive([
     {
-        name: '内容',
+        title: '内容', kind: 'text', name: '角色内容',
         list: [
-            '【名称、简介、设定、标签、开场白】等涉及“低俗、色情、性暗示、血腥、暴力、未成年、政治、军事、明星”等内容，请进行修改。',
-            '【简介、设定】内容混淆，简介是给用户看的，设定才会直接影响崽崽性格、回复效果，请认真填写设定。',
-
-            '【简介】人物关系混乱，崽崽为第三人称（他/她/它/名称），用户为第二人称（你/主控/用户/名称），请进行修改。',
-            '【设定】人物关系混乱，崽崽为第二人称（你/名称），用户为第一称（我/主控/用户/名称），请进行修改。',
-
-            '【简介、设定、开场白】等语句不通顺，缺少标点符号，请进行修改。',
-
-            '【简介、设定】缺少崽崽详细信息，请进行修改。',
-            '【简介、设定】等存在凑字数等行为，请认真填写。',
-
-            '【简介】中的作者寄语请写在最后面，放在（）里，请进行修改。',
-            '【设定】缺少【简介】中的剧情、崽崽信息、用户信息等，请进行补充。',
-
-
-            '【名称】不够具体，请为崽崽起一个具体的名称。',
-            '【标签】不符合崽崽信息，请进行修改。',
-            '【标签】多个标签，请分开填写。',
+            { field: '名称·简介·设定·标签·开场白', reason: '涉及低俗、色情、性暗示、血腥、暴力、未成年、政治、军事、明星等内容，请进行修改。', keyword: '低俗、色情' },
+            { field: '简介·设定', reason: '内容混淆——简介是给用户看的，设定才直接影响崽崽性格与回复效果，请认真填写设定。', keyword: '简介与设定混淆' },
+            { field: '简介', reason: '人物关系混乱：崽崽应为第三人称（他/她/它/名称），用户为第二人称（你/主控/名称），请修改。', keyword: '人物关系' },
+            { field: '设定', reason: '人物关系混乱：崽崽应为第二人称（你/名称），用户为第一人称（我/主控/名称），请修改。', keyword: '人物关系' },
+            { field: '简介·设定·开场白', reason: '语句不通顺、缺少标点符号，请进行修改。', keyword: '语句不通顺' },
+            { field: '简介·设定', reason: '缺少崽崽详细信息，请进行补充。', keyword: '信息过少' },
+            { field: '简介·设定', reason: '存在凑字数等行为，请认真填写。', keyword: '凑字数' },
+            { field: '简介', reason: '作者寄语请写在最后面、放在（）里，请进行修改。', keyword: '作者寄语' },
+            { field: '设定', reason: '缺少简介中的剧情、崽崽信息、用户信息等，请进行补充。', keyword: '与简介不一致' },
+            { field: '名称', reason: '不够具体，请为崽崽起一个具体的名称。', keyword: '名称不具体' },
+            { field: '标签', reason: '不符合崽崽信息，请进行修改。', keyword: '标签不符' },
+            { field: '标签', reason: '多个标签请分开填写。', keyword: '分开填写' },
         ]
     },
     {
-        name: '图片',
+        title: '图片', kind: 'image', name: '角色图片',
         list: [
-            '【形象图、头像】涉及“低俗、色情、性暗示、血腥、暴露、暴力、未成年、素人、明星”等内容，请进行修改。',
-            '【形象图】存在“水印、模糊、低质量、截图、黑边”等，请进行修改。',
-            '【形象图】尺寸有误，应为竖版构图，比例为9:16，请进行修改。',
-            '【头像】未正确裁剪头像（需保证脸部清晰），请调整头像。',
+            { field: '形象图·头像', reason: '涉及低俗、色情、性暗示、血腥、暴露、暴力、未成年、素人、明星等内容，请进行修改。', keyword: '违规内容' },
+            { field: '形象图', reason: '存在水印、模糊、低质量、截图、黑边等，请进行修改。', keyword: '画质问题' },
+            { field: '形象图', reason: '尺寸有误，应为竖版构图、比例 9:16，请进行修改。', keyword: '尺寸 9:16' },
+            { field: '头像', reason: '未正确裁剪头像（需保证脸部清晰），请调整头像。', keyword: '头像裁剪' },
         ]
     },
     {
-        name: '分类',
+        title: '分类', kind: 'text', name: '分类问题',
         list: [
-            '【动漫、小说、游戏】等分类，设定应含有相关《作品》名称、角色名称等，请进行补充。',
-            '【分类】不符和崽崽信息，请选择符合崽崽的分类。',
+            { field: '分类', reason: '动漫/小说/游戏等分类，设定应含相关《作品》名称、角色名称等，请进行补充。', keyword: '缺作品名' },
+            { field: '分类', reason: '不符合崽崽信息，请选择符合崽崽的分类。', keyword: '分类不符' },
         ]
     }
 ])
+
+/* 把已选结构化条目组装成信笺 refuse_detail（按分组名归并，保留 kind 决定图标） */
+const buildDetailFromPicked = (items) => {
+    if (!items || !items.length) return null
+    const groups = []
+    const idx = {}
+    for (const it of items) {
+        if (idx[it.name] == null) { idx[it.name] = groups.length; groups.push({ kind: it.kind, name: it.name, items: [] }) }
+        groups[idx[it.name]].items.push({ field: it.field, reason: it.reason, keyword: it.keyword || '' })
+    }
+    return groups.length ? { groups } : null
+}
+/* AI 建议驳回 → 结构化详情：用审核日志的分路结果(text_reason/image_reason)构建，信笺同样精美分组 */
+const buildDetailFromAudit = (a) => {
+    if (!a) return null
+    const groups = []
+    if (a.text_pass === false && a.text_reason) groups.push({ kind: 'text', name: '角色内容', items: [{ field: '设定内容', reason: a.text_reason, keyword: '' }] })
+    if (a.image_pass === false && a.image_reason) groups.push({ kind: 'image', name: '角色图片', items: [{ field: '形象图/头像', reason: a.image_reason, keyword: '' }] })
+    return groups.length ? { groups } : null
+}
+/* 点击预设：累积结构化条目 + 追加人类可读文本（文本供微信通知与兜底展示） */
+const pickPreset = (tab, item) => {
+    if (!tab || !item) return
+    pickedItems.value.push({ kind: tab.kind, name: tab.name, field: item.field, reason: item.reason, keyword: item.keyword || '' })
+    roleData.value.refuse_reason += `【${item.field}】${item.reason}\n`
+}
+const removePicked = (i) => pickedItems.value.splice(i, 1)
+const clearPicked = () => { pickedItems.value = []; roleData.value.refuse_reason = '' }
 
 const roleRef = ref();
 const roleRules = reactive({
@@ -647,10 +688,14 @@ const openRoleDialog = (row) => {
     setTimeout(() => roleRef.value.clearValidate())
 }
 
-/* 一键把 AI 建议的驳回理由填入并打开驳回弹窗 */
+/* 一键把 AI 建议的驳回理由填入并打开驳回弹窗：同时用 AI 分路结果种入结构化条目(信笺分组展示) */
 const useAiReason = () => {
-    if (currentAudit.value && currentAudit.value.ai_not_reason) {
-        roleData.value.refuse_reason = currentAudit.value.ai_not_reason
+    pickedItems.value = []
+    const a = currentAudit.value
+    if (a && a.ai_not_reason) {
+        roleData.value.refuse_reason = a.ai_not_reason
+        if (a.text_pass === false && a.text_reason) pickedItems.value.push({ kind: 'text', name: '角色内容', field: '设定内容', reason: a.text_reason, keyword: '' })
+        if (a.image_pass === false && a.image_reason) pickedItems.value.push({ kind: 'image', name: '角色图片', field: '形象图/头像', reason: a.image_reason, keyword: '' })
     }
     refuseShow.value = true
 }
@@ -722,6 +767,9 @@ const refuseRole = async () => {
     const { _id, refuse_reason } = roleData.value
     /* 人工驳回：refuse_by=human(信笺显示"真人复审") + 还原 AI 计数 + 清转人工标记 */
     const params = { state: 1, refuse_reason, refuse_by: 'human', ai_fail_count: 0, need_manual: false, update_time: Date.now() }
+    /* 结构化详情：选了预设→写 refuse_detail(信笺精美分组)；纯手打自由文本→显式清除旧详情，避免残留 AI 详情盖过当前理由 */
+    const detail = buildDetailFromPicked(pickedItems.value)
+    params.refuse_detail = detail || dbCmd.remove()
 
     const { errMsg } = await rolesMyDb.doc(_id).update(params).catch(e => e)
     if (errMsg) return ElMessage.error(errMsg)

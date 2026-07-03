@@ -7,6 +7,7 @@
             <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/bg/bg')">背景页</el-button>
             <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/notice/notice')">公告模版</el-button>
             <el-button v-if="globalData.name === 'xiaoli'" @click="goPage('/pages/chat/chat')">聊天记录</el-button>
+            <el-button v-if="globalData.name === 'xiaoli'" type="primary" @click="goPage('/pages/migrate/migrate')">聊天迁移监控</el-button>
         </view>
 
         <el-radio-group v-model="tab" style="margin: 20px auto;">
@@ -18,6 +19,28 @@
         <el-radio-group v-if="tab <= 2" v-model="payTab" style="margin: 20px">
             <el-radio-button v-for="item in payEnumsList" :key="item.id" :value="item.id">{{ item.value }}</el-radio-button>
         </el-radio-group>
+
+        <!-- 订单时间筛选：预设区间 + 自定义；空=保持默认(近150条) -->
+        <div v-if="tab === 1" class="time-filter">
+            <span class="tf-lb">下单时间</span>
+            <el-radio-group v-model="orderPreset" @change="onOrderPreset">
+                <el-radio-button value="all">全部</el-radio-button>
+                <el-radio-button value="today">今天</el-radio-button>
+                <el-radio-button value="7d">近7天</el-radio-button>
+                <el-radio-button value="30d">近30天</el-radio-button>
+            </el-radio-group>
+            <el-date-picker
+                v-model="orderRange"
+                type="datetimerange"
+                range-separator="至"
+                start-placeholder="开始时间"
+                end-placeholder="结束时间"
+                value-format="x"
+                style="margin-left:12px;width:360px;"
+                @change="onOrderRange"
+            />
+            <span v-if="orderPreset !== 'all' || orderRange" class="tf-hint">当前区间共 {{ orderCount }} 单</span>
+        </div>
 
         <template v-if="[1, 2].includes(tab)">
             <el-table v-if="(tab === 1 ? orderPayList : todayOrderPayList).length" :data="tab === 1 ? orderPayList : todayOrderPayList" border>
@@ -163,6 +186,20 @@ const goPage = (url) => uni.navigateTo({ url })
 const tab = ref(1)
 const payTab = ref('')
 
+/* 订单时间筛选：预设(all/today/7d/30d) + 自定义区间[fromMs,toMs]；为空(all 且无区间)时保持默认近150条 */
+const orderPreset = ref('all')
+const orderRange = ref(null)
+/* 把筛选态翻成 [from, to] 毫秒；无筛选返回 null */
+const orderTimeSpan = () => {
+    if (orderRange.value && orderRange.value.length === 2) return [Number(orderRange.value[0]), Number(orderRange.value[1])]
+    if (orderPreset.value === 'today') return [dayjs().startOf('day').valueOf(), dayjs().endOf('day').valueOf()]
+    if (orderPreset.value === '7d') return [dayjs().subtract(7, 'day').valueOf(), Date.now()]
+    if (orderPreset.value === '30d') return [dayjs().subtract(30, 'day').valueOf(), Date.now()]
+    return null
+}
+const onOrderPreset = () => { orderRange.value = null; getOrderList() }
+const onOrderRange = (val) => { if (val && val.length === 2) orderPreset.value = 'all'; getOrderList() }
+
 const orderCount = ref(0)
 const orderList = ref([])
 const todayOrderList = ref([])
@@ -178,9 +215,13 @@ const getOrderList = async () => {
 
     loading.value = true
 
-    const orders = dbJQL.collection('orders').getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
+    /* 时间区间：选了则按 create_time 过滤并放宽到 500 条覆盖区间；未选保持默认近 150 条 */
+    const span = orderTimeSpan()
+    let ordersCol = dbJQL.collection('orders')
+    if (span) ordersCol = ordersCol.where(`create_time >= ${span[0]} && create_time <= ${span[1]}`)
+    const orders = ordersCol.getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
     const users = dbJQL.collection('users').getTemp() // 临时表field方法内需要包含关联字段，否则无法建立关联关系
-    const { data, count } = await dbJQL.collection(orders, users).orderBy('create_time desc').limit(150).get({ getCount: true })
+    const { data, count } = await dbJQL.collection(orders, users).orderBy('create_time desc').limit(span ? 500 : 150).get({ getCount: true })
     loading.value = false
     if (!data) return
 
@@ -238,5 +279,14 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .home {
 
+}
+.time-filter {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 20px 10px;
+    .tf-lb { font-size: 13px; color: #606266; margin-right: 6px; }
+    .tf-hint { font-size: 12px; color: #909399; margin-left: 12px; }
 }
 </style>
