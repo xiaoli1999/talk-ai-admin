@@ -583,7 +583,7 @@ module.exports = {
 			let textValue = getTalkTextRealValue(text)
 
 			const requestBody = {
-				model: "speech-01-240228",
+				model: "speech-2.8-turbo",
 				text: textValue || text,
 				stream: false,
 				voice_setting:{
@@ -636,7 +636,7 @@ module.exports = {
 	async getTalkSound ({ voice_id, text } = {}) {
 		try {
 			const requestBody = {
-				model: "speech-01-240228",
+				model: "speech-2.8-turbo",
 				text,
 				stream: false,
 				voice_setting:{
@@ -727,7 +727,7 @@ module.exports = {
 			const { id, text, name } = list[i]
 
 			const requestBody = {
-				model: "speech-01-240228",
+				model: "speech-2.8-turbo",
 				text,
 				stream: false,
 				voice_setting:{
