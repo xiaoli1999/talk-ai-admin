@@ -1,0 +1,13 @@
+{
+  "name": "pay-manual",
+  "version": "1.0.0",
+  "description": "后台手工到账:翻单后调 pay-v2.paySuccess 原样发货(支付封禁期线下收款用)",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 30,
+    "runtime": "Nodejs18"
+  }
+}
