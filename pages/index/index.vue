@@ -96,16 +96,23 @@
                             <el-tag v-if="row.status === 1" type="primary" size="small">已付款</el-tag>
                             <el-tag v-else type="warning" size="small">未付款</el-tag>
                         </div>
+                        <!-- 来源标签(09-01):source==='manual' 为后台手工到账的「手动单」,存量/小程序支付的单无 source 即「小程序订单」 -->
+                        <div style="margin-top: 4px">
+                            <el-tag v-if="row.source === 'manual'" type="danger" size="small" effect="plain" :title="manualTip(row)">手动单</el-tag>
+                            <el-tag v-else type="info" size="small" effect="plain">小程序订单</el-tag>
+                            <el-tag v-if="row.manual_error" type="danger" size="small" effect="dark" :title="row.manual_error" style="margin-left: 4px">到账失败</el-tag>
+                        </div>
                     </template>
                 </el-table-column>
 
                 <el-table-column prop="paid_time" label="付款时间" align="center" min-width="80px" :formatter="(e) => e.paid_time ? dayjs(e.paid_time).format('MM-DD HH:mm:ss') : ''" />
                 <el-table-column prop="create_time" label="创建时间" align="center" min-width="80px" :formatter="(e) => dayjs(e.create_time).format('MM-DD HH:mm:ss')" />
 
-                <el-table-column label="操作" align="center" min-width="160" fixed="right">
+                <el-table-column label="操作" align="center" min-width="250" fixed="right">
                     <template #default="{row}">
                         <el-button type="success" size="small" @click="copyId(row._id)">复制订单</el-button>
                         <el-button type="primary" size="small" @click="copyId(row.user_id[0]._id)">复制用户</el-button>
+                        <el-button v-if="row.status !== 1" type="warning" size="small" @click="manualSettle(row)">手工到账</el-button>
                         <el-button type="danger" size="small" @click="deleteOrder(row)">删除</el-button>
                     </template>
                 </el-table-column>
@@ -173,6 +180,7 @@ import {ref, onMounted, computed} from 'vue'
 import {dayjs, ElMessage, ElMessageBox} from 'element-plus'
 import {genderEnums, payEnums, platformEnums, payEnumsList} from "@/config/enums";
 import {copyText} from "@/utils/common";
+import {PAY_MANUAL_KEY} from "@/config/pay-manual";
 
 const db = uniCloud.database()
 const dbJQL = uniCloud.databaseForJQL()
@@ -254,6 +262,29 @@ const getVipList = async () => {
 const copyId = async (text) => {
     const data = await copyText(text).catch(() => ({}))
     uni.showToast({ title: data ? '复制成功' : '复制失败', icon: 'none' })
+}
+
+/**
+ * 手工到账(09-01 黎令,支付封禁期):用户线下转账后,对未付款单按下单商品原样发货并打「手动单」。
+ * 发货逻辑不在后台:pay-manual 云对象原子翻单后调 pay-v2.paySuccess(线上唯一一份发货代码);同一单第二次点会被云端挡住。
+ */
+const payManual = uniCloud.importObject('pay-manual', { customUI: true })
+const manualTip = (row) => `操作人 ${row.operator || ''} · ${row.manual_time ? dayjs(row.manual_time).format('MM-DD HH:mm') : ''}${row.manual_remark ? ' · ' + row.manual_remark : ''}`
+const manualSettle = async (row) => {
+    const user = (row.user_id && row.user_id[0]) || {}
+    const r = await ElMessageBox.prompt(
+        `用户「${user.nickname || user._id || ''}」· ${row.title || ''} · ¥${(row.total_fee || 0) / 100}，确认已线下收到款，按小程序下单内容原样发货？`,
+        '手工到账',
+        { confirmButtonText: '确认到账', cancelButtonText: '取消', inputPlaceholder: '备注:转账方式/流水号(选填)', inputPattern: /^[\s\S]{0,100}$/, inputErrorMessage: '备注不超过 100 字' }
+    ).catch(() => null)
+    if (!r || r.action !== 'confirm') return
+
+    const res = await payManual.settle({ key: PAY_MANUAL_KEY, operator: globalData.value.name, orderId: row._id, remark: r.value || '' }).catch(e => ({ errMsg: e.message }))
+    if (!res || res.errMsg) return ElMessage.error((res && res.errMsg) || '手工到账失败')
+
+    const u = res.data.user || {}
+    ElMessage.success(`已到账并发货:${u.nickname || ''} 付费采贝 ${u.cb_pay_num ?? '-'} · 会员至 ${u.vip_end_time ? dayjs(u.vip_end_time).format('MM-DD') : '无'}`)
+    await getOrderList()
 }
 
 const deleteOrder = async (row) => {
