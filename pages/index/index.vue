@@ -96,10 +96,9 @@
                             <el-tag v-if="row.status === 1" type="primary" size="small">已付款</el-tag>
                             <el-tag v-else type="warning" size="small">未付款</el-tag>
                         </div>
-                        <!-- 来源标签(09-01):source==='manual' 为后台手工到账的「手动单」,存量/小程序支付的单无 source 即「小程序订单」 -->
-                        <div style="margin-top: 4px">
-                            <el-tag v-if="row.source === 'manual'" type="danger" size="small" effect="plain" :title="manualTip(row)">手动单</el-tag>
-                            <el-tag v-else type="info" size="small" effect="plain">小程序订单</el-tag>
+                        <!-- 来源标签(09-01):只有后台手工到账的单(source==='manual')挂「手工」,小程序订单不挂;发货失败的单挂红标 -->
+                        <div v-if="row.source === 'manual' || row.manual_error" style="margin-top: 4px">
+                            <el-tag v-if="row.source === 'manual'" type="danger" size="small" effect="plain" :title="manualTip(row)">手工</el-tag>
                             <el-tag v-if="row.manual_error" type="danger" size="small" effect="dark" :title="row.manual_error" style="margin-left: 4px">到账失败</el-tag>
                         </div>
                     </template>
@@ -180,7 +179,7 @@ import {ref, onMounted, computed} from 'vue'
 import {dayjs, ElMessage, ElMessageBox} from 'element-plus'
 import {genderEnums, payEnums, platformEnums, payEnumsList} from "@/config/enums";
 import {copyText} from "@/utils/common";
-import {PAY_MANUAL_KEY} from "@/config/pay-manual";
+import {getSession, goLogin} from "@/utils/auth";
 
 const db = uniCloud.database()
 const dbJQL = uniCloud.databaseForJQL()
@@ -279,8 +278,14 @@ const manualSettle = async (row) => {
     ).catch(() => null)
     if (!r || r.action !== 'confirm') return
 
-    const res = await payManual.settle({ key: PAY_MANUAL_KEY, operator: globalData.value.name, orderId: row._id, remark: r.value || '' }).catch(e => ({ errMsg: e.message }))
-    if (!res || res.errMsg) return ElMessage.error((res && res.errMsg) || '手工到账失败')
+    const session = getSession()
+    if (!session) return goLogin()
+
+    const res = await payManual.settle({ token: session.token, orderId: row._id, remark: r.value || '' }).catch(e => ({ errMsg: e.message }))
+    if (!res || res.errMsg) {
+        if (res && /登录/.test(res.errMsg)) return goLogin()
+        return ElMessage.error((res && res.errMsg) || '手工到账失败')
+    }
 
     const u = res.data.user || {}
     ElMessage.success(`已到账并发货:${u.nickname || ''} 付费采贝 ${u.cb_pay_num ?? '-'} · 会员至 ${u.vip_end_time ? dayjs(u.vip_end_time).format('MM-DD') : '无'}`)

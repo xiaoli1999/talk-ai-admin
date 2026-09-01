@@ -1,23 +1,15 @@
 <script>
+	import { getSession, applyRole, goLogin } from '@/utils/auth.js'
+
 	export default {
 		globalData: {
 			name: '',
 		},
-		onLaunch: function({ query }) {
-			if (!query || !query.name) query = uni.getStorageSync('globalData') || {}
-			if (!['xiaoli', 'tongyao'].includes(query.name)) return uni.redirectTo({ url: "pages/error/error"});
-
-            this.globalData.name = query.name
-			uni.setStorageSync('globalData', query)
-
-			if (query.name === 'tongyao') {
-                ([1, 2]).forEach(i => {
-                    uni.setTabBarItem({
-                        index: i,
-                        visible: false
-                    });
-                })
-			}
+		/* 09-01 假登录:本地无有效 token(pay-manual.login 签发,7 天)一律进登录页;旧的 URL ?name= 入口作废 */
+		onLaunch: function() {
+			const s = getSession()
+			if (!s) return goLogin()
+			applyRole(s.name)
 		},
 		onShow: function(e) {
 
