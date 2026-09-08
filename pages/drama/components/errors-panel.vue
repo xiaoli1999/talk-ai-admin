@@ -18,7 +18,7 @@
             </div>
         </div>
 
-        <el-table :data="list" border size="small" :row-class-name="rowClass">
+        <el-table :data="list" size="small" :row-class-name="rowClass" style="width: 100%;">
             <el-table-column type="expand">
                 <template #default="{ row }">
                     <pre class="raw">{{ pretty(row.data) }}</pre>
@@ -33,19 +33,19 @@
                     <div class="muted">{{ row.src }}</div>
                 </template>
             </el-table-column>
-            <el-table-column label="用户" min-width="120">
+            <el-table-column label="用户" width="150">
                 <template #default="{ row }">
                     <div class="who">
                         <el-avatar :size="22" :src="row.user.avatar || undefined">{{ (row.user.nickname || '?').slice(0, 1) }}</el-avatar>
-                        <span>{{ row.user.nickname || '(无昵称)' }}</span>
+                        <span class="who-n">{{ row.user.nickname || '(无昵称)' }}</span>
+                        <id-copy :id="row.user._id" />
                     </div>
-                    <el-button link type="primary" size="small" @click="copy(row.user._id)">…{{ shortId(row.user._id) }}</el-button>
                 </template>
             </el-table-column>
-            <el-table-column label="局 / 本" width="130" align="center">
+            <el-table-column label="局 / 本" width="96" align="center">
                 <template #default="{ row }">
-                    <div><el-button v-if="row.session_id" link type="primary" size="small" @click="copy(row.session_id)">局 …{{ shortId(row.session_id) }}</el-button><span v-else class="muted">局 —</span></div>
-                    <div><el-button v-if="row.script_id" link type="primary" size="small" @click="copy(row.script_id)">本 …{{ shortId(row.script_id) }}</el-button><span v-else class="muted">本 —</span></div>
+                    <div class="idrow"><id-copy :id="row.session_id" label="局" /></div>
+                    <div class="idrow"><id-copy :id="row.script_id" label="本" /></div>
                 </template>
             </el-table-column>
             <el-table-column label="摘要" min-width="320">
@@ -72,8 +72,8 @@
  */
 import { ref, onMounted, onUnmounted } from 'vue'
 import { dayjs, ElMessage } from 'element-plus'
-import { copyText } from '@/utils/common'
-import { dramaApi, shortId, EV_LABEL, EV_TAG } from '@/utils/drama'
+import { dramaApi, EV_LABEL, EV_TAG } from '@/utils/drama'
+import IdCopy from './id-copy.vue'
 
 const ALL_EVS = ['fe_error', 'gen_dead', 'create_wait_fail', 'bgm_error']
 const SUMMARY_KEYS = ['kind', 'where', 'why', 'reason', 'msg', 'spec', 'ms', 'src', 'diag'] // 摘要抓这些常见键,其余展开看
@@ -108,12 +108,6 @@ const summary = (d) => {
 }
 const rowClass = ({ row }) => (row.ev === 'fe_error' ? 'row-err' : '')
 
-const copy = async (text) => {
-    if (!text) return
-    const ok = await copyText(text).catch(() => false)
-    ElMessage[ok ? 'success' : 'error'](ok ? '已复制' : '复制失败')
-}
-
 const load = async (p) => {
     if (p) page.value = p
     if (!evs.value.length) { list.value = []; total.value = 0; return }
@@ -147,7 +141,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             .hint { font-size: 12px; color: #c0c4cc; }
         }
     }
-    .who { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    .who { display: flex; align-items: center; gap: 4px; font-size: 13px;
+        .who-n { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+    .idrow { line-height: 1.4; }
     .muted { font-size: 12px; color: #909399; }
     .nums { font-size: 12px; font-variant-numeric: tabular-nums; }
     .sum { display: flex; flex-wrap: wrap; gap: 4px; .kv { max-width: 100%; } }

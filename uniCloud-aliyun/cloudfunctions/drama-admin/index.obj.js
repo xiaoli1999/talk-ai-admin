@@ -26,14 +26,18 @@ const { ACCOUNTS, TOKEN_SECRET } = require('./config.js')
 
 const db = uniCloud.database()
 const dbCmd = db.command
+const $agg = dbCmd.aggregate
 
-const BUILD = '0908-1'
+const BUILD = '0908-2'
 
 const SCRIPTS = 'drama_scripts'
 const REPORTS = 'drama_reports'
 const EVENTS = 'drama_events'
 const REWARDS = 'drama_reward_log'
 const STATS = 'drama_stats'
+const SESSIONS = 'drama_sessions'
+const ENDINGS = 'drama_endings'
+const LIKES = 'drama_likes'
 const USERS = 'users'
 const ROLES = 'roles'
 
@@ -51,6 +55,20 @@ const SCRIPT_TABS = ['all', 'pending', 'fail', 'public', 'private', 'writing', '
 const REPORT_STATUS = ['pending', 'handled', 'dismissed']
 /** 发放流水里的退款类型(正数但不算发放) */
 const REFUND_TYPES = new Set(['refund', 'free_script_refund'])
+/** 自由本列表可排序字段(白名单;缺字段的老文档按 null 排,降序时垫底) */
+const SCRIPT_SORTS = new Set(['create_time', 'update_time', 'heat_score', 'heat', 'play_count', 'stat_player_count',
+	'stat_settle_count', 'stat_full_count', 'stat_ending_count', 'stat_rerun_count', 'report_count', 'audit_time'])
+/** 自由本列表投影(详情走 getScript 全文;endings 只为数结局位,不下发) */
+const LIST_FIELDS = {
+	title: true, hook: true, genre: true, spec: true, cover: true, scene_imgs: true, endings: true,
+	wish: true, wish_type: true, creator_id: true, bind_role_id: true,
+	create_time: true, update_time: true, status: true, gen_state: true, fail_reason: true, deleted_time: true,
+	audit_status: true, visibility: true, audit_note: true, audit_by: true, audit_time: true,
+	play_count: true, stat_player_count: true, stat_rerun_count: true, stat_settle_count: true,
+	stat_full_count: true, stat_ending_count: true, heat: true, heat_score: true, report_count: true, report_flag: true,
+}
+/** 聚合/查询失败降级成空数组(玩况是附加信息,失败不碍列表) */
+const safe = (p) => p.then((r) => (r && r.data) || []).catch(() => [])
 
 /* ───────────────────────── 鉴权(照抄 pay-manual,只验不签) ───────────────────────── */
 const unb64url = (s) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()
@@ -140,8 +158,44 @@ function coverOf (s) {
 	return first ? first.url : ''
 }
 
-/** 自由本列表行(只带面板要看的字段;详情走 getScript) */
-function shapeScript (s, users, roles) {
+/** 玩况空值(聚合缺该本时用) */
+const EMPTY_PLAY = () => ({ sessions_total: 0, playing: 0, settled: 0, abandoned: 0, sessions_other: 0, last_played_at: 0, endings_unlocked: 0, ending_unlocks: 0, likes: 0 })
+
+/**
+ * 每页自由本的玩况聚合(三条 aggregate,各自失败不碍列表):
+ *   局按状态计数 + 最近一局时间(drama_sessions,走 script_id 前缀索引)/ 结局解锁(去重结局数 + 总次数,drama_endings)/ 喜欢数(drama_likes)
+ * @param {string[]} ids
+ * @returns {Promise<Object<string,object>>} id → 玩况
+ */
+async function playStats (ids) {
+	const map = {}
+	const row = (id) => (map[id] = map[id] || EMPTY_PLAY())
+	if (!ids.length) return map
+	const [ses, ends, likes] = await Promise.all([
+		safe(db.collection(SESSIONS).aggregate().match({ script_id: dbCmd.in(ids) })
+			.group({ _id: { s: '$script_id', st: '$state' }, n: $agg.sum(1), last: $agg.max('$update_time') }).end()),
+		safe(db.collection(ENDINGS).aggregate().match({ script_id: dbCmd.in(ids) })
+			.group({ _id: { s: '$script_id', e: '$ending_id' }, n: $agg.sum(1) }).end()),
+		safe(db.collection(LIKES).aggregate().match({ script_id: dbCmd.in(ids) })
+			.group({ _id: '$script_id', n: $agg.sum(1) }).end()),
+	])
+	for (const x of ses) {
+		const k = x._id || {}
+		const r = row(k.s); const n = num(x.n)
+		r.sessions_total += n
+		if (k.st === 'playing') r.playing += n
+		else if (k.st === 'settled') r.settled += n
+		else if (k.st === 'abandoned') r.abandoned += n
+		else r.sessions_other += n
+		r.last_played_at = Math.max(r.last_played_at, num(x.last))
+	}
+	for (const x of ends) { const r = row((x._id || {}).s); r.endings_unlocked++; r.ending_unlocks += num(x.n) }
+	for (const x of likes) row(x._id).likes = num(x.n)
+	return map
+}
+
+/** 自由本列表行(面板要看的字段 + 玩况;详情走 getScript 全文) */
+function shapeScript (s, users, roles, play) {
 	return {
 		_id: s._id,
 		title: s.title || '', hook: s.hook || '', genre: s.genre || '', spec: s.spec || '',
@@ -158,6 +212,8 @@ function shapeScript (s, users, roles) {
 		stat_settle_count: num(s.stat_settle_count), stat_full_count: num(s.stat_full_count), stat_ending_count: num(s.stat_ending_count),
 		heat: num(s.heat), heat_score: num(s.heat_score),
 		report_count: num(s.report_count), report_flag: !!s.report_flag,
+		endings_total: Array.isArray(s.endings) ? s.endings.length : 0,
+		...(play || EMPTY_PLAY()),
 	}
 }
 
@@ -202,36 +258,38 @@ module.exports = {
 	},
 
 	/**
-	 * @function listScripts 自由本列表(source=free),按分栏过滤 + 关键字(标题/钩子/愿望)+ 分页;page=1 顺带各栏计数
-	 * @param {object} p { token, tab:'all'|'pending'|'fail'|'public'|'private'|'writing'|'dead', keyword, page, size }
-	 * @returns {{errMsg:string, data?:{list:object[], total:number, page:number, size:number, counts?:object}}}
+	 * @function listScripts 自由本列表(source=free):分栏过滤 + 关键字(标题/钩子/愿望)+ 排序(白名单字段,同分按新到旧)+ 分页;
+	 *   每行附玩况聚合(在玩/落幕/弃局/结局解锁/喜欢/最近一局);page=1 顺带各栏计数
+	 * @param {object} p { token, tab:'all'|'pending'|'fail'|'public'|'private'|'writing'|'dead', keyword, sort, dir:'asc'|'desc', page, size }
+	 * @returns {{errMsg:string, data?:{list:object[], total:number, page:number, size:number, sort:string, dir:string, counts?:object}}}
 	 */
-	async listScripts ({ tab = 'all', keyword = '', page = 1, size = 20 } = {}) {
+	async listScripts ({ tab = 'all', keyword = '', sort = 'create_time', dir = 'desc', page = 1, size = 20 } = {}) {
 		try {
 			const t = SCRIPT_TABS.includes(tab) ? tab : 'all'
+			const sortKey = SCRIPT_SORTS.has(sort) ? sort : 'create_time'
+			const sortDir = dir === 'asc' ? 'asc' : 'desc'
 			const pg = pageOf(page, size)
 			let where = scriptWhere(t)
 			const re = keywordRe(keyword)
 			if (re) where = dbCmd.and([where, dbCmd.or([{ title: re }, { hook: re }, { wish: re }])])
 
 			const col = db.collection(SCRIPTS)
+			let q = col.where(where).field(LIST_FIELDS).orderBy(sortKey, sortDir)
+			if (sortKey !== 'create_time') q = q.orderBy('create_time', 'desc') // 同分按新到旧,翻页稳定
 			const [{ total }, { data }] = await Promise.all([
 				col.where(where).count(),
-				col.where(where).field({
-					title: true, hook: true, genre: true, spec: true, cover: true, scene_imgs: true,
-					wish: true, wish_type: true, creator_id: true, bind_role_id: true,
-					create_time: true, update_time: true, status: true, gen_state: true, fail_reason: true, deleted_time: true,
-					audit_status: true, visibility: true, audit_note: true, audit_by: true, audit_time: true,
-					play_count: true, stat_player_count: true, stat_rerun_count: true, stat_settle_count: true,
-					stat_full_count: true, stat_ending_count: true, heat: true, heat_score: true, report_count: true, report_flag: true,
-				}).orderBy('create_time', 'desc').skip(pg.skip).limit(pg.size).get(),
+				q.skip(pg.skip).limit(pg.size).get(),
 			])
 			const rows = data || []
-			const [users, roles] = await Promise.all([
+			const [users, roles, play] = await Promise.all([
 				fetchUsers(rows.map((s) => s.creator_id)),
 				fetchRoles(rows.map((s) => s.bind_role_id)),
+				playStats(rows.map((s) => s._id)),
 			])
-			const out = { list: rows.map((s) => shapeScript(s, users, roles)), total: num(total), page: pg.page, size: pg.size }
+			const out = {
+				list: rows.map((s) => shapeScript(s, users, roles, play[s._id])),
+				total: num(total), page: pg.page, size: pg.size, sort: sortKey, dir: sortDir,
+			}
 
 			/* 各栏计数(小表,7 次 count 几十 ms;仅首页给,翻页不重复算) */
 			if (pg.page === 1) {
@@ -249,7 +307,8 @@ module.exports = {
 	},
 
 	/**
-	 * @function getScript 自由本详情:全文(去 gen_input 聊天摘录)+ 作者/崽 + 最近 5 条举报 + 人工处置留痕(admin_review 最近 10 条)
+	 * @function getScript 自由本详情:全文(去 gen_input 聊天摘录)+ 作者/崽 + 玩况 + 每个结局的解锁人数/次数 + 最近 10 局
+	 *   + 最近 5 条举报 + 人工处置留痕(admin_review 最近 10 条)
 	 * @param {object} p { token, id }
 	 */
 	async getScript ({ id } = {}) {
@@ -261,25 +320,41 @@ module.exports = {
 			if (!s) return { errMsg: '这一本不存在' }
 			if (s.source !== 'free') return { errMsg: '只看自由本' }
 
-			const [reportsRes, trailRes, users, roles] = await Promise.all([
+			const [reportsRes, trailRes, users, roles, play, endStats, sesRes] = await Promise.all([
 				db.collection(REPORTS).where({ script_id: sid }).orderBy('create_time', 'desc').limit(5).get(),
 				db.collection(EVENTS).where({ ev: 'admin_review', script_id: sid }).orderBy('t', 'desc').limit(10).get(),
 				fetchUsers([s.creator_id]),
 				fetchRoles([s.bind_role_id]),
+				playStats([sid]),
+				safe(db.collection(ENDINGS).aggregate().match({ script_id: sid })
+					.group({ _id: '$ending_id', n: $agg.sum(1), users: $agg.addToSet('$user_id') }).end()),
+				db.collection(SESSIONS).where({ script_id: sid }).field({
+					user_id: true, role_id: true, state: true, turn_count: true, pay_mode: true, unlocked: true,
+					ending_id: true, revenue_cb: true, create_time: true, update_time: true,
+				}).orderBy('create_time', 'desc').limit(10).get(),
 			])
 			const reports = reportsRes.data || []
-			const reporters = await fetchUsers(reports.map((r) => r.user_id))
+			const sessions = sesRes.data || []
+			const people = await fetchUsers([...reports.map((r) => r.user_id), ...sessions.map((x) => x.user_id)])
+			const endingStats = {}
+			for (const x of endStats) endingStats[String(x._id)] = { n: num(x.n), users: Array.isArray(x.users) ? x.users.length : 0 }
 
 			const full = { ...s }
 			delete full.gen_input // 含用户聊天摘录,交付时本已清;执笔中的本不外泄
 			return {
 				errMsg: '',
 				data: {
-					...shapeScript(s, users, roles),
+					...shapeScript(s, users, roles, play[sid]),
 					script: full,
+					ending_stats: endingStats,
+					sessions_recent: sessions.map((x) => ({
+						_id: x._id, user: userOf(people, x.user_id), role_id: x.role_id || '', state: x.state || '',
+						turn_count: num(x.turn_count), pay_mode: x.pay_mode || '', unlocked: !!x.unlocked,
+						ending_id: x.ending_id || '', revenue_cb: num(x.revenue_cb), create_time: num(x.create_time), update_time: num(x.update_time),
+					})),
 					reports: reports.map((r) => ({
 						_id: r._id, reason: r.reason || '', detail: r.detail || '', status: r.status || 'pending',
-						create_time: num(r.create_time), reporter: userOf(reporters, r.user_id),
+						create_time: num(r.create_time), reporter: userOf(people, r.user_id),
 						handler: r.handler || '', handle_time: num(r.handle_time), handle_note: r.handle_note || '',
 					})),
 					trail: (trailRes.data || []).map((e) => ({ t: num(e.t), ...(e.data || {}) })),

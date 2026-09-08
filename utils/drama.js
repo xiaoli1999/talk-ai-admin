@@ -39,4 +39,17 @@ export const EV_LABEL = { fe_error: '前端异常', gen_dead: '执笔判死', cr
 export const EV_TAG = { fe_error: 'danger', gen_dead: 'warning', create_wait_fail: 'warning', bgm_error: 'info' }
 export const DECISION_LABEL = { pass: '通过', fail: '拒绝', private: '转私有', takedown: '举报下架', dismiss: '举报驳回' }
 
+export const SESSION_STATE_LABEL = { playing: '进行中', settled: '已落幕', settling: '结算中', abandoned: '已弃局' }
+export const SESSION_STATE_TAG = { playing: 'success', settled: 'primary', settling: 'warning', abandoned: 'info' }
+export const PAY_MODE_LABEL = { first_free: '首局免费', trial: '试玩', per_turn: '按轮', full: '买断', creator_free: '执笔免费' }
+/** 自由本列表排序项(值 = 云对象白名单字段) */
+export const SCRIPT_SORTS = [
+    { key: 'create_time', label: '创建时间' }, { key: 'update_time', label: '最近更新' },
+    { key: 'heat_score', label: '热度分（排序分）' }, { key: 'heat', label: '终身热度' },
+    { key: 'play_count', label: '开局数' }, { key: 'stat_player_count', label: '玩家数' },
+    { key: 'stat_settle_count', label: '完局数' }, { key: 'stat_full_count', label: '买断数' },
+    { key: 'stat_ending_count', label: '结局解锁数' }, { key: 'stat_rerun_count', label: '复玩数' },
+    { key: 'report_count', label: '举报数' }, { key: 'audit_time', label: '最近人工处置' },
+]
+
 export const shortId = (id) => (id ? String(id).slice(-6) : '—')
