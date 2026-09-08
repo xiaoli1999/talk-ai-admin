@@ -110,6 +110,14 @@
 			}
 		},
 		{
+			"path" : "pages/drama/drama",
+			"style" :
+			{
+				"navigationBarTitleText" : "小剧场监控",
+				"enablePullDownRefresh" : false
+			}
+		},
+		{
 			"path" : "pages/login/login",
 			"style" :
 			{

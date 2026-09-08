@@ -1,0 +1,13 @@
+{
+  "name": "drama-admin",
+  "version": "1.0.0",
+  "description": "小剧场后台监控(一期):自由本列表/人工审核、举报处理、错误面板、钱账日报;读 drama_* 只写 audit_status/visibility 与举报处理态;鉴权复用 pay-manual 假登录 token",
+  "main": "index.obj.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "concurrency": 1,
+    "memorySize": 256,
+    "timeout": 30,
+    "runtime": "Nodejs18"
+  }
+}
