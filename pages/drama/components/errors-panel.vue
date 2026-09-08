@@ -18,22 +18,22 @@
             </div>
         </div>
 
-        <el-table :data="list" size="small" :row-class-name="rowClass" style="width: 100%;">
+        <el-table :data="list" size="small" stripe :row-class-name="rowClass" style="width: 100%;">
             <el-table-column type="expand">
                 <template #default="{ row }">
                     <pre class="raw">{{ pretty(row.data) }}</pre>
                 </template>
             </el-table-column>
-            <el-table-column label="时间" width="130" align="center">
+            <el-table-column label="时间" min-width="130" align="center">
                 <template #default="{ row }"><span class="nums">{{ fmt(row.t) }}</span></template>
             </el-table-column>
-            <el-table-column label="事件" width="120" align="center">
+            <el-table-column label="事件" min-width="110" align="center">
                 <template #default="{ row }">
                     <el-tag :type="EV_TAG[row.ev] || 'info'" size="small">{{ EV_LABEL[row.ev] || row.ev }}</el-tag>
                     <div class="muted">{{ row.src }}</div>
                 </template>
             </el-table-column>
-            <el-table-column label="用户" width="150">
+            <el-table-column label="用户" min-width="150">
                 <template #default="{ row }">
                     <div class="who">
                         <el-avatar :size="22" :src="row.user.avatar || undefined">{{ (row.user.nickname || '?').slice(0, 1) }}</el-avatar>

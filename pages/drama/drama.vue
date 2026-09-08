@@ -10,6 +10,7 @@
                 </el-tag>
             </div>
             <el-radio-group v-model="tab" @change="onTab">
+                <el-radio-button value="overview">总览</el-radio-button>
                 <el-radio-button value="scripts">自由本<span v-if="badges.scripts != null">（{{ badges.scripts }} 被举报）</span></el-radio-button>
                 <el-radio-button value="reports">举报<span v-if="badges.reports != null">（{{ badges.reports }} 待处理）</span></el-radio-button>
                 <el-radio-button value="errors">错误</el-radio-button>
@@ -19,7 +20,8 @@
 
         <!-- 四个分段各自拉数;keep-alive 保留筛选态,切回不重拉 -->
         <keep-alive>
-            <scripts-panel v-if="tab === 'scripts'" key="scripts" @badge="badges.scripts = $event" />
+            <overview-panel v-if="tab === 'overview'" key="overview" />
+            <scripts-panel v-else-if="tab === 'scripts'" key="scripts" @badge="badges.scripts = $event" />
             <reports-panel v-else-if="tab === 'reports'" key="reports" @badge="badges.reports = $event" />
             <errors-panel v-else-if="tab === 'errors'" key="errors" />
             <money-panel v-else key="money" />
@@ -36,13 +38,15 @@ import { ref, reactive, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getSession, goLogin } from '@/utils/auth'
 import { dramaPing } from '@/utils/drama'
+import OverviewPanel from './components/overview-panel.vue'
 import ScriptsPanel from './components/scripts-panel.vue'
 import ReportsPanel from './components/reports-panel.vue'
 import ErrorsPanel from './components/errors-panel.vue'
 import MoneyPanel from './components/money-panel.vue'
 
-const TABS = ['scripts', 'reports', 'errors', 'money']
-const tab = ref('scripts')
+/* 09-09 黎令:进来第一眼是总览统计台 */
+const TABS = ['overview', 'scripts', 'reports', 'errors', 'money']
+const tab = ref('overview')
 const build = ref('')
 const badges = reactive({ scripts: null, reports: null })
 

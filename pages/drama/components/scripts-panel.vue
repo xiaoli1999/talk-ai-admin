@@ -16,17 +16,20 @@
             </el-select>
             <el-button :icon="dir === 'desc' ? SortDown : SortUp" @click="toggleDir">{{ dir === 'desc' ? '从高到低' : '从低到高' }}</el-button>
             <el-button type="primary" @click="reload">🔄 刷新</el-button>
-            <span class="hint">共 {{ total }} 本 · 双击行开详情 · 悬停 ID 图标看全、点一下复制</span>
+            <span class="hint">共 {{ total }} 本 · 默认最新创建在前 · 点行开详情 · 悬停 ID 图标看全、点一下复制</span>
         </div>
 
-        <el-table :data="list" size="small" :row-class-name="rowClass" style="width: 100%;" @row-dblclick="(row) => openDrawer(row._id)">
+        <!-- 列宽:紧凑列给固定/最小宽,内容列给 min-width 吃剩余空间,窗口变宽自适应;不用 fixed 列免横滑 -->
+        <el-table :data="list" size="small" stripe highlight-current-row :row-class-name="rowClass" style="width: 100%;" @row-click="(row) => openDrawer(row._id)">
             <el-table-column label="封面" width="64" align="center">
                 <template #default="{ row }">
-                    <el-image v-if="row.cover" :src="row.cover" :preview-src-list="row.scene_imgs.length ? row.scene_imgs : [row.cover]" preview-teleported fit="cover" class="cover" />
-                    <span v-else class="muted">无图</span>
+                    <div @click.stop>
+                        <el-image v-if="row.cover" :src="row.cover" :preview-src-list="row.scene_imgs.length ? row.scene_imgs : [row.cover]" preview-teleported fit="cover" class="cover" />
+                        <span v-else class="muted">无图</span>
+                    </div>
                 </template>
             </el-table-column>
-            <el-table-column label="本 · 执笔愿望" min-width="280">
+            <el-table-column label="本 · 执笔愿望" min-width="300">
                 <template #default="{ row }">
                     <div class="tt" @click="openDrawer(row._id)">{{ row.title || '(未命名)' }}</div>
                     <el-text :line-clamp="1" size="small" class="hook">{{ row.hook || '—' }}</el-text>
@@ -42,7 +45,7 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column label="作者 / 崽" width="150">
+            <el-table-column label="作者 / 崽" min-width="140">
                 <template #default="{ row }">
                     <div class="who">
                         <el-avatar :size="22" :src="row.creator.avatar || undefined">{{ (row.creator.nickname || '?').slice(0, 1) }}</el-avatar>
@@ -56,7 +59,7 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column label="状态" width="92" align="center">
+            <el-table-column label="状态" min-width="90" align="center">
                 <template #default="{ row }">
                     <div class="tags col">
                         <el-tag :type="SCRIPT_STATUS_TAG[row.status]" size="small">{{ SCRIPT_STATUS[row.status] || row.status }}</el-tag>
@@ -66,7 +69,7 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column label="数据" width="236">
+            <el-table-column label="数据" min-width="240">
                 <template #default="{ row }">
                     <div class="dg">
                         <div class="dgi" title="热度分 = 近7天×2 + 终身×1,广场最热排序用"><span>热度</span><b>{{ row.heat_score }}</b></div>
@@ -84,7 +87,7 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column label="时间 / 人工留痕" width="150">
+            <el-table-column label="时间 / 人工留痕" min-width="150">
                 <template #default="{ row }">
                     <div class="muted">创建 {{ fmt(row.create_time) }}</div>
                     <div class="muted">更新 {{ fmt(row.update_time) }}</div>
@@ -96,7 +99,7 @@
             </el-table-column>
             <el-table-column label="操作" width="110" align="center">
                 <template #default="{ row }">
-                    <div class="ops">
+                    <div class="ops" @click.stop>
                         <el-button type="primary" size="small" link @click="openDrawer(row._id)">详情</el-button>
                         <el-button type="danger" size="small" link :disabled="row.visibility === 'private'" @click="takePrivate(row)">转私</el-button>
                     </div>
@@ -216,5 +219,7 @@ onMounted(() => load(1))
     :deep(.row-flag) td { background: #fef0f0 !important; }
     :deep(.row-pending) td { background: #fdf6ec !important; }
     :deep(.el-table .cell) { line-height: 1.4; }
+    :deep(.el-table__row) { cursor: pointer; }
+    :deep(.el-table__row:hover > td) { background: #ecf5ff !important; }
 }
 </style>

@@ -54,4 +54,8 @@ export const SCRIPT_SORTS = [
     { key: 'report_count', label: '举报数' }, { key: 'audit_time', label: '最近人工处置' },
 ]
 
+/* 图表序列色(dataviz 参考调色板,固定槽位不轮换;09-09 用 validate_palette 校验过 light 模式全过) */
+export const CHART_PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948']
+export const CHARGE_TYPE_LABEL = { turn_charge: '按轮聊天', narr_charge: '旁白', voice_charge: '语音', regen_charge: '重演一轮', opts_charge: '换一批', full_unlock: '整本买断', free_script_charge: '执笔单' }
+
 export const shortId = (id) => (id ? String(id).slice(-6) : '—')

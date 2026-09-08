@@ -29,7 +29,7 @@ const db = uniCloud.database()
 const dbCmd = db.command
 const $agg = dbCmd.aggregate
 
-const BUILD = '0909-1'
+const BUILD = '0909-2'
 
 const SCRIPTS = 'drama_scripts'
 const REPORTS = 'drama_reports'
@@ -159,6 +159,60 @@ function coverOf (s) {
 	if (s.cover) return s.cover
 	const first = Array.isArray(s.scene_imgs) ? s.scene_imgs.find((x) => x && x.url) : null
 	return first ? first.url : ''
+}
+
+/* ───────────────────────── 总览统计台(overview)用 ───────────────────────── */
+const HOUR_MS = 3600000
+const OVERVIEW_SPAN_MAX = 31 * DAY_MS
+const SCAN_PAGE = 500
+const SCAN_PAGES_MAX = 20          // 1 万条/表护栏,超了标 truncated
+const ratio = (a, b) => (b ? +(a / b).toFixed(3) : 0)
+/** 灯长明的计费态(买断/首免/执笔自玩永不灯灭,08-28 黎令);其余 3 天不动灯灭 */
+const ETERNAL_MODES = new Set(['first_free', 'creator_free'])
+
+/**
+ * 时间范围扫描(投影 + 分页):体验版量级各表几百到几千条可扫;
+ * ⚠️ scripts/sessions/endings/reward_log/reports 的时间字段都没单独索引,放量后要加索引(索引=线上表资源,交黎手动传)
+ * @param {string} col 表名
+ * @param {string} tfield 时间字段
+ * @param {number} fromMs
+ * @param {number} toMs
+ * @param {object} fields 投影
+ * @param {object} [extra] 附加等值条件
+ * @returns {Promise<{rows:object[], truncated:boolean}>}
+ */
+async function scanRange (col, tfield, fromMs, toMs, fields, extra) {
+	const rows = []
+	let truncated = false
+	for (let p = 0; p < SCAN_PAGES_MAX; p++) {
+		const { data } = await db.collection(col)
+			.where({ ...(extra || {}), [tfield]: dbCmd.gte(fromMs).and(dbCmd.lte(toMs)) })
+			.field(fields).orderBy(tfield, 'asc').skip(p * SCAN_PAGE).limit(SCAN_PAGE).get()
+		if (!data || !data.length) break
+		rows.push(...data)
+		if (data.length < SCAN_PAGE) break
+		if (p === SCAN_PAGES_MAX - 1) truncated = true
+	}
+	return { rows, truncated }
+}
+
+/** 批量取本的简介(标题/来源/热度/可见性),热门榜与自由本 vs 官方本占比用 */
+async function fetchScriptsBrief (ids) {
+	const map = {}
+	const uniq = [...new Set((ids || []).filter(Boolean).map(String))]
+	for (let i = 0; i < uniq.length; i += 100) {
+		const chunk = uniq.slice(i, i + 100)
+		const { data } = await db.collection(SCRIPTS).where({ _id: dbCmd.in(chunk) })
+			.field({ title: true, source: true, heat_score: true, visibility: true, stat_player_count: true, status: true }).limit(chunk.length).get()
+		for (const s of data || []) map[s._id] = s
+	}
+	return map
+}
+
+/** 时间桶标签(北京时):小时桶 MM-DD HH:00,日桶 MM-DD */
+function bucketLabel (t, bucket) {
+	const b = new Date(t + BJ); const p = (n) => String(n).padStart(2, '0')
+	return bucket === 'hour' ? `${p(b.getUTCMonth() + 1)}-${p(b.getUTCDate())} ${p(b.getUTCHours())}:00` : `${p(b.getUTCMonth() + 1)}-${p(b.getUTCDate())}`
 }
 
 /** 玩况空值(聚合缺该本时用) */
@@ -618,6 +672,183 @@ module.exports = {
 			return { errMsg: '', data: { days: n, from: start, rows, total, truncated } }
 		} catch (e) {
 			return { errMsg: errText(e, 'dailyMoney') }
+		}
+	},
+
+	/**
+	 * @function overview 总览统计台(09-09 黎令:进小剧场监控第一眼看到的报表)。
+	 *   时间范围 [from, to](≤31 天,缺省=今天),六表各扫一遍(投影+分页护栏)算:
+	 *   create 执笔(新建/交付/判死/初审公开·不合规)/ play 玩(开局/玩家/完局/弃局/计费模式/自由本 vs 官方本)/
+	 *   endings 结局(解锁数/人数/稀有度)/ money 钱(实收/退款/发放/护栏/扣费构成)/ quality 问题(四类错误/前端异常分型/举报)/
+	 *   hot 时段热门本 Top5;另给 now 此刻快照(留灯=进行中的局,分长明/限时;待处理举报;公开/私有/执笔中本数)与 heat_top 热度榜;
+	 *   series 按桶(≤2 天按小时,否则按天)给趋势,桶补齐无缺口。不扫 drama_events 全量,只扫错误四类(走 ev+t 索引)。
+	 * @param {object} p { token, from, to }
+	 */
+	async overview ({ from, to } = {}) {
+		try {
+			const nowMs = Date.now()
+			const toMs = num(to) || nowMs
+			let fromMs = num(from) || dayStartOf(nowMs)
+			if (fromMs >= toMs) return { errMsg: '时间范围无效' }
+			if (toMs - fromMs > OVERVIEW_SPAN_MAX) fromMs = toMs - OVERVIEW_SPAN_MAX
+			const bucket = (toMs - fromMs) <= 2 * DAY_MS ? 'hour' : 'day'
+			const step = bucket === 'hour' ? HOUR_MS : DAY_MS
+			const keyOf = (ms) => (bucket === 'hour' ? Math.floor(ms / HOUR_MS) * HOUR_MS : dayStartOf(ms))
+			const seriesEnd = Math.min(toMs, nowMs)
+			const buckets = {}
+			const order = []
+			for (let t = keyOf(fromMs); t <= seriesEnd; t += step) {
+				buckets[t] = { t, label: bucketLabel(t, bucket), created: 0, delivered: 0, dead: 0, sessions: 0, _players: new Set(), settled: 0, unlocks: 0, income: 0, refund: 0, grant: 0, errors: 0, reports: 0 }
+				order.push(t)
+			}
+			const bk = (ms) => buckets[keyOf(ms)]
+
+			const [sc, se, en, rw, ev, rp, lantern, pendingRes, pubRes, privRes, writingRes, heatRes] = await Promise.all([
+				scanRange(SCRIPTS, 'create_time', fromMs, toMs, { status: true, visibility: true, audit_status: true, creator_id: true, create_time: true }, { source: 'free' }),
+				scanRange(SESSIONS, 'create_time', fromMs, toMs, { user_id: true, script_id: true, state: true, pay_mode: true, unlocked: true, turn_count: true, create_time: true }),
+				scanRange(ENDINGS, 'unlock_time', fromMs, toMs, { user_id: true, script_id: true, ending_id: true, rarity: true, unlock_time: true }),
+				scanRange(REWARDS, 'create_time', fromMs, toMs, { type: true, amount: true, status: true, create_time: true }),
+				scanRange(EVENTS, 't', fromMs, toMs, { ev: true, t: true, data: true }, { ev: dbCmd.in(ERROR_EVS) }),
+				scanRange(REPORTS, 'create_time', fromMs, toMs, { status: true, script_id: true, create_time: true }),
+				safe(db.collection(SESSIONS).aggregate().match({ state: 'playing' }).group({ _id: { pm: '$pay_mode', un: '$unlocked' }, n: $agg.sum(1) }).end()),
+				db.collection(REPORTS).where({ status: 'pending' }).count(),
+				db.collection(SCRIPTS).where(scriptWhere('public')).count(),
+				db.collection(SCRIPTS).where(scriptWhere('private')).count(),
+				db.collection(SCRIPTS).where(scriptWhere('writing')).count(),
+				db.collection(SCRIPTS).where({ source: 'free', status: 1 })
+					.field({ title: true, heat_score: true, heat: true, stat_player_count: true, play_count: true, visibility: true })
+					.orderBy('heat_score', 'desc').limit(5).get(),
+			])
+
+			/* 执笔 */
+			const create = { n: 0, delivered: 0, writing: 0, dead: 0, deleted: 0, public: 0, private: 0, ai_fail: 0, ai_pending: 0, creators: 0 }
+			const creators = new Set()
+			for (const s of sc.rows) {
+				create.n++
+				const st = num(s.status)
+				if (st === 1) {
+					create.delivered++
+					if (s.visibility === 'public') create.public++; else create.private++
+					if (s.audit_status === 'fail') create.ai_fail++; else if (s.audit_status === 'pending') create.ai_pending++
+				} else if (st === 0) create.writing++
+				else if (st === -1) create.dead++
+				else if (st === -2) create.deleted++
+				if (s.creator_id) creators.add(s.creator_id)
+				const b = bk(num(s.create_time))
+				if (b) { b.created++; if (st === 1) b.delivered++; if (st === -1) b.dead++ }
+			}
+			create.creators = creators.size
+			create.dead_rate = ratio(create.dead, create.n)
+			create.fail_rate = ratio(create.ai_fail, create.delivered)
+
+			/* 玩 */
+			const play = { sessions: 0, players: 0, settled: 0, abandoned: 0, playing: 0, other: 0, avg_turns: 0, paid: 0, by_mode: {}, by_source: { free: 0, official: 0, unknown: 0 } }
+			const players = new Set()
+			const perScript = {}
+			let turns = 0
+			for (const x of se.rows) {
+				play.sessions++
+				if (x.user_id) players.add(x.user_id)
+				turns += num(x.turn_count)
+				const st = x.state
+				if (st === 'settled') play.settled++
+				else if (st === 'abandoned') play.abandoned++
+				else if (st === 'playing') play.playing++
+				else play.other++
+				const mode = x.unlocked ? 'full' : (x.pay_mode || 'unknown')
+				play.by_mode[mode] = (play.by_mode[mode] || 0) + 1
+				if (mode === 'full' || mode === 'per_turn') play.paid++
+				if (x.script_id) {
+					const ps = perScript[x.script_id] = perScript[x.script_id] || { n: 0, u: new Set() }
+					ps.n++; if (x.user_id) ps.u.add(x.user_id)
+				}
+				const b = bk(num(x.create_time))
+				if (b) { b.sessions++; if (x.user_id) b._players.add(x.user_id); if (st === 'settled') b.settled++ }
+			}
+			play.players = players.size
+			play.avg_turns = play.sessions ? +(turns / play.sessions).toFixed(1) : 0
+			play.settle_rate = ratio(play.settled, play.sessions)
+			play.abandon_rate = ratio(play.abandoned, play.sessions)
+			play.paid_share = ratio(play.paid, play.sessions)
+			const sids = Object.keys(perScript)
+			const briefs = await fetchScriptsBrief(sids)
+			for (const sid of sids) {
+				const bsc = briefs[sid]
+				const src = bsc ? (bsc.source === 'free' ? 'free' : 'official') : 'unknown'
+				play.by_source[src] += perScript[sid].n
+			}
+			const hot = sids.map((sid) => {
+				const bsc = briefs[sid] || {}
+				return { _id: sid, title: bsc.title || '(已不存在)', source: bsc.source || '', visibility: bsc.visibility || '', heat_score: num(bsc.heat_score), sessions: perScript[sid].n, players: perScript[sid].u.size }
+			}).sort((a, b) => b.sessions - a.sessions || b.players - a.players).slice(0, 5)
+
+			/* 结局 */
+			const endings = { unlocks: 0, users: 0, scripts: 0, by_rarity: {} }
+			const eUsers = new Set(); const eScripts = new Set()
+			for (const e of en.rows) {
+				endings.unlocks++
+				if (e.user_id) eUsers.add(e.user_id)
+				if (e.script_id) eScripts.add(e.script_id)
+				const r = e.rarity || '常规'
+				endings.by_rarity[r] = (endings.by_rarity[r] || 0) + 1
+				const b = bk(num(e.unlock_time)); if (b) b.unlocks++
+			}
+			endings.users = eUsers.size; endings.scripts = eScripts.size
+
+			/* 钱(口径同 dailyMoney) */
+			const money = { income: 0, refund: 0, grant: 0, net: 0, ratio: 0, warn: false, n_charge: 0, n_refund: 0, n_grant: 0, full_unlocks: 0, by_type: {} }
+			for (const r of rw.rows) {
+				if (r.status && r.status !== 'done') continue
+				const amt = num(r.amount); const type = String(r.type || '')
+				const b = bk(num(r.create_time))
+				if (REFUND_TYPES.has(type)) { money.refund += Math.abs(amt); money.n_refund++; if (b) b.refund += Math.abs(amt) }
+				else if (amt < 0) { money.income += -amt; money.n_charge++; money.by_type[type] = (money.by_type[type] || 0) + (-amt); if (type === 'full_unlock') money.full_unlocks++; if (b) b.income += -amt }
+				else if (amt > 0) { money.grant += amt; money.n_grant++; if (b) b.grant += amt }
+			}
+			money.net = money.income - money.refund
+			money.ratio = money.net > 0 ? +(money.grant / money.net).toFixed(3) : (money.grant > 0 ? 9.999 : 0)
+			money.warn = money.grant > 0 && (money.net <= 0 || money.ratio > 0.5)
+
+			/* 问题信号 */
+			const quality = { errors: { fe_error: 0, gen_dead: 0, create_wait_fail: 0, bgm_error: 0 }, fe_kinds: {}, reports: 0, reports_by_status: {} }
+			for (const e of ev.rows) {
+				if (quality.errors[e.ev] !== undefined) quality.errors[e.ev]++
+				if (e.ev === 'fe_error') { const d = e.data || {}; const k = d.kind || (d.where ? 'enter' : 'other'); quality.fe_kinds[k] = (quality.fe_kinds[k] || 0) + 1 }
+				const b = bk(num(e.t)); if (b) b.errors++
+			}
+			for (const r of rp.rows) {
+				quality.reports++
+				const st = r.status || 'pending'
+				quality.reports_by_status[st] = (quality.reports_by_status[st] || 0) + 1
+				const b = bk(num(r.create_time)); if (b) b.reports++
+			}
+
+			/* 此刻快照 */
+			const lanterns = { playing: 0, eternal: 0, timed: 0 }
+			for (const x of lantern) {
+				const k = x._id || {}; const n = num(x.n)
+				lanterns.playing += n
+				if (k.un || ETERNAL_MODES.has(k.pm)) lanterns.eternal += n; else lanterns.timed += n
+			}
+			const now = {
+				lanterns, reports_pending: num(pendingRes && pendingRes.total),
+				scripts: { public: num(pubRes && pubRes.total), private: num(privRes && privRes.total), writing: num(writingRes && writingRes.total) },
+			}
+			const heatTop = (heatRes.data || []).map((s) => ({
+				_id: s._id, title: s.title || '(未命名)', heat_score: num(s.heat_score), heat: num(s.heat),
+				players: num(s.stat_player_count), play_count: num(s.play_count), visibility: s.visibility || '',
+			}))
+
+			const series = order.map((t) => { const b = buckets[t]; const { _players, ...rest } = b; return { ...rest, players: _players.size } })
+			return {
+				errMsg: '',
+				data: {
+					from: fromMs, to: toMs, bucket, now, create, play, endings, money, quality, hot, heat_top: heatTop, series,
+					truncated: { scripts: sc.truncated, sessions: se.truncated, endings: en.truncated, rewards: rw.truncated, events: ev.truncated, reports: rp.truncated },
+				},
+			}
+		} catch (e) {
+			return { errMsg: errText(e, 'overview') }
 		}
 	},
 }

@@ -11,11 +11,11 @@
             <span class="hint">转私 = 本记不合规转私有 + 同本其余待处理举报一并归档;驳回 = 举报不成立,本不动</span>
         </div>
 
-        <el-table :data="list" size="small" style="width: 100%;">
-            <el-table-column label="举报时间" width="100" align="center">
+        <el-table :data="list" size="small" stripe style="width: 100%;">
+            <el-table-column label="举报时间" min-width="100" align="center">
                 <template #default="{ row }"><span class="muted">{{ fmt(row.create_time) }}</span></template>
             </el-table-column>
-            <el-table-column label="举报人" width="150">
+            <el-table-column label="举报人" min-width="150">
                 <template #default="{ row }">
                     <div class="who">
                         <el-avatar :size="22" :src="row.reporter.avatar || undefined">{{ (row.reporter.nickname || '?').slice(0, 1) }}</el-avatar>
@@ -45,7 +45,7 @@
                     <div v-if="row.detail" class="detail">{{ row.detail }}</div>
                 </template>
             </el-table-column>
-            <el-table-column label="处理态" min-width="170">
+            <el-table-column label="处理态" min-width="180">
                 <template #default="{ row }">
                     <el-tag :type="REPORT_STATUS_TAG[row.status]" size="small">{{ REPORT_STATUS_LABEL[row.status] || row.status }}</el-tag>
                     <div v-if="row.handler" class="muted">{{ row.handler }} · {{ fmt(row.handle_time) }}</div>
