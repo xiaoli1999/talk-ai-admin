@@ -5,7 +5,7 @@
                 <!-- 状态行 -->
                 <div class="sd-tags">
                     <el-tag :type="SCRIPT_STATUS_TAG[d.status]" size="small">{{ SCRIPT_STATUS[d.status] || d.status }}</el-tag>
-                    <el-tag :type="AUDIT_TAG[d.audit_status] || 'info'" size="small">审核 {{ AUDIT_LABEL[d.audit_status] || d.audit_status || '—' }}</el-tag>
+                    <el-tag :type="AUDIT_TAG[d.audit_status] || 'info'" size="small">{{ AUDIT_LABEL[d.audit_status] || d.audit_status || '—' }}</el-tag>
                     <el-tag :type="VIS_TAG[d.visibility] || 'info'" size="small">{{ VIS_LABEL[d.visibility] || d.visibility || '—' }}</el-tag>
                     <el-tag v-if="d.report_count" type="danger" size="small" :effect="d.report_flag ? 'dark' : 'plain'">举报 ×{{ d.report_count }}</el-tag>
                     <el-tag v-if="d.spec" size="small" type="info" effect="plain">{{ d.spec }}</el-tag>
@@ -180,19 +180,14 @@
             <el-empty v-else-if="!loading" :description="err || '没有数据'" />
         </div>
 
-        <!-- 底部动作:人工审核三键(备注必填) -->
+        <!-- 底部动作(09-09 黎定):只有「转私」;人工转过私的本多一个「撤销转私」防误操作,AI 初审定私有的本不给 -->
         <template #footer>
             <div v-if="d" class="sd-ft">
                 <span class="sd-ft-note" v-if="d.audit_by">上次:{{ d.audit_by }} · {{ fmt(d.audit_time) }} · {{ d.audit_note }}</span>
-                <span v-else class="sd-ft-note">还没有人工处置</span>
+                <span v-else class="sd-ft-note">还没有人工处置（当前状态是 AI 初审的结论）</span>
                 <div class="sd-ft-btns">
-                    <el-button type="success" :disabled="d.status !== 1 || (d.audit_status === 'pass' && d.visibility === 'public')" :loading="acting === 'pass'" @click="review('pass')">通过并公开</el-button>
-                    <el-tooltip content="内容有问题:审核态记「未过」并转私有" placement="top">
-                        <el-button type="danger" :disabled="d.audit_status === 'fail'" :loading="acting === 'fail'" @click="review('fail')">拒绝</el-button>
-                    </el-tooltip>
-                    <el-tooltip content="内容没问题只是不公开:仅转私有,审核态不动" placement="top">
-                        <el-button type="warning" plain :disabled="d.visibility === 'private'" :loading="acting === 'private'" @click="review('private')">转私有</el-button>
-                    </el-tooltip>
+                    <el-button v-if="d.audit_by && d.visibility === 'private' && d.status === 1" plain :loading="acting === 'restore'" @click="review('restore')">撤销转私</el-button>
+                    <el-button type="danger" :disabled="d.visibility === 'private'" :loading="acting === 'private'" @click="review('private')">转私（不合规）</el-button>
                 </div>
             </div>
         </template>
@@ -227,7 +222,7 @@ const openings = computed(() => Array.isArray(s.value.openings) ? s.value.openin
 
 const fmt = (ms) => (ms ? dayjs(ms).format('MM-DD HH:mm') : '—')
 const rarityTag = (r) => ({ 稀有: 'warning', 隐藏: 'danger' }[r] || 'info')
-const decisionTag = (k) => ({ pass: 'success', fail: 'danger', private: 'warning', takedown: 'danger', dismiss: 'info' }[k] || 'info')
+const decisionTag = (k) => ({ private: 'danger', restore: 'success', takedown: 'danger', dismiss: 'info', pass: 'info', fail: 'info' }[k] || 'info')
 const endStat = (row) => (d.value && d.value.ending_stats && d.value.ending_stats[row.id]) || { n: 0, users: 0 }
 const endingName = (id) => { if (!id) return '—'; const e = endings.value.find((x) => x.id === id); return e ? `${e.slot_type || id}${e.rarity && e.rarity !== '常规' ? '·' + e.rarity : ''}` : id }
 
@@ -244,23 +239,22 @@ const load = async (id) => {
 const open = (id) => { visible.value = true; d.value = null; load(id) }
 
 const DECISION_TIP = {
-    pass: '通过后立刻在广场公开可玩',
-    fail: '内容有问题:审核态记「未过」并转私有(作者自己仍可玩,不再公开)',
-    private: '内容没问题只是不公开:仅转私有,审核态不动(作者自己仍可玩)',
+    private: '转为私有:不再出现在广场,作者自己仍可玩,作者端显示「仅自己」',
+    restore: '撤销上次人工转私:恢复公开(只用于误操作)',
 }
 const review = async (decision) => {
     if (!d.value || acting.value) return
     const r = await ElMessageBox.prompt(
-        `《${d.value.title || '(未命名)'}》· ${DECISION_TIP[decision]}。请填写备注（必填，留痕给下一次处置的人看）`,
+        `《${d.value.title || '(未命名)'}》· ${DECISION_TIP[decision]}。请填写原因（必填，留痕给下一次处置的人看）`,
         DECISION_LABEL[decision],
-        { confirmButtonText: '确认', cancelButtonText: '取消', inputPlaceholder: '备注（≤200 字）', inputPattern: /^[\s\S]{1,200}$/, inputErrorMessage: '备注必填且不超过 200 字', type: decision === 'pass' ? 'success' : 'warning' }
+        { confirmButtonText: '确认', cancelButtonText: '取消', inputPlaceholder: '原因（≤200 字）', inputPattern: /^[\s\S]{1,200}$/, inputErrorMessage: '原因必填且不超过 200 字', type: decision === 'restore' ? 'info' : 'warning' }
     ).catch(() => null)
     if (!r || r.action !== 'confirm') return
     acting.value = decision
     const res = await dramaApi('reviewScript', { id: d.value._id, decision, note: r.value })
     acting.value = ''
     if (!res || res.errMsg) return ElMessage.error((res && res.errMsg) || '处置失败')
-    ElMessage.success(`已${DECISION_LABEL[decision]}：审核 ${AUDIT_LABEL[res.data.audit_status] || res.data.audit_status} · ${VIS_LABEL[res.data.visibility]}`)
+    ElMessage.success(`已${DECISION_LABEL[decision]}：${AUDIT_LABEL[res.data.audit_status] || res.data.audit_status} · ${VIS_LABEL[res.data.visibility]}`)
     await load(d.value._id)
     emit('changed', res.data)
 }

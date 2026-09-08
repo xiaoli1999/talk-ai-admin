@@ -10,7 +10,7 @@
                 </el-tag>
             </div>
             <el-radio-group v-model="tab" @change="onTab">
-                <el-radio-button value="scripts">自由本<span v-if="badges.scripts != null">（{{ badges.scripts }} 待审）</span></el-radio-button>
+                <el-radio-button value="scripts">自由本<span v-if="badges.scripts != null">（{{ badges.scripts }} 被举报）</span></el-radio-button>
                 <el-radio-button value="reports">举报<span v-if="badges.reports != null">（{{ badges.reports }} 待处理）</span></el-radio-button>
                 <el-radio-button value="errors">错误</el-radio-button>
                 <el-radio-button value="money">钱账</el-radio-button>

@@ -8,7 +8,7 @@
                 <el-radio-button value="all">全部</el-radio-button>
             </el-radio-group>
             <el-button type="primary" @click="reload">🔄 刷新</el-button>
-            <span class="hint">下架 = 本转私有 + 同本其余待处理举报一并归档;驳回 = 举报不成立,本不动</span>
+            <span class="hint">转私 = 本记不合规转私有 + 同本其余待处理举报一并归档;驳回 = 举报不成立,本不动</span>
         </div>
 
         <el-table :data="list" size="small" style="width: 100%;">
@@ -30,7 +30,7 @@
                         <div class="tt" @click="openDrawer(row.script._id)">{{ row.script.title || '(未命名)' }}<id-copy :id="row.script._id" /></div>
                         <div class="tags">
                             <el-tag :type="SCRIPT_STATUS_TAG[row.script.status]" size="small">{{ SCRIPT_STATUS[row.script.status] || row.script.status }}</el-tag>
-                            <el-tag :type="AUDIT_TAG[row.script.audit_status] || 'info'" size="small" effect="plain">审 {{ AUDIT_LABEL[row.script.audit_status] || '—' }}</el-tag>
+                            <el-tag :type="AUDIT_TAG[row.script.audit_status] || 'info'" size="small" effect="plain">{{ AUDIT_LABEL[row.script.audit_status] || '—' }}</el-tag>
                             <el-tag :type="VIS_TAG[row.script.visibility] || 'info'" size="small" effect="plain">{{ VIS_LABEL[row.script.visibility] || '—' }}</el-tag>
                             <el-tag v-if="row.script.report_count" type="danger" size="small" :effect="row.script.report_flag ? 'dark' : 'plain'">×{{ row.script.report_count }}</el-tag>
                         </div>
@@ -56,7 +56,7 @@
                 <template #default="{ row }">
                     <el-button type="primary" size="small" link :disabled="!row.script" @click="openDrawer(row.script && row.script._id)">看本</el-button>
                     <template v-if="row.status === 'pending'">
-                        <el-button type="danger" size="small" link @click="handle(row, 'takedown')">下架</el-button>
+                        <el-button type="danger" size="small" link :disabled="!!row.script && row.script.visibility === 'private'" @click="handle(row, 'takedown')">转私</el-button>
                         <el-button type="info" size="small" link @click="handle(row, 'dismiss')">驳回</el-button>
                     </template>
                 </template>
@@ -116,15 +116,15 @@ const handle = async (row, action) => {
     const title = (row.script && row.script.title) || shortId(row.script_id)
     const r = await ElMessageBox.prompt(
         isDown
-            ? `确认下架《${title}》？本转为私有(作者自己仍可玩),该本其余待处理举报一并归档。`
+            ? `确认把《${title}》转为私有？记不合规、不再出现在广场(作者自己仍可玩),该本其余待处理举报一并归档。`
             : `驳回这条对《${title}》的举报（${row.reason}）？本不做任何改动。`,
-        isDown ? '下架' : '驳回',
-        { confirmButtonText: isDown ? '确认下架' : '确认驳回', cancelButtonText: '取消', inputPlaceholder: '备注（选填，≤200 字）', inputPattern: /^[\s\S]{0,200}$/, inputErrorMessage: '备注不超过 200 字', type: isDown ? 'warning' : 'info' }
+        isDown ? '转私' : '驳回',
+        { confirmButtonText: isDown ? '确认转私' : '确认驳回', cancelButtonText: '取消', inputPlaceholder: '备注（选填，≤200 字）', inputPattern: /^[\s\S]{0,200}$/, inputErrorMessage: '备注不超过 200 字', type: isDown ? 'warning' : 'info' }
     ).catch(() => null)
     if (!r || r.action !== 'confirm') return
     const res = await dramaApi('handleReport', { id: row._id, action, note: r.value || '' })
     if (!res || res.errMsg) return ElMessage.error((res && res.errMsg) || '处置失败')
-    ElMessage.success(isDown ? `已下架${res.data.siblings ? `，连带归档 ${res.data.siblings} 条同本举报` : ''}` : '已驳回')
+    ElMessage.success(isDown ? `已转私${res.data.siblings ? `，连带归档 ${res.data.siblings} 条同本举报` : ''}` : '已驳回')
     await load()
 }
 

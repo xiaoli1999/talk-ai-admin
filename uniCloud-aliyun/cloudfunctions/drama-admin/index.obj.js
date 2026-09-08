@@ -2,7 +2,8 @@
  * drama-admin · 小剧场后台监控云对象(一期,2026-09-08 黎令开工;蓝图 md/待优化/11、任务书 11a)
  * ─────────────────────────────────────────────────────────────────────────
  * 职责:给后台管理系统(talk-ai-admin,H5)读小剧场数据 + 窄口写回。
- *   ② 自由本列表 / 详情 / 人工审核  → listScripts / getScript / reviewScript
+ *   ② 自由本列表 / 详情 / 人工转私  → listScripts / getScript / reviewScript
+ *      (09-09 黎定流程:创建时 AI 初审定公开/私有;后台只对被举报的、日审判不合规的人工再看一遍,决定要不要转私;没有「通过/拒绝」)
  *   ③ 举报列表 / 处理              → listReports / handleReport
  *   ⑥ 错误面板                     → listErrors
  *   ④ 钱账日报 + 「发放 ≤ 实收 50%」不变式 → dailyMoney
@@ -28,7 +29,7 @@ const db = uniCloud.database()
 const dbCmd = db.command
 const $agg = dbCmd.aggregate
 
-const BUILD = '0908-2'
+const BUILD = '0909-1'
 
 const SCRIPTS = 'drama_scripts'
 const REPORTS = 'drama_reports'
@@ -49,8 +50,10 @@ const MONEY_DAYS_MAX = 30    // 日报最多回看天数
 const ERRORS_SPAN_MAX = 31 * DAY_MS
 /** 错误面板可选事件(70 号清单排障类;bgm_error 顺带,均在 lite 白名单或 full 档) */
 const ERROR_EVS = ['fe_error', 'gen_dead', 'create_wait_fail', 'bgm_error']
-/** 自由本分栏(status:0 执笔中 / 1 已交付 / -1 判死 / -2 软删;审核三栏只看已交付本) */
-const SCRIPT_TABS = ['all', 'pending', 'fail', 'public', 'private', 'writing', 'dead']
+/** 自由本分栏(status:0 执笔中 / 1 已交付 / -1 判死 / -2 软删)。
+ *  09-09 黎定流程:创建时 AI 初审定公开/私有,后台只对「被举报的」「日审 AI 判不合规的」人工再看一遍决定要不要转私——
+ *  所以没有「待审/通过/拒绝」栏,分栏 = 全部 / 已公开 / 私有 / 被举报 / 人工处置过 / 执笔中 / 判死·已删 */
+const SCRIPT_TABS = ['all', 'public', 'private', 'reported', 'handled', 'writing', 'dead']
 /** 举报处理态 */
 const REPORT_STATUS = ['pending', 'handled', 'dismissed']
 /** 发放流水里的退款类型(正数但不算发放) */
@@ -217,14 +220,14 @@ function shapeScript (s, users, roles, play) {
 	}
 }
 
-/** 分栏 → where(全部 = 所有自由本含执笔中/判死;审核三栏只看已交付本) */
+/** 分栏 → where(全部 = 所有自由本含执笔中/判死;公开/私有只看已交付本;被举报/人工处置过不限状态) */
 function scriptWhere (tab) {
 	const base = { source: 'free' }
 	switch (tab) {
-		case 'pending': return { ...base, status: 1, audit_status: 'pending' }
-		case 'fail': return { ...base, status: 1, audit_status: 'fail' }
-		case 'public': return { ...base, status: 1, visibility: 'public', audit_status: 'pass' }
-		case 'private': return { ...base, status: 1, visibility: 'private', audit_status: 'pass' }
+		case 'public': return { ...base, status: 1, visibility: 'public' }
+		case 'private': return { ...base, status: 1, visibility: 'private' }
+		case 'reported': return { ...base, report_count: dbCmd.gt(0) }
+		case 'handled': return { ...base, audit_by: dbCmd.exists(true) }
 		case 'writing': return { ...base, status: 0 }
 		case 'dead': return { ...base, status: dbCmd.in([-1, -2]) }
 		default: return base
@@ -366,8 +369,10 @@ module.exports = {
 	},
 
 	/**
-	 * @function reviewScript 人工审核:pass→公开 / fail→审核未过转私有 / private→仅转私有(审核态不动);备注必填
-	 * @param {object} p { token, id, decision:'pass'|'fail'|'private', note }
+	 * @function reviewScript 人工处置(09-09 黎定:合成一个动作)——
+	 *   private = 转私(不合规):visibility→private、audit_status→fail,作者端显示「仅自己」;备注必填。
+	 *   restore = 撤销转私(只给人工转过私的本,防误操作;AI 初审定私有的本不给):visibility→public、audit_status→pass。
+	 * @param {object} p { token, id, decision:'private'|'restore', note }
 	 */
 	async reviewScript ({ id, decision, note } = {}) {
 		try {
@@ -375,28 +380,33 @@ module.exports = {
 			const d = String(decision || '')
 			const n = trimNote(note)
 			if (!sid) return { errMsg: '缺少剧本 id' }
-			if (!['pass', 'fail', 'private'].includes(d)) return { errMsg: '无效的处置' }
+			if (!['private', 'restore'].includes(d)) return { errMsg: '无效的处置' }
 			if (!n) return { errMsg: '请填写备注' }
 
 			const { data } = await db.collection(SCRIPTS).doc(sid)
-				.field({ source: true, status: true, audit_status: true, visibility: true, creator_id: true, title: true }).get()
+				.field({ source: true, status: true, audit_status: true, visibility: true, creator_id: true, title: true, audit_by: true }).get()
 			const s = data && data[0]
 			if (!s) return { errMsg: '这一本不存在' }
 			if (s.source !== 'free') return { errMsg: '只能处置自由本' }
-			if (d === 'pass' && num(s.status) !== 1) return { errMsg: '这一本尚未交付或已判死，不能通过' }
 
 			const now = Date.now()
 			const upd = { audit_note: n, audit_by: this.operator, audit_time: now, update_time: now }
-			if (d === 'pass') { upd.audit_status = 'pass'; upd.visibility = 'public' }
-			else if (d === 'fail') { upd.audit_status = 'fail'; upd.visibility = 'private' }
-			else upd.visibility = 'private'
+			if (d === 'private') {
+				if (s.visibility === 'private') return { errMsg: '这一本已经是私有了' }
+				upd.visibility = 'private'; upd.audit_status = 'fail'
+			} else {
+				if (!s.audit_by) return { errMsg: '只能撤销人工转私的本；AI 初审定私有的本不在这里放开' }
+				if (num(s.status) !== 1) return { errMsg: '这一本尚未交付或已判死，不能恢复公开' }
+				if (s.visibility === 'public') return { errMsg: '这一本已经是公开的' }
+				upd.visibility = 'public'; upd.audit_status = 'pass'
+			}
 			await db.collection(SCRIPTS).doc(sid).update(upd)
 
 			await logAdmin(this.operator, sid, s.creator_id, {
 				decision: d, note: n, prev: { audit_status: s.audit_status || '', visibility: s.visibility || '' },
 			})
 			console.log('[drama-admin] 审核', { id: sid, decision: d, by: this.operator })
-			return { errMsg: '', data: { _id: sid, audit_status: upd.audit_status || s.audit_status || '', visibility: upd.visibility } }
+			return { errMsg: '', data: { _id: sid, audit_status: upd.audit_status, visibility: upd.visibility } }
 		} catch (e) {
 			return { errMsg: errText(e, 'reviewScript') }
 		}
@@ -456,7 +466,7 @@ module.exports = {
 	},
 
 	/**
-	 * @function handleReport 举报处置:takedown=本转私有 + 该举报 handled + 同本其余待处理举报一并 handled(09-08 黎拍板);dismiss=驳回
+	 * @function handleReport 举报处置:takedown=本转私(不合规,与 reviewScript.private 同写法)+ 该举报 handled + 同本其余待处理举报一并 handled(09-08 黎拍板);dismiss=驳回
 	 *   幂等:先原子翻处理态(where status:pending),updated===1 才继续;同一条第二次点被挡。
 	 * @param {object} p { token, id, action:'takedown'|'dismiss', note }
 	 */
@@ -487,7 +497,7 @@ module.exports = {
 				script = sc && sc[0]
 				if (script) {
 					await db.collection(SCRIPTS).doc(r.script_id).update({
-						visibility: 'private', audit_note: `举报下架:${n || r.reason || ''}`.slice(0, NOTE_MAX),
+						visibility: 'private', audit_status: 'fail', audit_note: `举报转私:${n || r.reason || ''}`.slice(0, NOTE_MAX),
 						audit_by: this.operator, audit_time: now, update_time: now,
 					})
 					/* 同本其余待处理举报一并归档(黎 09-08:一本被举报五次不用点五次) */

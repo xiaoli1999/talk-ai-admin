@@ -28,7 +28,8 @@ export const dramaPing = () => DramaAdmin.ping().catch((e) => ({ errMsg: (e && e
 /* ───── 展示枚举(与云对象/talk-drama 的字段语义对齐) ───── */
 export const SCRIPT_STATUS = { 0: '执笔中', 1: '已交付', '-1': '判死', '-2': '已删' }
 export const SCRIPT_STATUS_TAG = { 0: 'warning', 1: 'success', '-1': 'danger', '-2': 'info' }
-export const AUDIT_LABEL = { pending: '待审', pass: '已过', fail: '未过' }
+/* 审核态 = AI 初审或人工转私的结论:pass 合规 / fail 不合规 / pending AI 审超时(私有) */
+export const AUDIT_LABEL = { pending: 'AI 未判', pass: '合规', fail: '不合规' }
 export const AUDIT_TAG = { pending: 'warning', pass: 'success', fail: 'danger' }
 export const VIS_LABEL = { public: '公开', private: '私有' }
 export const VIS_TAG = { public: 'success', private: 'info' }
@@ -37,7 +38,8 @@ export const REPORT_STATUS_LABEL = { pending: '待处理', handled: '已处理',
 export const REPORT_STATUS_TAG = { pending: 'warning', handled: 'success', dismissed: 'info' }
 export const EV_LABEL = { fe_error: '前端异常', gen_dead: '执笔判死', create_wait_fail: '创建等待失败', bgm_error: 'BGM 失败', admin_review: '人工处置' }
 export const EV_TAG = { fe_error: 'danger', gen_dead: 'warning', create_wait_fail: 'warning', bgm_error: 'info' }
-export const DECISION_LABEL = { pass: '通过', fail: '拒绝', private: '转私有', takedown: '举报下架', dismiss: '举报驳回' }
+/* 处置动作(09-09 黎定:只剩 转私 + 撤销转私;pass/fail 是 09-08 旧留痕,只用于读历史) */
+export const DECISION_LABEL = { private: '转私', restore: '撤销转私', takedown: '举报转私', dismiss: '举报驳回', pass: '通过(旧)', fail: '拒绝(旧)' }
 
 export const SESSION_STATE_LABEL = { playing: '进行中', settled: '已落幕', settling: '结算中', abandoned: '已弃局' }
 export const SESSION_STATE_TAG = { playing: 'success', settled: 'primary', settling: 'warning', abandoned: 'info' }

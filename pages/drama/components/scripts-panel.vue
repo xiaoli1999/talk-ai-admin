@@ -5,7 +5,7 @@
             <el-radio-group v-model="tab" @change="reload">
                 <el-radio-button v-for="t in TABS" :key="t.key" :value="t.key">{{ t.label }}<span v-if="counts[t.key] != null">（{{ counts[t.key] }}）</span></el-radio-button>
             </el-radio-group>
-            <span class="hint">全部 = 含执笔中 / 判死 / 已删;审核只看中间四栏(均为已交付本)</span>
+            <span class="hint">创建时 AI 初审已定公开/私有;这里只对「被举报」的本人工再看一遍,决定要不要转私</span>
         </div>
         <!-- 搜索 + 排序 -->
         <div class="filters">
@@ -60,7 +60,7 @@
                 <template #default="{ row }">
                     <div class="tags col">
                         <el-tag :type="SCRIPT_STATUS_TAG[row.status]" size="small">{{ SCRIPT_STATUS[row.status] || row.status }}</el-tag>
-                        <el-tag v-if="row.status === 1" :type="AUDIT_TAG[row.audit_status] || 'info'" size="small" effect="plain">审 {{ AUDIT_LABEL[row.audit_status] || row.audit_status || '—' }}</el-tag>
+                        <el-tag v-if="row.status === 1" :type="AUDIT_TAG[row.audit_status] || 'info'" size="small" effect="plain">{{ AUDIT_LABEL[row.audit_status] || row.audit_status || '—' }}</el-tag>
                         <el-tag v-if="row.status === 1" :type="VIS_TAG[row.visibility] || 'info'" size="small" effect="plain">{{ VIS_LABEL[row.visibility] || row.visibility || '—' }}</el-tag>
                         <el-tag v-if="row.report_count" type="danger" size="small" :effect="row.report_flag ? 'dark' : 'plain'">举报 ×{{ row.report_count }}</el-tag>
                     </div>
@@ -94,13 +94,11 @@
                     </template>
                 </template>
             </el-table-column>
-            <el-table-column label="操作" width="176" align="center">
+            <el-table-column label="操作" width="110" align="center">
                 <template #default="{ row }">
                     <div class="ops">
                         <el-button type="primary" size="small" link @click="openDrawer(row._id)">详情</el-button>
-                        <el-button type="success" size="small" link :disabled="row.status !== 1 || (row.audit_status === 'pass' && row.visibility === 'public')" @click="review(row, 'pass')">通过</el-button>
-                        <el-button type="danger" size="small" link :disabled="row.audit_status === 'fail'" @click="review(row, 'fail')">拒绝</el-button>
-                        <el-button type="warning" size="small" link :disabled="row.visibility === 'private'" @click="review(row, 'private')">转私</el-button>
+                        <el-button type="danger" size="small" link :disabled="row.visibility === 'private'" @click="takePrivate(row)">转私</el-button>
                     </div>
                 </template>
             </el-table-column>
@@ -126,16 +124,17 @@ import { ref, reactive, onMounted } from 'vue'
 import { dayjs, ElMessage, ElMessageBox } from 'element-plus'
 import { SortDown, SortUp } from '@element-plus/icons-vue'
 import {
-    dramaApi, SCRIPT_STATUS, SCRIPT_STATUS_TAG, AUDIT_LABEL, AUDIT_TAG, VIS_LABEL, VIS_TAG, WISH_TYPE_LABEL, DECISION_LABEL, SCRIPT_SORTS,
+    dramaApi, SCRIPT_STATUS, SCRIPT_STATUS_TAG, AUDIT_LABEL, AUDIT_TAG, VIS_LABEL, VIS_TAG, WISH_TYPE_LABEL, SCRIPT_SORTS,
 } from '@/utils/drama'
 import ScriptDrawer from './script-drawer.vue'
 import IdCopy from './id-copy.vue'
 
 const emit = defineEmits(['badge'])
 
+/* 09-09 黎定流程:没有「待审/通过/拒绝」;被举报 = report_count>0,人工处置过 = 有 audit_by */
 const TABS = [
-    { key: 'all', label: '全部' }, { key: 'pending', label: '待审' }, { key: 'fail', label: 'AI拒' },
-    { key: 'public', label: '已公开' }, { key: 'private', label: '已转私' }, { key: 'writing', label: '执笔中' }, { key: 'dead', label: '判死·已删' },
+    { key: 'all', label: '全部' }, { key: 'public', label: '已公开' }, { key: 'private', label: '私有' },
+    { key: 'reported', label: '被举报' }, { key: 'handled', label: '人工处置过' }, { key: 'writing', label: '执笔中' }, { key: 'dead', label: '判死·已删' },
 ]
 const tab = ref('all')
 const keyword = ref('')
@@ -150,7 +149,8 @@ const loading = ref(false)
 const drawerRef = ref(null)
 
 const fmt = (ms) => (ms ? dayjs(ms).format('MM-DD HH:mm') : '—')
-const rowClass = ({ row }) => (row.report_flag ? 'row-flag' : (row.status === 1 && row.audit_status === 'pending' ? 'row-pending' : ''))
+/* 行底色:3 人以上举报标红;有举报但未达阈值标黄 */
+const rowClass = ({ row }) => (row.report_flag ? 'row-flag' : (row.report_count > 0 && row.visibility === 'public' ? 'row-pending' : ''))
 
 const load = async (p) => {
     if (p) page.value = p
@@ -160,28 +160,24 @@ const load = async (p) => {
     if (!r || r.errMsg) { list.value = []; return ElMessage.error((r && r.errMsg) || '加载失败') }
     list.value = r.data.list || []
     total.value = r.data.total || 0
-    if (r.data.counts) { Object.assign(counts, r.data.counts); emit('badge', r.data.counts.pending) }
+    if (r.data.counts) { Object.assign(counts, r.data.counts); emit('badge', r.data.counts.reported) }
 }
 const reload = () => load(1)
 const toggleDir = () => { dir.value = dir.value === 'desc' ? 'asc' : 'desc'; reload() }
 
 const openDrawer = (id) => drawerRef.value && drawerRef.value.open(id)
 
-const DECISION_TIP = {
-    pass: '通过后立刻在广场公开可玩',
-    fail: '内容有问题:审核态记「未过」并转私有(作者自己仍可玩,不再公开)',
-    private: '内容没问题只是不公开:仅转私有,审核态不动(作者自己仍可玩)',
-}
-const review = async (row, decision) => {
+/** 转私(不合规):本不再公开,作者自己仍可玩,作者端显示「仅自己」;备注必填。误转可在详情抽屉「撤销转私」 */
+const takePrivate = async (row) => {
     const r = await ElMessageBox.prompt(
-        `《${row.title || '(未命名)'}》· ${DECISION_TIP[decision]}。请填写备注（必填）`,
-        DECISION_LABEL[decision],
-        { confirmButtonText: '确认', cancelButtonText: '取消', inputPlaceholder: '备注（≤200 字）', inputPattern: /^[\s\S]{1,200}$/, inputErrorMessage: '备注必填且不超过 200 字', type: decision === 'pass' ? 'success' : 'warning' }
+        `《${row.title || '(未命名)'}》转为私有：不再出现在广场，作者自己仍可玩，作者端显示「仅自己」。请填写原因（必填，留痕）`,
+        '转私',
+        { confirmButtonText: '确认转私', cancelButtonText: '取消', inputPlaceholder: '原因（≤200 字）', inputPattern: /^[\s\S]{1,200}$/, inputErrorMessage: '原因必填且不超过 200 字', type: 'warning' }
     ).catch(() => null)
     if (!r || r.action !== 'confirm') return
-    const res = await dramaApi('reviewScript', { id: row._id, decision, note: r.value })
+    const res = await dramaApi('reviewScript', { id: row._id, decision: 'private', note: r.value })
     if (!res || res.errMsg) return ElMessage.error((res && res.errMsg) || '处置失败')
-    ElMessage.success(`已${DECISION_LABEL[decision]}：审核 ${AUDIT_LABEL[res.data.audit_status] || res.data.audit_status} · ${VIS_LABEL[res.data.visibility]}`)
+    ElMessage.success(`已转私：${AUDIT_LABEL[res.data.audit_status] || res.data.audit_status} · ${VIS_LABEL[res.data.visibility]}`)
     await load()
 }
 
