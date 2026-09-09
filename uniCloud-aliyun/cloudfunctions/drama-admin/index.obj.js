@@ -7,6 +7,7 @@
  *   ③ 举报列表 / 处理              → listReports / handleReport
  *   ⑥ 错误面板                     → listErrors
  *   ④ 钱账日报 + 「发放 ≤ 实收 50%」不变式 → dailyMoney
+ *   ⑨ 总览统计台 → overview;内测招募候选与跟进 → listBetaCandidates / setBetaInvite(新表 beta_invites,09-09)
  * 设计原则:
  *   - 写口窄限:只写 drama_scripts.audit_status / visibility(+ audit_note / audit_by / audit_time 留痕)
  *     与 drama_reports.status / handler / handle_time / handle_note;其余表只读;绝不删记录。
@@ -29,7 +30,7 @@ const db = uniCloud.database()
 const dbCmd = db.command
 const $agg = dbCmd.aggregate
 
-const BUILD = '0909-2'
+const BUILD = '0909-3'
 
 const SCRIPTS = 'drama_scripts'
 const REPORTS = 'drama_reports'
@@ -41,6 +42,9 @@ const ENDINGS = 'drama_endings'
 const LIKES = 'drama_likes'
 const USERS = 'users'
 const ROLES = 'roles'
+const ORDERS = 'orders'
+const SURVEYS = 'surveys'
+const BETA = 'beta_invites'      // 内测招募跟进(新表,只经本对象读写)
 
 const PAGE_MAX = 50          // 单页上限(任务书硬约束)
 const NOTE_MAX = 200         // 备注长度上限
@@ -213,6 +217,85 @@ async function fetchScriptsBrief (ids) {
 function bucketLabel (t, bucket) {
 	const b = new Date(t + BJ); const p = (n) => String(n).padStart(2, '0')
 	return bucket === 'hour' ? `${p(b.getUTCMonth() + 1)}-${p(b.getUTCDate())} ${p(b.getUTCHours())}:00` : `${p(b.getUTCMonth() + 1)}-${p(b.getUTCDate())}`
+}
+
+/* ───────────────────────── 内测招募(listBetaCandidates / setBetaInvite)用 ───────────────────────── */
+const BETA_CAND_MAX = 3000     // 候选(留了联系方式的用户)上限,超了标 truncated
+const INVITE_STATUS = ['', 'added', 'invited', 'joined', 'refused']
+const BETA_SORTS = new Set(['pay_total', 'pay_count', 'recent_pay', 'last_pay', 'wechat_id_time', 'last_login_date', 'register_date', 'vip_end_time', 'chat_total', 'theater_sessions', 'login_count'])
+const BETA_TIME_FIELDS = { contact: 'wechat_id_time', register: 'register_date', login: 'last_login_date' } // pay 走订单,在内存里筛
+const BETA_USER_FIELDS = {
+	nickname: true, avatar: true, gender: true, register_date: true, last_login_date: true, login_count: true, chat_total: true,
+	pay_total: true, pay_count: true, cb_pay_count: true, cb_num: true, cb_pay_num: true, vip_end_time: true, talk_card_end_time: true,
+	wechat_id: true, beta_phone: true, wechat_id_time: true, wechat_id_source: true,
+}
+/** v3 问卷三道决策题的选项短标(答案库里存 A/B/C/D 序号;题目在 survey/config.js v3,改题要一起改) */
+const V3_OPTS = {
+	q6: ['边玩边付', '一次付清', '先免费再决定', '开会员享会员价'],
+	q7: ['很划算', '可以接受', '有点贵', '太贵了'],
+	q8: ['会写·已想好', '想试·不会写', '先玩别人的', '应该不会'],
+}
+function decodeAns (q, v) {
+	if (v == null || v === '') return ''
+	const s = String(Array.isArray(v) ? v[0] : v)
+	const i = /^[A-Z]$/.test(s) ? s.charCodeAt(0) - 65 : -1
+	return (V3_OPTS[q] && V3_OPTS[q][i]) || s.slice(0, 20)
+}
+
+/** 按 user_id 分组聚合(ids 分块 ≤500,各块失败降级空) */
+async function aggByUser (col, ids, match, group) {
+	const out = []
+	for (let i = 0; i < ids.length; i += 500) {
+		const chunk = ids.slice(i, i + 500)
+		const rows = await safe(db.collection(col).aggregate().match({ ...(match || {}), user_id: dbCmd.in(chunk) }).group({ _id: '$user_id', ...group }).end())
+		out.push(...rows)
+	}
+	return out
+}
+
+/** 跟进标记 map(user_id → 记录) */
+async function fetchInvites (ids) {
+	const map = {}
+	for (let i = 0; i < ids.length; i += 100) {
+		const chunk = ids.slice(i, i + 100)
+		const { data } = await db.collection(BETA).where({ user_id: dbCmd.in(chunk) }).limit(chunk.length).get()
+		for (const x of data || []) map[x.user_id] = { status: x.status || '', note: x.note || '', operator: x.operator || '', update_time: num(x.update_time) }
+	}
+	return map
+}
+
+/** v3 问卷三题答案(user_id → {q6,q7,q8,time}) */
+async function fetchSurveyV3 (ids) {
+	const map = {}
+	for (let i = 0; i < ids.length; i += 100) {
+		const chunk = ids.slice(i, i + 100)
+		const { data } = await db.collection(SURVEYS).where({ user_id: dbCmd.in(chunk), version: 'v3' })
+			.field({ user_id: true, answers: true, created_time: true }).limit(chunk.length).get()
+		for (const x of data || []) {
+			const a = x.answers || {}
+			map[x.user_id] = { q6: decodeAns('q6', a.q6), q7: decodeAns('q7', a.q7), q8: decodeAns('q8', a.q8), time: num(x.created_time) }
+		}
+	}
+	return map
+}
+
+/** 内测候选行:用户基本信息 + 联系方式 + 付费(用户表累计 + 订单近 30 天/最近一单)+ 体验版足迹(剧场局)+ 跟进 */
+function shapeBetaRow (u, pa, p30, th, inv) {
+	const nowMs = Date.now()
+	return {
+		_id: u._id, nickname: u.nickname || '', avatar: u.avatar || '', gender: num(u.gender),
+		register_date: num(u.register_date), register_days: u.register_date ? Math.max(0, Math.floor((nowMs - num(u.register_date)) / DAY_MS)) : 0,
+		last_login_date: num(u.last_login_date), login_count: num(u.login_count), chat_total: num(u.chat_total),
+		cb_num: num(u.cb_num), cb_pay_num: num(u.cb_pay_num), vip_end_time: num(u.vip_end_time), talk_card_end_time: num(u.talk_card_end_time),
+		contact: { wechat_id: u.wechat_id || '', beta_phone: u.beta_phone || '', time: num(u.wechat_id_time), source: u.wechat_id_source || '' },
+		pay: {
+			total: num(u.pay_total), count: num(u.pay_count), cb_count: num(u.cb_pay_count),
+			recent30: num(p30), last_paid: pa ? num(pa.last) : 0, orders_n: pa ? num(pa.n) : 0, orders_total: pa ? num(pa.total) : 0,
+		},
+		theater: { entered: !!(th && (num(th.sessions) > 0 || num(th.first) > 0)), sessions: th ? num(th.sessions) : 0, first: th ? num(th.first) : 0, last: th ? num(th.last) : 0 },
+		invite: inv || { status: '', note: '', operator: '', update_time: 0 },
+		survey: null,
+	}
 }
 
 /** 玩况空值(聚合缺该本时用) */
@@ -849,6 +932,113 @@ module.exports = {
 			}
 		} catch (e) {
 			return { errMsg: errText(e, 'overview') }
+		}
+	},
+
+	/**
+	 * @function listBetaCandidates 内测招募候选(09-09 黎令):留了微信号/手机号(问卷 v3 必填 → wechat_id_time>0)的用户,
+	 *   带付费(用户表累计 + 订单近 30 天/最近一单)、注册与登录、问卷 v3 三题、体验版足迹(有剧场局或 enter_theater 事件=进过)、跟进标记。
+	 *   候选 ≤3000 人在内存里筛/排/分页(用户表能下推的条件都下推);目的=把充值多的加进私域邀请内测。
+	 * @param {object} p { token, paid:'all'|'paid'|'unpaid', minPay(元), timeField:'contact'|'register'|'login'|'pay', from, to,
+	 *   sort, dir, keyword(昵称/微信号/手机号/uid), invite:'all'|'none'|status, beta:'all'|'entered'|'not', page, size }
+	 */
+	async listBetaCandidates ({ paid = 'all', minPay = 0, timeField = 'contact', from, to, sort = 'pay_total', dir = 'desc', keyword = '', invite = 'all', beta = 'all', page = 1, size = 20 } = {}) {
+		try {
+			const pg = pageOf(page, size)
+			const sortKey = BETA_SORTS.has(sort) ? sort : 'pay_total'
+			const desc = dir !== 'asc'
+			const fromMs = num(from); const toMs = num(to)
+			const hasRange = fromMs > 0 && toMs > fromMs
+			const minFen = Math.max(0, Math.round(num(minPay) * 100))
+
+			/* 1. 候选:用户表条件下推 */
+			const conds = [{ wechat_id_time: dbCmd.gt(0) }]
+			if (paid === 'paid') conds.push({ pay_total: dbCmd.gt(0) })
+			else if (paid === 'unpaid') conds.push(dbCmd.or([{ pay_total: dbCmd.lte(0) }, { pay_total: dbCmd.exists(false) }]))
+			if (minFen > 0) conds.push({ pay_total: dbCmd.gte(minFen) })
+			if (hasRange && BETA_TIME_FIELDS[timeField]) conds.push({ [BETA_TIME_FIELDS[timeField]]: dbCmd.gte(fromMs).and(dbCmd.lte(toMs)) })
+			const kw = str(keyword, 40).trim()
+			const re = keywordRe(kw)
+			if (re) conds.push(dbCmd.or([{ nickname: re }, { wechat_id: re }, { beta_phone: re }, { _id: kw }]))
+			const where = conds.length === 1 ? conds[0] : dbCmd.and(conds)
+			const users = []
+			let truncated = false
+			const pages = BETA_CAND_MAX / 500
+			for (let p = 0; p < pages; p++) {
+				const { data } = await db.collection(USERS).where(where).field(BETA_USER_FIELDS)
+					.orderBy('wechat_id_time', 'desc').skip(p * 500).limit(500).get()
+				if (!data || !data.length) break
+				users.push(...data)
+				if (data.length < 500) break
+				if (p === pages - 1) truncated = true
+			}
+			const ids = users.map((u) => u._id)
+
+			/* 2. 联表:订单(累计/近 30 天)、剧场局、enter_theater 首次、跟进 */
+			const day30 = Date.now() - 30 * DAY_MS
+			const [payAll, pay30, theater, enters, invites] = await Promise.all([
+				aggByUser(ORDERS, ids, { status: 1 }, { n: $agg.sum(1), total: $agg.sum('$total_fee'), last: $agg.max('$paid_time') }),
+				aggByUser(ORDERS, ids, { status: 1, paid_time: dbCmd.gte(day30) }, { total: $agg.sum('$total_fee') }),
+				aggByUser(SESSIONS, ids, {}, { n: $agg.sum(1), first: $agg.min('$create_time'), last: $agg.max('$update_time') }),
+				aggByUser(EVENTS, ids, { ev: 'enter_theater' }, { first: $agg.min('$t') }),
+				fetchInvites(ids),
+			])
+			const pm = {}; for (const x of payAll) pm[x._id] = x
+			const p30 = {}; for (const x of pay30) p30[x._id] = num(x.total)
+			const th = {}; for (const x of theater) th[x._id] = { sessions: num(x.n), first: num(x.first), last: num(x.last) }
+			for (const x of enters) { const t = th[x._id] = th[x._id] || { sessions: 0, first: 0, last: 0 }; t.first = t.first ? Math.min(t.first, num(x.first)) : num(x.first) }
+
+			/* 3. 组行 + 其他表条件在内存里筛 */
+			let rows = users.map((u) => shapeBetaRow(u, pm[u._id], p30[u._id], th[u._id], invites[u._id]))
+			if (hasRange && timeField === 'pay') rows = rows.filter((r) => r.pay.last_paid >= fromMs && r.pay.last_paid <= toMs)
+			if (beta === 'entered') rows = rows.filter((r) => r.theater.entered)
+			else if (beta === 'not') rows = rows.filter((r) => !r.theater.entered)
+			if (invite === 'none') rows = rows.filter((r) => !r.invite.status)
+			else if (invite !== 'all' && INVITE_STATUS.includes(invite)) rows = rows.filter((r) => r.invite.status === invite)
+
+			/* 4. 排序(同值按留联系方式新到旧)+ 汇总 + 分页 + 本页问卷 */
+			const sv = (r) => ({
+				pay_total: r.pay.total, pay_count: r.pay.count, recent_pay: r.pay.recent30, last_pay: r.pay.last_paid,
+				wechat_id_time: r.contact.time, last_login_date: r.last_login_date, register_date: r.register_date, vip_end_time: r.vip_end_time,
+				chat_total: r.chat_total, theater_sessions: r.theater.sessions, login_count: r.login_count,
+			})[sortKey] || 0
+			rows.sort((a, b) => ((sv(b) - sv(a)) * (desc ? 1 : -1)) || (b.contact.time - a.contact.time))
+			const summary = rows.reduce((a, r) => {
+				a.n++; if (r.pay.total > 0) a.paid++; a.pay_total += r.pay.total; a.recent30 += r.pay.recent30
+				if (r.theater.entered) a.entered++; if (r.invite.status) a.followed++; if (r.invite.status === 'joined') a.joined++
+				return a
+			}, { n: 0, paid: 0, pay_total: 0, recent30: 0, entered: 0, followed: 0, joined: 0 })
+			const pageRows = rows.slice(pg.skip, pg.skip + pg.size)
+			const answers = await fetchSurveyV3(pageRows.map((r) => r._id))
+			for (const r of pageRows) r.survey = answers[r._id] || null
+			return { errMsg: '', data: { list: pageRows, total: rows.length, page: pg.page, size: pg.size, sort: sortKey, dir: desc ? 'desc' : 'asc', summary, truncated } }
+		} catch (e) {
+			return { errMsg: errText(e, 'listBetaCandidates') }
+		}
+	},
+
+	/**
+	 * @function setBetaInvite 跟进标记(写 beta_invites,一人一条 upsert):status ∈ ''/added/invited/joined/refused,note ≤200 字,operator=登录账号
+	 * @param {object} p { token, user_id, status, note }
+	 */
+	async setBetaInvite ({ user_id, status, note } = {}) {
+		try {
+			const uid = str(user_id, 40).trim()
+			const st = String(status == null ? '' : status)
+			const n = trimNote(note)
+			if (!uid) return { errMsg: '缺少用户 id' }
+			if (!INVITE_STATUS.includes(st)) return { errMsg: '无效的跟进态' }
+			const { data: uArr } = await db.collection(USERS).doc(uid).field({ _id: true }).get()
+			if (!uArr || !uArr[0]) return { errMsg: '用户不存在' }
+			const now = Date.now()
+			const doc = { status: st, note: n, operator: this.operator, update_time: now }
+			const { data: ex } = await db.collection(BETA).where({ user_id: uid }).limit(1).get()
+			if (ex && ex[0]) await db.collection(BETA).doc(ex[0]._id).update(doc)
+			else await db.collection(BETA).add({ user_id: uid, ...doc, create_time: now })
+			console.log('[drama-admin] 跟进标记', { uid, status: st, by: this.operator })
+			return { errMsg: '', data: { user_id: uid, ...doc } }
+		} catch (e) {
+			return { errMsg: errText(e, 'setBetaInvite') }
 		}
 	},
 }

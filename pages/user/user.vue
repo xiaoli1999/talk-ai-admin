@@ -4,8 +4,12 @@
             <el-radio-button :value="0">最近</el-radio-button>
             <el-radio-button :value="1">今天注册</el-radio-button>
             <el-radio-button :value="2">有付费采贝</el-radio-button>
+            <el-radio-button :value="3">内测招募</el-radio-button>
         </el-radio-group>
 
+        <!-- 内测招募(09-09 黎令):留了微信号/手机号的用户 + 付费 + 体验版足迹 + 跟进标记,数据经 drama-admin 云对象 -->
+        <beta-panel v-if="tab === 3" />
+        <template v-else>
         <div style="display: flex;align-items: center;margin-bottom: 10px;">
             <el-input v-model.trim="userName" style="max-width: 180px;" placeholder="请输入名称" size="small">
                 <template #prepend>
@@ -87,6 +91,7 @@
                     small
             />
         </view>
+        </template>
     </el-scrollbar>
 </template>
 
@@ -94,6 +99,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { dayjs } from 'element-plus'
 import { genderEnums, platformEnums } from "@/config/enums";
+import BetaPanel from "./components/beta-panel.vue"
 
 const db = uniCloud.database()
 const dbCmd = db.command
@@ -104,6 +110,7 @@ const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
 const list = ref([])
 
 const getList = async () => {
+    if (tab.value === 3) return // 内测招募面板自己拉数
     const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
 

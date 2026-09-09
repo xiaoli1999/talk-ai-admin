@@ -58,4 +58,12 @@ export const SCRIPT_SORTS = [
 export const CHART_PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948']
 export const CHARGE_TYPE_LABEL = { turn_charge: '按轮聊天', narr_charge: '旁白', voice_charge: '语音', regen_charge: '重演一轮', opts_charge: '换一批', full_unlock: '整本买断', free_script_charge: '执笔单' }
 
+/* 内测招募跟进态(beta_invites.status) */
+export const INVITE_STATUS = [
+    { value: '', label: '未处理', tag: 'info' }, { value: 'added', label: '已加微信', tag: 'primary' }, { value: 'invited', label: '已邀请体验', tag: 'warning' },
+    { value: 'joined', label: '已进体验版', tag: 'success' }, { value: 'refused', label: '加不上/拒绝', tag: 'danger' },
+]
+export const INVITE_LABEL = Object.fromEntries(INVITE_STATUS.map((s) => [s.value, s.label]))
+export const INVITE_TAG = Object.fromEntries(INVITE_STATUS.map((s) => [s.value, s.tag]))
+
 export const shortId = (id) => (id ? String(id).slice(-6) : '—')
