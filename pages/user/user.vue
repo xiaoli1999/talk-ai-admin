@@ -5,23 +5,14 @@
             <el-radio-button :value="1">今天注册</el-radio-button>
             <el-radio-button :value="2">有付费采贝</el-radio-button>
             <el-radio-button :value="3">内测招募</el-radio-button>
+            <el-radio-button :value="4">发放奖励</el-radio-button>
         </el-radio-group>
 
         <!-- 内测招募(09-09 黎令):留了微信号/手机号的用户 + 付费 + 体验版足迹 + 跟进标记,数据经 drama-admin 云对象 -->
         <beta-panel v-if="tab === 3" />
+        <!-- 发放奖励(09-09 黎令独立成 tab):_id/用户名/昵称找人 → 看详情 → 赠送采贝(余额+累计一起涨,流水留痕),经 drama-admin -->
+        <reward-panel v-else-if="tab === 4" />
         <template v-else>
-        <div style="display: flex;align-items: center;margin-bottom: 10px;">
-            <el-input v-model.trim="userName" style="max-width: 180px;" placeholder="请输入名称" size="small">
-                <template #prepend>
-                    <el-select v-model="userNameType" placeholder="Select" style="width: 80px">
-                        <el-option label="昵称" value="nickname" />
-                        <el-option label="id" value="username" />
-                    </el-select>
-                </template>
-            </el-input>
-            <el-input-number v-model="userCbNum" :min="1" :controls="false" style="width: 60px;"  />
-            <el-button type="primary" :disabled="!userName" @click="giveReward">发放奖励</el-button>
-        </div>
 
         <el-table :data="list" border>
             <el-table-column prop="avatar" label="头像" align="center" min-width="40px">
@@ -100,6 +91,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { dayjs } from 'element-plus'
 import { genderEnums, platformEnums } from "@/config/enums";
 import BetaPanel from "./components/beta-panel.vue"
+import RewardPanel from "./components/reward-panel.vue"
 
 const db = uniCloud.database()
 const dbCmd = db.command
@@ -110,7 +102,7 @@ const listParams = reactive({ pageNo: 1, pageSize: 50, total: 0 })
 const list = ref([])
 
 const getList = async () => {
-    if (tab.value === 3) return // 内测招募面板自己拉数
+    if (tab.value === 3 || tab.value === 4) return // 内测招募 / 发放奖励 面板自己拉数
     const start = (listParams.pageNo - 1) * listParams.pageSize
     loading.value = true
 
@@ -132,34 +124,6 @@ const getList = async () => {
 }
 
 const changePage = async (e) => {
-    await getList()
-}
-
-/* 为用户发放评价奖励 */
-const userName = ref('')
-const userCbNum = ref(20)
-const userNameType = ref('nickname')
-
-const giveReward = async () => {
-    const whereObj = {}
-    whereObj[userNameType.value] = userName.value
-
-    const { result: { data } } = await db.collection('users').where(whereObj).get()
-
-    if (!data || !data.length) return uni.showToast({ title: '未找到该用户', icon: 'none' })
-
-    if (data.length > 1) return uni.showToast({ title: '查找到多条用户', icon: 'none' })
-
-    const cb_num = Math.ceil((data[0].cb_num || 0) + userCbNum.value)
-
-    const { result } = await db.collection('users').where(whereObj).update({ cb_num })
-
-    if (result.updated !== 1) return uni.showToast({ title: '发放奖励失败', icon: 'none' })
-
-    uni.showToast({ title: '发放成功', icon: 'success' })
-
-    userName.value = ''
-
     await getList()
 }
 

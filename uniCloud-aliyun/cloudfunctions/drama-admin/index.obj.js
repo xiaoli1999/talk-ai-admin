@@ -8,6 +8,7 @@
  *   ⑥ 错误面板                     → listErrors
  *   ④ 钱账日报 + 「发放 ≤ 实收 50%」不变式 → dailyMoney
  *   ⑨ 总览统计台 → overview;内测招募候选与跟进 → listBetaCandidates / setBetaInvite(新表 beta_invites,09-09)
+ *   ⑩ 后台通用:找用户 / 用户详情 / 赠送采贝 → findUsers / userDetail / grantCb(流水表 admin_cb_grants,09-09)
  * 设计原则:
  *   - 写口窄限:只写 drama_scripts.audit_status / visibility(+ audit_note / audit_by / audit_time 留痕)
  *     与 drama_reports.status / handler / handle_time / handle_note;其余表只读;绝不删记录。
@@ -30,7 +31,7 @@ const db = uniCloud.database()
 const dbCmd = db.command
 const $agg = dbCmd.aggregate
 
-const BUILD = '0909-3'
+const BUILD = '0909-4'
 
 const SCRIPTS = 'drama_scripts'
 const REPORTS = 'drama_reports'
@@ -45,6 +46,7 @@ const ROLES = 'roles'
 const ORDERS = 'orders'
 const SURVEYS = 'surveys'
 const BETA = 'beta_invites'      // 内测招募跟进(新表,只经本对象读写)
+const GRANTS = 'admin_cb_grants' // 后台手工赠送采贝流水(新表,只经本对象写)
 
 const PAGE_MAX = 50          // 单页上限(任务书硬约束)
 const NOTE_MAX = 200         // 备注长度上限
@@ -296,6 +298,36 @@ function shapeBetaRow (u, pa, p30, th, inv) {
 		invite: inv || { status: '', note: '', operator: '', update_time: 0 },
 		survey: null,
 	}
+}
+
+/* ───────────────────────── 用户查找与赠送采贝(findUsers / userDetail / grantCb)用 ───────────────────────── */
+const GRANT_MAX = 10000
+const HEX24 = /^[0-9a-f]{24}$/i
+const USER_DETAIL_FIELDS = {
+	nickname: true, avatar: true, username: true, gender: true, register_date: true, register_platform: true, inviter_uid: true,
+	last_login_date: true, login_count: true, chat_total: true, cb_num: true, cb_pay_num: true,
+	receive_cb_total: true, receive_cb_count: true, receive_cb_date: true, pay_total: true, pay_count: true,
+	vip_end_time: true, talk_card_end_time: true, wechat_id: true, beta_phone: true, mobile: true,
+}
+/** 用户详情行(后台看的字段;金额分、时间 ms 原样给,前端换算) */
+function shapeUser (u) {
+	const nowMs = Date.now()
+	return {
+		_id: u._id, nickname: u.nickname || '', avatar: u.avatar || '', username: u.username || '', gender: num(u.gender),
+		register_date: num(u.register_date), register_days: u.register_date ? Math.max(0, Math.floor((nowMs - num(u.register_date)) / DAY_MS)) : 0,
+		register_platform: u.register_platform || '', inviter_uid: u.inviter_uid || '',
+		last_login_date: num(u.last_login_date), login_count: num(u.login_count), chat_total: num(u.chat_total),
+		cb_num: num(u.cb_num), cb_pay_num: num(u.cb_pay_num),
+		receive_cb_total: num(u.receive_cb_total), receive_cb_count: num(u.receive_cb_count), receive_cb_date: u.receive_cb_date || '',
+		pay_total: num(u.pay_total), pay_count: num(u.pay_count),
+		vip_end_time: num(u.vip_end_time), talk_card_end_time: num(u.talk_card_end_time),
+		wechat_id: u.wechat_id || '', beta_phone: u.beta_phone || '', mobile: u.mobile || '',
+	}
+}
+/** 某用户最近的后台赠送流水 */
+async function fetchGrants (uid, limit) {
+	const { data } = await db.collection(GRANTS).where({ user_id: uid }).orderBy('create_time', 'desc').limit(limit || 10).get()
+	return (data || []).map((g) => ({ _id: g._id, amount: num(g.amount), note: g.note || '', operator: g.operator || '', before: g.before || {}, after: g.after || {}, create_time: num(g.create_time) }))
 }
 
 /** 玩况空值(聚合缺该本时用) */
@@ -1039,6 +1071,81 @@ module.exports = {
 			return { errMsg: '', data: { user_id: uid, ...doc } }
 		} catch (e) {
 			return { errMsg: errText(e, 'setBetaInvite') }
+		}
+	},
+
+	/**
+	 * @function findUsers 找用户(后台「发放奖励」第一步):_id 精确 / 用户名精确 / 昵称模糊;auto = 24 位 hex 当 _id,否则 用户名精确 或 昵称模糊
+	 * @param {object} p { token, q, by:'auto'|'_id'|'username'|'nickname', limit }
+	 */
+	async findUsers ({ q, by = 'auto', limit = 20 } = {}) {
+		try {
+			const kw = str(q, 60).trim()
+			if (!kw) return { errMsg: '请输入 _id、用户名或昵称' }
+			const n = Math.min(50, Math.max(1, Math.floor(num(limit) || 20)))
+			let where
+			let mode = by
+			if (by === '_id' || (by === 'auto' && HEX24.test(kw))) { where = { _id: kw }; mode = '_id' }
+			else if (by === 'username') where = { username: kw }
+			else if (by === 'nickname') where = { nickname: keywordRe(kw) }
+			else { where = dbCmd.or([{ username: kw }, { nickname: keywordRe(kw) }]); mode = 'auto' }
+			const { data } = await db.collection(USERS).where(where).field(USER_DETAIL_FIELDS).orderBy('last_login_date', 'desc').limit(n).get()
+			const list = (data || []).map(shapeUser)
+			/* 精确命中(用户名/昵称全等)排最前 */
+			list.sort((a, b) => Number(b.username === kw || b.nickname === kw) - Number(a.username === kw || a.nickname === kw))
+			return { errMsg: '', data: { list, total: list.length, mode, capped: list.length >= n } }
+		} catch (e) {
+			return { errMsg: errText(e, 'findUsers') }
+		}
+	},
+
+	/**
+	 * @function userDetail 用户详情 + 最近 10 笔后台赠送流水
+	 * @param {object} p { token, user_id }
+	 */
+	async userDetail ({ user_id } = {}) {
+		try {
+			const uid = str(user_id, 40).trim()
+			if (!uid) return { errMsg: '缺少用户 id' }
+			const { data } = await db.collection(USERS).doc(uid).field(USER_DETAIL_FIELDS).get()
+			const u = data && data[0]
+			if (!u) return { errMsg: '用户不存在' }
+			return { errMsg: '', data: { user: shapeUser(u), grants: await fetchGrants(uid, 10) } }
+		} catch (e) {
+			return { errMsg: errText(e, 'userDetail') }
+		}
+	},
+
+	/**
+	 * @function grantCb 赠送采贝(黎 09-09:赠送计入累积采贝)——cb_num 免费采贝余额 与 receive_cb_total 领取采贝总数 一起涨,
+	 *   与 survey.submit 发奖同口径;刻意「读改写 + ||0」不用 inc(沉睡账号这两个字段可能为 null,$inc 会抛);
+	 *   cb_num 取整向上(历史有 1.1 倍会员加成产生的小数,沿用旧后台 Math.ceil);每笔落 admin_cb_grants 留痕(发前发后)。
+	 * @param {object} p { token, user_id, amount(1~10000 整数), note }
+	 */
+	async grantCb ({ user_id, amount, note } = {}) {
+		try {
+			const uid = str(user_id, 40).trim()
+			const amt = Math.floor(num(amount))
+			const n = trimNote(note)
+			if (!uid) return { errMsg: '缺少用户 id' }
+			if (!(amt >= 1 && amt <= GRANT_MAX)) return { errMsg: `赠送数量须为 1~${GRANT_MAX} 的整数` }
+			const { data } = await db.collection(USERS).doc(uid).field({ nickname: true, cb_num: true, receive_cb_total: true }).get()
+			const u = data && data[0]
+			if (!u) return { errMsg: '用户不存在' }
+			const before = { cb_num: num(u.cb_num), receive_cb_total: num(u.receive_cb_total) }
+			const after = { cb_num: Math.ceil(before.cb_num + amt), receive_cb_total: before.receive_cb_total + amt }
+			const { updated } = await db.collection(USERS).doc(uid).update({ cb_num: after.cb_num, receive_cb_total: after.receive_cb_total })
+			if (updated !== 1) return { errMsg: '写入失败,请刷新后重试' }
+			const now = Date.now()
+			let logged = true
+			try {
+				await db.collection(GRANTS).add({ user_id: uid, amount: amt, note: n, operator: this.operator, before, after, create_time: now })
+			} catch (le) { logged = false; console.log('[drama-admin] 赠送流水落库失败', uid, le && le.message) }
+			console.log('[drama-admin] 赠送采贝', { uid, amount: amt, by: this.operator, before, after })
+			const { data: fresh } = await db.collection(USERS).doc(uid).field(USER_DETAIL_FIELDS).get()
+			return { errMsg: '', data: { user: shapeUser((fresh && fresh[0]) || { _id: uid, ...u, ...after }), grant: { amount: amt, note: n, operator: this.operator, before, after, create_time: now, logged }, grants: await fetchGrants(uid, 10) } }
+		} catch (e) {
+			return { errMsg: errText(e, 'grantCb') }
 		}
 	},
 }
