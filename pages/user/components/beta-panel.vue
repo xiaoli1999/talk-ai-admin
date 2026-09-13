@@ -6,7 +6,7 @@
                 <el-radio-button value="pay">付费用户</el-radio-button>
                 <el-radio-button value="quality">优质老用户</el-radio-button>
             </el-radio-group>
-            <span class="hint">{{ mode === 'pay' ? '留了联系方式的用户，按付费筛选排序' : '按创作力、黏性、资历、付费、影响力、反馈意愿综合打分，从高到低逐个加' }}</span>
+            <span class="hint">{{ mode === 'pay' ? '留了联系方式的用户，按付费筛选排序' : '留了联系方式的用户，分付费和未付费，按创作力、黏性、资历、付费、影响力、反馈意愿综合打分，从高到低逐个加' }}</span>
         </div>
 
         <div v-show="mode === 'pay'" v-loading="loading">

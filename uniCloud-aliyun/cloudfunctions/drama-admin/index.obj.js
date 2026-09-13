@@ -9,7 +9,7 @@
  *   ④ 钱账日报 + 「发放 ≤ 实收 50%」不变式 → dailyMoney
  *   ⑨ 总览统计台 → overview;内测招募候选与跟进 → listBetaCandidates / setBetaInvite(新表 beta_invites,09-09)
  *   ⑩ 后台通用:找用户 / 用户详情 / 赠送采贝 → findUsers / userDetail / grantCb(流水表 admin_cb_grants,09-09)
- *   ⑪ 优质老用户原始特征 → listQualityUsers(打分在后台 utils/quality-score.js,09-13)
+ *   ⑪ 优质老用户原始特征(只看留了联系方式的) → listQualityUsers(打分在后台 utils/quality-score.js,09-13)
  * 设计原则:
  *   - 写口窄限:只写 drama_scripts.audit_status / visibility(+ audit_note / audit_by / audit_time 留痕)
  *     与 drama_reports.status / handler / handle_time / handle_note;其余表只读;绝不删记录。
@@ -32,7 +32,7 @@ const db = uniCloud.database()
 const dbCmd = db.command
 const $agg = dbCmd.aggregate
 
-const BUILD = '0913-2'
+const BUILD = '0913-3'
 
 const SCRIPTS = 'drama_scripts'
 const REPORTS = 'drama_reports'
@@ -1119,26 +1119,22 @@ module.exports = {
 	/**
 	 * @function listQualityUsers 优质老用户候选(09-13 黎令:把最优质的老用户按顺序加进私域)——
 	 *   本方法只取「原始特征」,不打分:打分公式与权重在后台 utils/quality-score.js(纯函数),前端可切权重预设即时重排。
-	 *   候选池:contact = 留了微信号/手机号(可直接加);active = 注册满 minRegDays 天且近 activeDays 天登录过(看全局谁优质,多数没留联系方式)。
+	 *   候选池 = 留了微信号/手机号的用户(09-13 黎定:内测招募的核心是能加上,没留联系方式的没用;原「近期活跃老用户」池已删)。
+	 *   付费 / 未付费的区分在前端按 f.pay_fen 切。
 	 *   特征来源(全部只读):users 本表(登录/聊天/累计获得采贝/领取次数/看广告/付费/会员/加到我的小程序)、
 	 *   roles(上线捏崽数、优质角色、被喜欢/被聊)、roles_my(捏崽提交/草稿)、roles_like(喜欢过的角色)、users_prompt(微调身份)、
 	 *   users_ai_imgs(AI 出图)、drama_scripts(写自由本/被玩)、drama_sessions + enter_theater(体验版足迹)、surveys(填过几期 + v3 决策题)、
 	 *   orders(近 30 天充值/最近一单)、invites(邀请人数/成功)、beta_invites(跟进态)。
-	 * @param {object} p { token, pool:'contact'|'active', minRegDays, activeDays }
+	 * @param {object} p { token }
 	 */
-	async listQualityUsers ({ pool = 'contact', minRegDays = 30, activeDays = 30 } = {}) {
+	async listQualityUsers () {
 		try {
 			const t0 = Date.now()
 			const nowMs = Date.now()
 			const ctx = { errors: [], timing: {} }
-			const poolKey = pool === 'active' ? 'active' : 'contact'
-			const regDays = Math.min(3650, Math.max(0, Math.floor(num(minRegDays))))
-			const actDays = Math.min(365, Math.max(1, Math.floor(num(activeDays) || 30)))
 
-			/* 1. 候选池 */
-			const where = poolKey === 'contact'
-				? { wechat_id_time: dbCmd.gt(0) }
-				: { register_date: dbCmd.lte(nowMs - regDays * DAY_MS), last_login_date: dbCmd.gte(nowMs - actDays * DAY_MS) }
+			/* 1. 候选池:留了联系方式 */
+			const where = { wechat_id_time: dbCmd.gt(0) }
 			const users = []
 			let truncated = false
 			const tu = Date.now()
@@ -1217,7 +1213,7 @@ module.exports = {
 			return {
 				errMsg: '',
 				data: {
-					list, total: list.length, pool_size: num(poolSize), pool: poolKey, minRegDays: regDays, activeDays: actDays, truncated,
+					list, total: list.length, pool_size: num(poolSize), truncated,
 					generated_at: nowMs, timing: ctx.timing, errors: ctx.errors,
 				},
 			}

@@ -1,19 +1,10 @@
 <template>
     <div v-loading="loading" :element-loading-text="loadingText" class="qp">
-        <!-- 第一行:候选池 + 权重 -->
+        <!-- 第一行:付费分类 + 权重 -->
         <div class="filters">
-            <span class="fl">候选池</span>
-            <el-radio-group v-model="pool" size="small" @change="fetchRows">
-                <el-radio-button value="contact">留了联系方式</el-radio-button>
-                <el-radio-button value="active">近期活跃老用户</el-radio-button>
+            <el-radio-group v-model="paySeg" @change="toFirst">
+                <el-radio-button v-for="s in PAY_SEGS" :key="s.key" :value="s.key">{{ s.label }}<span class="seg-n">{{ segCount[s.key] }}</span></el-radio-button>
             </el-radio-group>
-            <template v-if="pool === 'active'">
-                <span class="muted">注册满</span>
-                <el-input-number v-model="minRegDays" :min="0" :max="3650" :controls="false" size="small" style="width: 60px;" @change="fetchRows" />
-                <span class="muted">天，近</span>
-                <el-input-number v-model="activeDays" :min="1" :max="365" :controls="false" size="small" style="width: 52px;" @change="fetchRows" />
-                <span class="muted">天登录过</span>
-            </template>
             <span class="fl">权重</span>
             <el-radio-group v-model="presetKey" size="small" @change="applyPreset">
                 <el-radio-button v-for="p in QUALITY_PRESETS" :key="p.key" :value="p.key">{{ p.label }}</el-radio-button>
@@ -33,6 +24,7 @@
             <el-popover placement="bottom-start" :width="520" trigger="click">
                 <template #reference><el-button size="small" link type="primary">打分说明</el-button></template>
                 <div class="explain">
+                    <p><b>候选</b>：只看三期问卷留了微信号或手机号的用户；「付费用户」= 充值过，「未付费用户」= 从没充值过，排名在各自分类里从 1 开始。</p>
                     <p><b>优质分</b> = 六个维度按权重加权（每维 0-100），再乘近况系数；异常账号再乘 0.3。</p>
                     <p v-for="g in QUALITY_GROUPS" :key="g.key"><i :style="{ background: g.color }"></i><b>{{ g.label }}</b>：{{ g.desc }}</p>
                     <p><b>近况系数</b>：最近登录 3 天内 ×1，7 天 ×0.95，14 天 ×0.9，30 天 ×0.8，60 天 ×0.65，90 天 ×0.5，更久 ×0.35。</p>
@@ -52,8 +44,6 @@
             <span class="fl">标签</span>
             <el-checkbox-group v-model="tags" size="small" @change="toFirst">
                 <el-checkbox-button value="creator">创作者</el-checkbox-button>
-                <el-checkbox-button value="paid">付费过</el-checkbox-button>
-                <el-checkbox-button v-if="pool === 'active'" value="contact">有联系方式</el-checkbox-button>
                 <el-checkbox-button value="notBeta">没进体验版</el-checkbox-button>
             </el-checkbox-group>
             <span class="fl">排序</span>
@@ -67,11 +57,9 @@
 
         <!-- 汇总 -->
         <div v-if="rows.length || generatedAt" class="summary">
-            <span>候选 <b>{{ scored.length }}</b> 人<template v-if="filtered.length !== scored.length"> · 当前筛出 <b>{{ filtered.length }}</b></template></span>
+            <span>{{ segLabel }} <b>{{ segRows.length }}</b> 人<template v-if="filtered.length !== segRows.length"> · 当前筛出 <b>{{ filtered.length }}</b></template></span>
             <span v-for="t in TIERS" :key="t.key" class="tier-count"><em :class="'tier tier-' + t.key">{{ t.key }}</em><b>{{ tierCount[t.key] || 0 }}</b></span>
             <span>创作者 <b>{{ stat.creators }}</b></span>
-            <span>付费过 <b>{{ stat.paid }}</b></span>
-            <span v-if="pool === 'active'">有联系方式 <b>{{ stat.contact }}</b></span>
             <span>已跟进 <b>{{ stat.followed }}</b> · 已进内测 <b>{{ stat.joined }}</b></span>
             <span v-if="stat.anomaly" class="warn">异常 {{ stat.anomaly }}</span>
             <span v-if="truncated" class="warn">候选超过 3000 人，按最近登录截断</span>
@@ -109,6 +97,7 @@
                         <el-avatar :size="30" :src="row.avatar || undefined">{{ (row.nickname || '?').slice(0, 1) }}</el-avatar>
                         <div class="who-t">
                             <div class="who-n"><span class="nick">{{ row.nickname || '(无昵称)' }}</span>
+                                <el-tag v-if="paySeg === 'all'" size="small" :type="row.f.pay_fen > 0 ? 'success' : 'info'" effect="plain">{{ row.f.pay_fen > 0 ? `付费 ${yuan(row.f.pay_fen)} 元` : '未付费' }}</el-tag>
                                 <el-tooltip v-if="row.q.anomaly.length" :content="row.q.anomaly.join('；')" placement="top"><el-tag size="small" type="danger" effect="dark">异常</el-tag></el-tooltip>
                             </div>
                             <div class="muted">注册 {{ row.q.tenureDays }} 天 · {{ agoText(row.q.loginAgoDays) }}登录<id-copy :id="row._id" label="uid" /></div>
@@ -143,11 +132,8 @@
             </el-table-column>
             <el-table-column label="联系方式" min-width="170">
                 <template #default="{ row }">
-                    <template v-if="row.contact.wechat_id || row.contact.beta_phone">
-                        <div class="ct"><span class="ct-k">微信</span><b v-if="row.contact.wechat_id">{{ row.contact.wechat_id }}</b><span v-else class="muted">—</span><id-copy :id="row.contact.wechat_id" label="微信号" /></div>
-                        <div class="ct"><span class="ct-k">手机</span><b v-if="row.contact.beta_phone">{{ row.contact.beta_phone }}</b><span v-else class="muted">—</span><id-copy :id="row.contact.beta_phone" label="手机号" /></div>
-                    </template>
-                    <span v-else class="muted">没留联系方式</span>
+                    <div class="ct"><span class="ct-k">微信</span><b v-if="row.contact.wechat_id">{{ row.contact.wechat_id }}</b><span v-else class="muted">—</span><id-copy :id="row.contact.wechat_id" label="微信号" /></div>
+                    <div class="ct"><span class="ct-k">手机</span><b v-if="row.contact.beta_phone">{{ row.contact.beta_phone }}</b><span v-else class="muted">—</span><id-copy :id="row.contact.beta_phone" label="手机号" /></div>
                 </template>
             </el-table-column>
             <el-table-column label="体验版" width="72" align="center">
@@ -173,9 +159,11 @@
 <script setup>
 /**
  * 内测招募 · 优质老用户(09-13 黎令:把最优质的老用户筛出来,按顺序加进私域)。
- * 取数:drama-admin.listQualityUsers 一次拉齐候选池全部用户的原始特征(联系方式池 138 人约 2 秒,活跃老用户池 1600 人约 5 秒)。
- * 打分:utils/quality-score.js(纯函数),切权重 / 筛选 / 排序都在本地即时算,不重新请求。
- * 排名列 = 当前权重下全池按优质分的名次(和筛选、排序无关,方便按名次一路往下加)。
+ * 候选 = 三期问卷留了微信号/手机号的用户(09-13 黎定:没留联系方式的加不上,没用;原「近期活跃老用户」池已删)。
+ * 分类 = 付费用户(充值过)/ 未付费用户(从没充值)/ 全部——两类人私域里的用法不同,各自排名。
+ * 取数:drama-admin.listQualityUsers 一次拉齐全部候选的原始特征(约 2 秒)。
+ * 打分:utils/quality-score.js(纯函数),切权重 / 分类 / 筛选 / 排序都在本地即时算,不重新请求。
+ * 排名列 = 当前权重下、当前分类内按优质分的名次(和其他筛选、排序无关,方便按名次一路往下加)。
  * 「只看待加」下刚标记的行不会立刻消失(本次操作过的保留到下次汇总或改筛选),免得列表跳动找不到位置。
  */
 import { ref, shallowRef, triggerRef, reactive, computed, watch, onMounted } from 'vue'
@@ -186,8 +174,13 @@ import { QUALITY_GROUPS, QUALITY_PRESETS, DEFAULT_WEIGHTS, TIERS, scoreRow } fro
 import IdCopy from '@/pages/drama/components/id-copy.vue'
 import FollowCell from './follow-cell.vue'
 
-const PREF_KEY = 'admin_quality_prefs' // 后台本机偏好(权重/候选池/排序),丢了按默认
+const PREF_KEY = 'admin_quality_prefs' // 后台本机偏好(权重/分类/排序),丢了按默认
 const GC = Object.fromEntries(QUALITY_GROUPS.map((g) => [g.key, g.color]))
+const PAY_SEGS = [
+    { key: 'paid', label: '付费用户', test: (x) => x.f.pay_fen > 0 },
+    { key: 'unpaid', label: '未付费用户', test: (x) => !(x.f.pay_fen > 0) },
+    { key: 'all', label: '全部', test: () => true },
+]
 const SORTS = [
     { key: 'total', label: '优质分' },
     ...QUALITY_GROUPS.map((g) => ({ key: 'g.' + g.key, label: g.label })),
@@ -199,9 +192,7 @@ const SORTS = [
 const loadPrefs = () => { try { return uni.getStorageSync(PREF_KEY) || {} } catch (e) { return {} } }
 const prefs = loadPrefs()
 
-const pool = ref(prefs.pool === 'active' ? 'active' : 'contact')
-const minRegDays = ref(Number.isFinite(prefs.minRegDays) ? prefs.minRegDays : 30)
-const activeDays = ref(Number.isFinite(prefs.activeDays) ? prefs.activeDays : 30)
+const paySeg = ref(PAY_SEGS.some((s) => s.key === prefs.paySeg) ? prefs.paySeg : 'paid')
 const presetKey = ref(prefs.presetKey || 'balanced')
 const weights = reactive({ ...DEFAULT_WEIGHTS, ...(prefs.weights || {}) })
 const todoOnly = ref(!!prefs.todoOnly)
@@ -221,12 +212,12 @@ const truncated = ref(false)
 const errors = ref([])
 const sticky = ref(new Set()) // 本次标记过跟进的 uid(「只看待加」时暂留)
 
-const loadingText = computed(() => (pool.value === 'active' ? '正在汇总近期活跃老用户的 16 项数据，约 5 秒…' : '正在汇总…'))
+const loadingText = '正在汇总留了联系方式的用户的 16 项数据…'
 
-watch([pool, minRegDays, activeDays, presetKey, todoOnly, sortKey, dir], savePrefs)
+watch([paySeg, presetKey, todoOnly, sortKey, dir], savePrefs)
 watch(weights, savePrefs, { deep: true })
 function savePrefs () {
-    try { uni.setStorageSync(PREF_KEY, { pool: pool.value, minRegDays: minRegDays.value, activeDays: activeDays.value, presetKey: presetKey.value, weights: { ...weights }, todoOnly: todoOnly.value, sortKey: sortKey.value, dir: dir.value }) } catch (e) { /* 本机偏好存不上不影响使用 */ }
+    try { uni.setStorageSync(PREF_KEY, { paySeg: paySeg.value, presetKey: presetKey.value, weights: { ...weights }, todoOnly: todoOnly.value, sortKey: sortKey.value, dir: dir.value }) } catch (e) { /* 本机偏好存不上不影响使用 */ }
 }
 
 const fmt = (ms) => (ms ? dayjs(ms).format('MM-DD HH:mm') : '—')
@@ -237,7 +228,7 @@ const agoText = (d) => (d >= 9999 ? '从未' : d === 0 ? '今天' : `${d} 天前
 const fetchRows = async () => {
     loading.value = true
     const t0 = Date.now()
-    const r = await dramaApi('listQualityUsers', { pool: pool.value, minRegDays: minRegDays.value, activeDays: activeDays.value })
+    const r = await dramaApi('listQualityUsers')
     loading.value = false
     if (!r || r.errMsg) return ElMessage.error((r && r.errMsg) || '汇总失败')
     rows.value = r.data.list || []
@@ -262,13 +253,20 @@ const onWeightInput = () => {
 }
 const weightPct = (k) => { const s = QUALITY_GROUPS.reduce((a, g) => a + (weights[g.key] || 0), 0); return s ? Math.round((weights[k] || 0) / s * 100) : 0 }
 
-/* 打分(权重变了整池重算,1600 行也就几毫秒) */
+/* 打分(权重变了整池重算,几百行几毫秒) */
 const scored = computed(() => {
     const nowMs = generatedAt.value || Date.now()
     const w = { ...weights }
-    const list = rows.value.map((r) => ({ ...r, q: scoreRow(r, w, nowMs) }))
-    const byTotal = list.slice().sort((a, b) => b.q.total - a.q.total)
-    byTotal.forEach((x, i) => { x.rank = i + 1 })
+    return rows.value.map((r) => ({ ...r, q: scoreRow(r, w, nowMs) }))
+})
+
+/* 付费分类:人数(给切换按钮)、当前分类的行、分类内排名 */
+const segCount = computed(() => Object.fromEntries(PAY_SEGS.map((s) => [s.key, scored.value.filter(s.test).length])))
+const segLabel = computed(() => (PAY_SEGS.find((s) => s.key === paySeg.value) || PAY_SEGS[2]).label)
+const segRows = computed(() => {
+    const seg = PAY_SEGS.find((s) => s.key === paySeg.value) || PAY_SEGS[2]
+    const list = scored.value.filter(seg.test)
+    list.slice().sort((a, b) => b.q.total - a.q.total).forEach((x, i) => { x.rank = i + 1 })
     return list
 })
 
@@ -284,12 +282,10 @@ const sortVal = (x) => {
 
 const filtered = computed(() => {
     const kw = String(keyword.value || '').trim().toLowerCase()
-    const out = scored.value.filter((x) => {
+    const out = segRows.value.filter((x) => {
         if (todoOnly.value && INVITE_DONE.has(x.invite.status) && !sticky.value.has(x._id)) return false
         if (tiers.value.length && !tiers.value.includes(x.q.tier.key)) return false
         if (tags.value.includes('creator') && !(x.f.roles_pub > 0 || x.f.scripts > 0)) return false
-        if (tags.value.includes('paid') && !(x.f.pay_fen > 0)) return false
-        if (tags.value.includes('contact') && !(x.contact.wechat_id || x.contact.beta_phone)) return false
         if (tags.value.includes('notBeta') && x.theater.entered) return false
         if (kw && ![x.nickname, x.contact.wechat_id, x.contact.beta_phone, x._id].some((v) => String(v || '').toLowerCase().includes(kw))) return false
         return true
@@ -299,16 +295,15 @@ const filtered = computed(() => {
 })
 const pageRows = computed(() => filtered.value.slice((page.value - 1) * size.value, page.value * size.value))
 
-const tierCount = computed(() => scored.value.reduce((a, x) => { a[x.q.tier.key] = (a[x.q.tier.key] || 0) + 1; return a }, {}))
-const stat = computed(() => scored.value.reduce((a, x) => {
+/* 汇总跟着当前付费分类走 */
+const tierCount = computed(() => segRows.value.reduce((a, x) => { a[x.q.tier.key] = (a[x.q.tier.key] || 0) + 1; return a }, {}))
+const stat = computed(() => segRows.value.reduce((a, x) => {
     if (x.f.roles_pub > 0 || x.f.scripts > 0) a.creators++
-    if (x.f.pay_fen > 0) a.paid++
-    if (x.contact.wechat_id || x.contact.beta_phone) a.contact++
     if (x.invite.status) a.followed++
     if (x.invite.status === 'joined') a.joined++
     if (x.q.anomaly.length) a.anomaly++
     return a
-}, { creators: 0, paid: 0, contact: 0, followed: 0, joined: 0, anomaly: 0 }))
+}, { creators: 0, followed: 0, joined: 0, anomaly: 0 }))
 
 const rowClass = ({ row }) => [INVITE_DONE.has(row.invite.status) ? 'row-done' : '', row.q.anomaly.length ? 'row-anomaly' : ''].join(' ')
 const toFirst = () => { page.value = 1; clearSticky() }
@@ -330,6 +325,7 @@ onMounted(fetchRows)
     min-height: 240px;
     .filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
         .fl { font-size: 13px; color: #606266; margin-left: 6px; }
+        .seg-n { margin-left: 6px; font-size: 12px; opacity: .75; font-variant-numeric: tabular-nums; }
     }
     .muted { font-size: 12px; color: #909399; line-height: 1.6; display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; &.center { justify-content: center; } }
     .summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13px; color: #606266; background: #f5f7fa; border-radius: 6px; padding: 8px 12px; margin: 4px 0 10px;
