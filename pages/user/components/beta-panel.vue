@@ -41,10 +41,8 @@
                     <el-option value="login" label="最近登录" />
                     <el-option value="pay" label="最近付费" />
                 </el-select>
-                <el-radio-group v-model="timePreset" size="small" @change="onTimePreset">
-                    <el-radio-button v-for="p in TIME_PRESETS" :key="p.key" :value="p.key">{{ p.label }}</el-radio-button>
-                </el-radio-group>
-                <span v-if="timePreset === 'custom'" class="range-box"><el-date-picker v-model="range" type="daterange" size="small" range-separator="至" start-placeholder="开始" end-placeholder="结束" @change="reload" /></span>
+                <!-- 日期框常驻、收窄;点开左侧快捷项 = 今天 / 昨天 / 近3天 / 近7天 / 近15天,清空 = 不限 -->
+                <span class="range-box"><el-date-picker v-model="range" type="daterange" size="small" :shortcuts="TIME_SHORTCUTS" unlink-panels range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" clearable @change="reload" /></span>
                 <span class="fl">排序</span>
                 <el-select v-model="q.sort" size="small" style="width: 130px;" @change="reload">
                     <el-option v-for="o in SORTS" :key="o.key" :value="o.key" :label="o.label" />
@@ -146,7 +144,7 @@
  *   付费用户 = 三期问卷留了微信号/手机号的用户,按付费筛与排(drama-admin.listBetaCandidates);
  *   优质老用户 = 综合打分排序(quality-panel.vue,打分在 utils/quality-score.js)。
  *   两个视角共用跟进标记(新表 beta_invites,follow-cell.vue)。
- * 09-13 二调:跟进补 待同意 / 号不对、修备注输不进去、时间筛选改成预设按钮(今天 / 昨天 / 近3天 / 近7天 / 近15天 / 自定义)。
+ * 09-13 二调:跟进补 待同意 / 号不对、修备注输不进去、日期框收窄并加快捷项(今天 / 昨天 / 近3天 / 近7天 / 近15天)。
  */
 import { ref, reactive, watch, onMounted } from 'vue'
 import { dayjs, ElMessage } from 'element-plus'
@@ -163,10 +161,14 @@ const SORTS = [
     { key: 'register_date', label: '注册时间' }, { key: 'vip_end_time', label: '会员到期' }, { key: 'chat_total', label: '聊天次数' },
     { key: 'theater_sessions', label: '剧场局数' }, { key: 'login_count', label: '登录次数' },
 ]
-/* 时间预设:按北京时间自然日;近 N 天 = 含今天往前 N 个自然日 */
-const TIME_PRESETS = [
-    { key: '', label: '不限' }, { key: 'today', label: '今天' }, { key: 'yesterday', label: '昨天' },
-    { key: '3d', label: '近3天' }, { key: '7d', label: '近7天' }, { key: '15d', label: '近15天' }, { key: 'custom', label: '自定义' },
+/* 日期框快捷项(09-13 黎令):按自然日;近 N 天 = 含今天往前 N 个自然日 */
+const daysBack = (n) => () => [dayjs().subtract(n - 1, 'day').startOf('day').toDate(), dayjs().endOf('day').toDate()]
+const TIME_SHORTCUTS = [
+    { text: '今天', value: daysBack(1) },
+    { text: '昨天', value: () => [dayjs().subtract(1, 'day').startOf('day').toDate(), dayjs().subtract(1, 'day').endOf('day').toDate()] },
+    { text: '近3天', value: daysBack(3) },
+    { text: '近7天', value: daysBack(7) },
+    { text: '近15天', value: daysBack(15) },
 ]
 
 const mode = ref('pay')
@@ -174,8 +176,7 @@ const qualityMounted = ref(false)
 watch(mode, (m) => { if (m === 'quality') qualityMounted.value = true })
 
 const q = reactive({ paid: 'all', minPay: undefined, beta: 'all', invite: 'all', timeField: 'contact', sort: 'pay_total', dir: 'desc', keyword: '' })
-const timePreset = ref('')
-const range = ref(null)
+const range = ref(null) // [Date, Date];空 = 不限
 const page = ref(1)
 const size = ref(20)
 const total = ref(0)
@@ -192,19 +193,10 @@ const priceTag = (s) => (!s ? 'info' : /划算/.test(s) ? 'success' : /接受/.t
 /* 已转化 / 确定加不了的行淡化,按顺序往下加时一眼跳过 */
 const rowClass = ({ row }) => (row.invite && INVITE_DONE.has(row.invite.status) ? 'row-done' : '')
 
-/** 当前时间筛选 → [from, to] 毫秒;不限返回 null */
-const timeSpan = () => {
-    const d = dayjs()
-    switch (timePreset.value) {
-        case 'today': return [d.startOf('day').valueOf(), d.valueOf()]
-        case 'yesterday': return [d.subtract(1, 'day').startOf('day').valueOf(), d.subtract(1, 'day').endOf('day').valueOf()]
-        case '3d': return [d.subtract(2, 'day').startOf('day').valueOf(), d.valueOf()]
-        case '7d': return [d.subtract(6, 'day').startOf('day').valueOf(), d.valueOf()]
-        case '15d': return [d.subtract(14, 'day').startOf('day').valueOf(), d.valueOf()]
-        case 'custom': return range.value && range.value[0] && range.value[1] ? [dayjs(range.value[0]).startOf('day').valueOf(), dayjs(range.value[1]).endOf('day').valueOf()] : null
-        default: return null
-    }
-}
+/** 当前时间筛选 → [开始日 00:00, 结束日 23:59:59] 毫秒;没选返回 null(不限) */
+const timeSpan = () => (range.value && range.value[0] && range.value[1]
+    ? [dayjs(range.value[0]).startOf('day').valueOf(), dayjs(range.value[1]).endOf('day').valueOf()]
+    : null)
 
 const load = async (p) => {
     if (p) page.value = p
@@ -222,7 +214,6 @@ const load = async (p) => {
 }
 const reload = () => load(1)
 const toggleDir = () => { q.dir = q.dir === 'desc' ? 'asc' : 'desc'; reload() }
-const onTimePreset = () => { if (timePreset.value !== 'custom') { range.value = null; reload() } }
 const onTimeField = () => { if (timeSpan()) reload() }
 
 onMounted(() => load(1))
@@ -235,8 +226,8 @@ onMounted(() => load(1))
     }
     .filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
         .fl { font-size: 13px; color: #606266; margin-left: 6px; }
-        /* element-plus 2.7 日期区间默认 350px,行内 style 不生效(09-13 实测 345px),用变量压到 230 */
-        .range-box :deep(.el-date-editor) { --el-date-editor-width: 230px; width: 230px !important; }
+        /* element-plus 2.7 日期区间默认 350px,行内 style 不生效(09-13 实测 345px),用变量压窄 */
+        .range-box :deep(.el-date-editor) { --el-date-editor-width: 240px; width: 240px !important; }
     }
     .summary { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #606266; background: #f5f7fa; border-radius: 6px; padding: 8px 12px; margin: 4px 0 10px;
         b { color: #303133; font-size: 15px; &.ok { color: #67c23a; } }
