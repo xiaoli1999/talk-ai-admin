@@ -58,11 +58,18 @@ export const SCRIPT_SORTS = [
 export const CHART_PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948']
 export const CHARGE_TYPE_LABEL = { turn_charge: '按轮聊天', narr_charge: '旁白', voice_charge: '语音', regen_charge: '重演一轮', opts_charge: '换一批', full_unlock: '整本买断', free_script_charge: '执笔单' }
 
-/* 内测招募跟进态(beta_invites.status) */
+/* 内测招募跟进态(beta_invites.status;09-13 黎令补 待同意 / 号不对,文案缩短;顺序 = 跟进流程) */
 export const INVITE_STATUS = [
-    { value: '', label: '未处理', tag: 'info' }, { value: 'added', label: '已加微信', tag: 'primary' }, { value: 'invited', label: '已邀请体验', tag: 'warning' },
-    { value: 'joined', label: '已进体验版', tag: 'success' }, { value: 'refused', label: '加不上/拒绝', tag: 'danger' },
+    { value: '', label: '未处理', tag: 'info' },
+    { value: 'pending', label: '待同意', tag: 'warning' },
+    { value: 'added', label: '已加上', tag: 'primary' },
+    { value: 'invited', label: '已邀请', tag: 'primary' },
+    { value: 'joined', label: '已进内测', tag: 'success' },
+    { value: 'wrong', label: '号不对', tag: 'danger' },
+    { value: 'refused', label: '已拒绝', tag: 'danger' },
 ]
+/** 已经转化或确定加不了的跟进态(「只看待加」时隐藏) */
+export const INVITE_DONE = new Set(['added', 'invited', 'joined', 'wrong', 'refused'])
 export const INVITE_LABEL = Object.fromEntries(INVITE_STATUS.map((s) => [s.value, s.label]))
 export const INVITE_TAG = Object.fromEntries(INVITE_STATUS.map((s) => [s.value, s.tag]))
 

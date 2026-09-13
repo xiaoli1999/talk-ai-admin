@@ -9,6 +9,7 @@
  *   ④ 钱账日报 + 「发放 ≤ 实收 50%」不变式 → dailyMoney
  *   ⑨ 总览统计台 → overview;内测招募候选与跟进 → listBetaCandidates / setBetaInvite(新表 beta_invites,09-09)
  *   ⑩ 后台通用:找用户 / 用户详情 / 赠送采贝 → findUsers / userDetail / grantCb(流水表 admin_cb_grants,09-09)
+ *   ⑪ 优质老用户原始特征 → listQualityUsers(打分在后台 utils/quality-score.js,09-13)
  * 设计原则:
  *   - 写口窄限:只写 drama_scripts.audit_status / visibility(+ audit_note / audit_by / audit_time 留痕)
  *     与 drama_reports.status / handler / handle_time / handle_note;其余表只读;绝不删记录。
@@ -31,7 +32,7 @@ const db = uniCloud.database()
 const dbCmd = db.command
 const $agg = dbCmd.aggregate
 
-const BUILD = '0909-4'
+const BUILD = '0913-2'
 
 const SCRIPTS = 'drama_scripts'
 const REPORTS = 'drama_reports'
@@ -223,7 +224,8 @@ function bucketLabel (t, bucket) {
 
 /* ───────────────────────── 内测招募(listBetaCandidates / setBetaInvite)用 ───────────────────────── */
 const BETA_CAND_MAX = 3000     // 候选(留了联系方式的用户)上限,超了标 truncated
-const INVITE_STATUS = ['', 'added', 'invited', 'joined', 'refused']
+/** 跟进态(09-13 黎令补 待同意 / 号不对,文案在后台 utils/drama.js):未处理 / 待同意(已发好友申请) / 已加上 / 已邀请 / 已进内测 / 号不对 / 已拒绝 */
+const INVITE_STATUS = ['', 'pending', 'added', 'invited', 'joined', 'wrong', 'refused']
 const BETA_SORTS = new Set(['pay_total', 'pay_count', 'recent_pay', 'last_pay', 'wechat_id_time', 'last_login_date', 'register_date', 'vip_end_time', 'chat_total', 'theater_sessions', 'login_count'])
 const BETA_TIME_FIELDS = { contact: 'wechat_id_time', register: 'register_date', login: 'last_login_date' } // pay 走订单,在内存里筛
 const BETA_USER_FIELDS = {
@@ -231,8 +233,10 @@ const BETA_USER_FIELDS = {
 	pay_total: true, pay_count: true, cb_pay_count: true, cb_num: true, cb_pay_num: true, vip_end_time: true, talk_card_end_time: true,
 	wechat_id: true, beta_phone: true, wechat_id_time: true, wechat_id_source: true,
 }
-/** v3 问卷三道决策题的选项短标(答案库里存 A/B/C/D 序号;题目在 survey/config.js v3,改题要一起改) */
+/** v3 问卷决策题的选项短标(答案库里存 A/B/C/D 序号;题目在 survey/config.js v3,改题要一起改) */
 const V3_OPTS = {
+	q2: ['自己捏的崽', '官方角色', '别人写的故事', '都想试试'],
+	q4: ['十几次·一口气', '三五十次·慢慢来', '越长越好', '看故事不设限'],
 	q6: ['边玩边付', '一次付清', '先免费再决定', '开会员享会员价'],
 	q7: ['很划算', '可以接受', '有点贵', '太贵了'],
 	q8: ['会写·已想好', '想试·不会写', '先玩别人的', '应该不会'],
@@ -244,40 +248,77 @@ function decodeAns (q, v) {
 	return (V3_OPTS[q] && V3_OPTS[q][i]) || s.slice(0, 20)
 }
 
-/** 按 user_id 分组聚合(ids 分块 ≤500,各块失败降级空) */
+/** 按 user_id 分组聚合(ids 分块 ≤500,各块失败降级空;显式 limit=块大小——分组键是用户,组数不会超过块大小,不依赖云端默认条数) */
 async function aggByUser (col, ids, match, group) {
 	const out = []
 	for (let i = 0; i < ids.length; i += 500) {
 		const chunk = ids.slice(i, i + 500)
-		const rows = await safe(db.collection(col).aggregate().match({ ...(match || {}), user_id: dbCmd.in(chunk) }).group({ _id: '$user_id', ...group }).end())
+		const rows = await safe(db.collection(col).aggregate().match({ ...(match || {}), user_id: dbCmd.in(chunk) }).group({ _id: '$user_id', ...group }).limit(chunk.length).end())
 		out.push(...rows)
 	}
 	return out
 }
 
-/** 跟进标记 map(user_id → 记录) */
+/** ids 按 size 分块并行查(各块独立;块内每个用户至多一条记录时 limit=块大小即不漏) */
+async function inChunks (ids, size, fn) {
+	const tasks = []
+	for (let i = 0; i < ids.length; i += size) tasks.push(fn(ids.slice(i, i + size)))
+	return (await Promise.all(tasks)).flat()
+}
+
+/** 跟进标记 map(user_id → 记录;beta_invites 一人一条) */
 async function fetchInvites (ids) {
 	const map = {}
-	for (let i = 0; i < ids.length; i += 100) {
-		const chunk = ids.slice(i, i + 100)
-		const { data } = await db.collection(BETA).where({ user_id: dbCmd.in(chunk) }).limit(chunk.length).get()
-		for (const x of data || []) map[x.user_id] = { status: x.status || '', note: x.note || '', operator: x.operator || '', update_time: num(x.update_time) }
+	const rows = await inChunks(ids, 500, async (chunk) => (await db.collection(BETA).where({ user_id: dbCmd.in(chunk) }).limit(chunk.length).get()).data || [])
+	for (const x of rows) map[x.user_id] = { status: x.status || '', note: x.note || '', operator: x.operator || '', update_time: num(x.update_time) }
+	return map
+}
+
+/** v3 问卷决策题答案(user_id → {q2,q4,q6,q7,q8,time};surveys 按 user_id+version 唯一) */
+async function fetchSurveyV3 (ids) {
+	const map = {}
+	const rows = await inChunks(ids, 500, async (chunk) => (await db.collection(SURVEYS).where({ user_id: dbCmd.in(chunk), version: 'v3' })
+		.field({ user_id: true, answers: true, created_time: true }).limit(chunk.length).get()).data || [])
+	for (const x of rows) {
+		const a = x.answers || {}
+		map[x.user_id] = {
+			q2: decodeAns('q2', a.q2), q4: decodeAns('q4', a.q4),
+			q6: decodeAns('q6', a.q6), q7: decodeAns('q7', a.q7), q8: decodeAns('q8', a.q8), time: num(x.created_time),
+		}
 	}
 	return map
 }
 
-/** v3 问卷三题答案(user_id → {q6,q7,q8,time}) */
-async function fetchSurveyV3 (ids) {
+/* ───────────────────────── 优质老用户(listQualityUsers)用 ───────────────────────── */
+const QUALITY_POOL_MAX = 3000
+const QUALITY_CHUNK = 500      // $in 分块;分组键是用户,单块组数 ≤ 块大小
+const QUALITY_USER_FIELDS = {
+	nickname: true, avatar: true, gender: true, register_date: true, last_login_date: true,
+	login_count: true, chat_total: true, receive_cb_total: true, receive_cb_count: true, video_ad_count: true,
+	pay_total: true, pay_count: true, vip_end_time: true, add_mp_reward_time: true, cb_num: true,
+	wechat_id: true, beta_phone: true, wechat_id_time: true,
+}
+
+/**
+ * 按某个用户键分组聚合 → map(用户 id → 组)。分块 $in + 显式 limit;单表失败只记 errors 不拖垮整体;timing 记耗时供排查慢表。
+ * @param {object} ctx { errors:string[], timing:object }
+ */
+async function aggUserMap (ctx, label, col, key, ids, match, group) {
+	const t0 = Date.now()
 	const map = {}
-	for (let i = 0; i < ids.length; i += 100) {
-		const chunk = ids.slice(i, i + 100)
-		const { data } = await db.collection(SURVEYS).where({ user_id: dbCmd.in(chunk), version: 'v3' })
-			.field({ user_id: true, answers: true, created_time: true }).limit(chunk.length).get()
-		for (const x of data || []) {
-			const a = x.answers || {}
-			map[x.user_id] = { q6: decodeAns('q6', a.q6), q7: decodeAns('q7', a.q7), q8: decodeAns('q8', a.q8), time: num(x.created_time) }
+	for (let i = 0; i < ids.length; i += QUALITY_CHUNK) {
+		const chunk = ids.slice(i, i + QUALITY_CHUNK)
+		try {
+			const { data } = await db.collection(col).aggregate()
+				.match({ ...(match || {}), [key]: dbCmd.in(chunk) })
+				.group({ _id: '$' + key, ...group })
+				.limit(chunk.length).end()
+			for (const x of data || []) map[x._id] = x
+		} catch (e) {
+			ctx.errors.push(`${label}: ${(e && e.message) || e}`.slice(0, 160))
 		}
 	}
+	ctx.timing[label] = Date.now() - t0
 	return map
 }
 
@@ -345,11 +386,11 @@ async function playStats (ids) {
 	if (!ids.length) return map
 	const [ses, ends, likes] = await Promise.all([
 		safe(db.collection(SESSIONS).aggregate().match({ script_id: dbCmd.in(ids) })
-			.group({ _id: { s: '$script_id', st: '$state' }, n: $agg.sum(1), last: $agg.max('$update_time') }).end()),
+			.group({ _id: { s: '$script_id', st: '$state' }, n: $agg.sum(1), last: $agg.max('$update_time') }).limit(1000).end()),
 		safe(db.collection(ENDINGS).aggregate().match({ script_id: dbCmd.in(ids) })
-			.group({ _id: { s: '$script_id', e: '$ending_id' }, n: $agg.sum(1) }).end()),
+			.group({ _id: { s: '$script_id', e: '$ending_id' }, n: $agg.sum(1) }).limit(1000).end()),
 		safe(db.collection(LIKES).aggregate().match({ script_id: dbCmd.in(ids) })
-			.group({ _id: '$script_id', n: $agg.sum(1) }).end()),
+			.group({ _id: '$script_id', n: $agg.sum(1) }).limit(ids.length).end()),
 	])
 	for (const x of ses) {
 		const k = x._id || {}
@@ -499,7 +540,7 @@ module.exports = {
 				fetchRoles([s.bind_role_id]),
 				playStats([sid]),
 				safe(db.collection(ENDINGS).aggregate().match({ script_id: sid })
-					.group({ _id: '$ending_id', n: $agg.sum(1), users: $agg.addToSet('$user_id') }).end()),
+					.group({ _id: '$ending_id', n: $agg.sum(1), users: $agg.addToSet('$user_id') }).limit(200).end()),
 				db.collection(SESSIONS).where({ script_id: sid }).field({
 					user_id: true, role_id: true, state: true, turn_count: true, pay_mode: true, unlocked: true,
 					ending_id: true, revenue_cb: true, create_time: true, update_time: true,
@@ -825,7 +866,7 @@ module.exports = {
 				scanRange(REWARDS, 'create_time', fromMs, toMs, { type: true, amount: true, status: true, create_time: true }),
 				scanRange(EVENTS, 't', fromMs, toMs, { ev: true, t: true, data: true }, { ev: dbCmd.in(ERROR_EVS) }),
 				scanRange(REPORTS, 'create_time', fromMs, toMs, { status: true, script_id: true, create_time: true }),
-				safe(db.collection(SESSIONS).aggregate().match({ state: 'playing' }).group({ _id: { pm: '$pay_mode', un: '$unlocked' }, n: $agg.sum(1) }).end()),
+				safe(db.collection(SESSIONS).aggregate().match({ state: 'playing' }).group({ _id: { pm: '$pay_mode', un: '$unlocked' }, n: $agg.sum(1) }).limit(100).end()),
 				db.collection(REPORTS).where({ status: 'pending' }).count(),
 				db.collection(SCRIPTS).where(scriptWhere('public')).count(),
 				db.collection(SCRIPTS).where(scriptWhere('private')).count(),
@@ -1026,6 +1067,7 @@ module.exports = {
 			if (beta === 'entered') rows = rows.filter((r) => r.theater.entered)
 			else if (beta === 'not') rows = rows.filter((r) => !r.theater.entered)
 			if (invite === 'none') rows = rows.filter((r) => !r.invite.status)
+			else if (invite === 'todo') rows = rows.filter((r) => !r.invite.status || r.invite.status === 'pending') // 只看待加 = 未处理 + 待同意
 			else if (invite !== 'all' && INVITE_STATUS.includes(invite)) rows = rows.filter((r) => r.invite.status === invite)
 
 			/* 4. 排序(同值按留联系方式新到旧)+ 汇总 + 分页 + 本页问卷 */
@@ -1075,6 +1117,116 @@ module.exports = {
 	},
 
 	/**
+	 * @function listQualityUsers 优质老用户候选(09-13 黎令:把最优质的老用户按顺序加进私域)——
+	 *   本方法只取「原始特征」,不打分:打分公式与权重在后台 utils/quality-score.js(纯函数),前端可切权重预设即时重排。
+	 *   候选池:contact = 留了微信号/手机号(可直接加);active = 注册满 minRegDays 天且近 activeDays 天登录过(看全局谁优质,多数没留联系方式)。
+	 *   特征来源(全部只读):users 本表(登录/聊天/累计获得采贝/领取次数/看广告/付费/会员/加到我的小程序)、
+	 *   roles(上线捏崽数、优质角色、被喜欢/被聊)、roles_my(捏崽提交/草稿)、roles_like(喜欢过的角色)、users_prompt(微调身份)、
+	 *   users_ai_imgs(AI 出图)、drama_scripts(写自由本/被玩)、drama_sessions + enter_theater(体验版足迹)、surveys(填过几期 + v3 决策题)、
+	 *   orders(近 30 天充值/最近一单)、invites(邀请人数/成功)、beta_invites(跟进态)。
+	 * @param {object} p { token, pool:'contact'|'active', minRegDays, activeDays }
+	 */
+	async listQualityUsers ({ pool = 'contact', minRegDays = 30, activeDays = 30 } = {}) {
+		try {
+			const t0 = Date.now()
+			const nowMs = Date.now()
+			const ctx = { errors: [], timing: {} }
+			const poolKey = pool === 'active' ? 'active' : 'contact'
+			const regDays = Math.min(3650, Math.max(0, Math.floor(num(minRegDays))))
+			const actDays = Math.min(365, Math.max(1, Math.floor(num(activeDays) || 30)))
+
+			/* 1. 候选池 */
+			const where = poolKey === 'contact'
+				? { wechat_id_time: dbCmd.gt(0) }
+				: { register_date: dbCmd.lte(nowMs - regDays * DAY_MS), last_login_date: dbCmd.gte(nowMs - actDays * DAY_MS) }
+			const users = []
+			let truncated = false
+			const tu = Date.now()
+			const { total: poolSize } = await db.collection(USERS).where(where).count()
+			if (num(poolSize) <= QUALITY_POOL_MAX) {
+				/* 不超上限:按 _id 分页并行拉(_id 稳定,不怕拉取中途有人登录导致翻页错位) */
+				const pageTasks = []
+				for (let p = 0; p * 500 < num(poolSize); p++) {
+					pageTasks.push(db.collection(USERS).where(where).field(QUALITY_USER_FIELDS).orderBy('_id', 'asc').skip(p * 500).limit(500).get())
+				}
+				for (const r of await Promise.all(pageTasks)) users.push(...(r.data || []))
+			} else {
+				/* 超上限:按最近登录倒序截前 QUALITY_POOL_MAX 人 */
+				truncated = true
+				for (let p = 0; p * 500 < QUALITY_POOL_MAX; p++) {
+					const { data } = await db.collection(USERS).where(where).field(QUALITY_USER_FIELDS)
+						.orderBy('last_login_date', 'desc').skip(p * 500).limit(500).get()
+					if (!data || !data.length) break
+					users.push(...data)
+					if (data.length < 500) break
+				}
+			}
+			ctx.timing.users = Date.now() - tu
+			const ids = users.map((u) => u._id)
+			const day30 = nowMs - 30 * DAY_MS
+
+			/* 2. 各表按用户聚合(并行;单表失败降级为 0 并记 errors) */
+			const [
+				roles, rolesHq, rolesMy, likes, prompts, imgs, scripts, scriptsPub, sessions, enters, surveys, pay30, payLast, invites, invitesOk, follow, v3,
+			] = await Promise.all([
+				aggUserMap(ctx, 'roles', ROLES, 'creator_id', ids, {}, { n: $agg.sum(1), likes: $agg.sum('$like_count'), talks: $agg.sum('$talk_count') }),
+				aggUserMap(ctx, 'roles_hq', ROLES, 'creator_id', ids, { high_quality: true }, { n: $agg.sum(1) }),
+				aggUserMap(ctx, 'roles_my', 'roles_my', 'creator_id', ids, {}, { n: $agg.sum(1) }),
+				aggUserMap(ctx, 'roles_like', 'roles_like', 'user_id', ids, {}, { n: $agg.sum(1) }),
+				aggUserMap(ctx, 'users_prompt', 'users_prompt', 'user_id', ids, {}, { n: $agg.sum(1) }),
+				aggUserMap(ctx, 'ai_imgs', 'users_ai_imgs', 'user_id', ids, {}, { n: $agg.sum(1) }),
+				aggUserMap(ctx, 'scripts', SCRIPTS, 'creator_id', ids, { source: 'free', status: dbCmd.in([0, 1]) }, { n: $agg.sum(1), players: $agg.sum('$stat_player_count') }),
+				aggUserMap(ctx, 'scripts_pub', SCRIPTS, 'creator_id', ids, { source: 'free', status: 1, visibility: 'public' }, { n: $agg.sum(1) }),
+				aggUserMap(ctx, 'sessions', SESSIONS, 'user_id', ids, {}, { n: $agg.sum(1), first: $agg.min('$create_time') }),
+				aggUserMap(ctx, 'enter_theater', EVENTS, 'user_id', ids, { ev: 'enter_theater' }, { first: $agg.min('$t') }),
+				aggUserMap(ctx, 'surveys', SURVEYS, 'user_id', ids, {}, { n: $agg.sum(1) }),
+				aggUserMap(ctx, 'pay30', ORDERS, 'user_id', ids, { status: 1, paid_time: dbCmd.gte(day30) }, { total: $agg.sum('$total_fee') }),
+				aggUserMap(ctx, 'pay_last', ORDERS, 'user_id', ids, { status: 1 }, { last: $agg.max('$paid_time') }),
+				aggUserMap(ctx, 'invites', 'invites', 'inviter_uid', ids, {}, { n: $agg.sum(1) }),
+				aggUserMap(ctx, 'invites_ok', 'invites', 'inviter_uid', ids, { success: true }, { n: $agg.sum(1) }),
+				(async () => { const s = Date.now(); const m = await fetchInvites(ids); ctx.timing.follow = Date.now() - s; return m })(),
+				(async () => { const s = Date.now(); const m = await fetchSurveyV3(ids); ctx.timing.survey_v3 = Date.now() - s; return m })(),
+			])
+			const n = (m, id, k) => num(m[id] && m[id][k || 'n'])
+
+			/* 3. 组行:只给原始特征(f)与展示字段,分数由前端 quality-score.js 算 */
+			const list = users.map((u) => {
+				const id = u._id
+				const theaterFirst = [n(sessions, id, 'first'), n(enters, id, 'first')].filter((x) => x > 0)
+				return {
+					_id: id, nickname: u.nickname || '', avatar: u.avatar || '', gender: num(u.gender),
+					register_date: num(u.register_date), last_login_date: num(u.last_login_date),
+					contact: { wechat_id: u.wechat_id || '', beta_phone: u.beta_phone || '', time: num(u.wechat_id_time) },
+					f: {
+						login: num(u.login_count), chat: num(u.chat_total), cb_total: num(u.receive_cb_total), cb_count: num(u.receive_cb_count),
+						ad: num(u.video_ad_count), cb_num: num(u.cb_num), add_mp: num(u.add_mp_reward_time) > 0 ? 1 : 0,
+						likes_given: n(likes, id),
+						pay_fen: num(u.pay_total), pay_n: num(u.pay_count), pay30_fen: n(pay30, id, 'total'), last_paid: n(payLast, id, 'last'),
+						vip: num(u.vip_end_time) > nowMs ? 1 : 0,
+						roles_pub: n(roles, id), roles_hq: n(rolesHq, id), roles_likes: n(roles, id, 'likes'), roles_talks: n(roles, id, 'talks'),
+						roles_my: n(rolesMy, id), prompts: n(prompts, id), ai_imgs: n(imgs, id),
+						scripts: n(scripts, id), scripts_pub: n(scriptsPub, id), script_players: n(scripts, id, 'players'),
+						sessions: n(sessions, id), invites: n(invites, id), invites_ok: n(invitesOk, id), surveys: n(surveys, id),
+					},
+					theater: { entered: theaterFirst.length > 0, sessions: n(sessions, id), first: theaterFirst.length ? Math.min(...theaterFirst) : 0 },
+					survey: v3[id] || null,
+					invite: follow[id] || { status: '', note: '', operator: '', update_time: 0 },
+				}
+			})
+			ctx.timing.total = Date.now() - t0
+			return {
+				errMsg: '',
+				data: {
+					list, total: list.length, pool_size: num(poolSize), pool: poolKey, minRegDays: regDays, activeDays: actDays, truncated,
+					generated_at: nowMs, timing: ctx.timing, errors: ctx.errors,
+				},
+			}
+		} catch (e) {
+			return { errMsg: errText(e, 'listQualityUsers') }
+		}
+	},
+
+	/**
 	 * @function findUsers 找用户(后台「发放奖励」第一步):_id 精确 / 用户名精确 / 昵称模糊;auto = 24 位 hex 当 _id,否则 用户名精确 或 昵称模糊
 	 * @param {object} p { token, q, by:'auto'|'_id'|'username'|'nickname', limit }
 	 */
@@ -1083,17 +1235,25 @@ module.exports = {
 			const kw = str(q, 60).trim()
 			if (!kw) return { errMsg: '请输入 _id、用户名或昵称' }
 			const n = Math.min(50, Math.max(1, Math.floor(num(limit) || 20)))
-			let where
+			const users = db.collection(USERS)
+			const get = (w, lim) => users.where(w).field(USER_DETAIL_FIELDS).orderBy('last_login_date', 'desc').limit(lim).get().then((r) => r.data || [])
 			let mode = by
-			if (by === '_id' || (by === 'auto' && HEX24.test(kw))) { where = { _id: kw }; mode = '_id' }
-			else if (by === 'username') where = { username: kw }
-			else if (by === 'nickname') where = { nickname: keywordRe(kw) }
-			else { where = dbCmd.or([{ username: kw }, { nickname: keywordRe(kw) }]); mode = 'auto' }
-			const { data } = await db.collection(USERS).where(where).field(USER_DETAIL_FIELDS).orderBy('last_login_date', 'desc').limit(n).get()
-			const list = (data || []).map(shapeUser)
-			/* 精确命中(用户名/昵称全等)排最前 */
-			list.sort((a, b) => Number(b.username === kw || b.nickname === kw) - Number(a.username === kw || a.nickname === kw))
-			return { errMsg: '', data: { list, total: list.length, mode, capped: list.length >= n } }
+			let exact = []
+			let fuzzy = []
+			if (by === '_id' || (by === 'auto' && HEX24.test(kw))) { exact = await get({ _id: kw }, 1); mode = '_id' }
+			else if (by === 'username') exact = await get({ username: kw }, n)
+			else {
+				/* 昵称重名很常见(09-13 实测「熙熙」一搜 17 个全等):全等的先查满,模糊的只补剩下的名额,免得上限把全等挤掉 */
+				exact = await get(by === 'nickname' ? { nickname: kw } : dbCmd.or([{ username: kw }, { nickname: kw }]), n)
+				if (exact.length < n) {
+					const seen = exact.map((u) => u._id)
+					const fw = { nickname: keywordRe(kw) }
+					fuzzy = await get(seen.length ? dbCmd.and([fw, { _id: dbCmd.nin(seen) }]) : fw, n - exact.length)
+				}
+				if (by === 'auto') mode = 'auto'
+			}
+			const list = [...exact.map((u) => ({ ...shapeUser(u), exact: true })), ...fuzzy.map((u) => ({ ...shapeUser(u), exact: false }))]
+			return { errMsg: '', data: { list, total: list.length, exact_count: exact.length, mode, capped: list.length >= n } }
 		} catch (e) {
 			return { errMsg: errText(e, 'findUsers') }
 		}
