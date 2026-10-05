@@ -1,5 +1,5 @@
 // survey/index.obj.js —— 调研问卷云对象（多版本 + 时效 + 防重领）
-const { meta, questionsMap } = require('./config.js')
+const { meta, questionsMap, metaMap } = require('./config.js')
 const db = uniCloud.database();
 
 /* 北京时间今天 YYYY-MM-DD（时区无关：UTC 毫秒 +8h 再取日期，避免服务器时区差异，见 memory time-convert） */
@@ -72,6 +72,21 @@ module.exports = {
 		const safeDuration = Math.max(0, Math.floor(Number(duration) || 0));
 		if (safeDuration < 60) return { data: null, errMsg: '填写速度太快啦，请仔细阅读题目哦~' };
 
+		/* 09-08 黎令·内测招募(v3):题库里 wechat:true 的题是「微信号」、phone:true 的题是「手机号」,先校验格式再往下走(格式错直接回 errMsg,前端 toast) */
+		const qs = questionsMap[version] || []
+		const wechatQ = qs.find(q => q && q.wechat)
+		const phoneQ = qs.find(q => q && q.phone)
+		let wechatId = '', betaPhone = ''
+		if (wechatQ) {
+			wechatId = String((answers && answers[wechatQ.id]) || '').trim().replace(/\s+/g, '')
+			const okWx = /^[A-Za-z][A-Za-z0-9_-]{5,19}$/.test(wechatId)   // 微信号规则:字母开头,6-20 位字母数字下划线减号
+			const okPhone = /^1\d{10}$/.test(wechatId)                    // 微信号那格填了手机号也放行(微信可按手机号搜)
+			if (!okWx && !okPhone) return { data: null, errMsg: '微信号格式不对：字母开头 6–20 位（填手机号也可以）' }
+		}
+		if (phoneQ) {
+			betaPhone = String((answers && answers[phoneQ.id]) || '').trim().replace(/[\s-]+/g, '')
+			if (!/^1\d{10}$/.test(betaPhone)) return { data: null, errMsg: '手机号格式不对：请填 11 位手机号' }
+		}
 		try {
 			// 防重领：同一用户同一版本只发一次（补原先仅前端 UI 拦截的漏洞）
 			const { data: exist } = await db.collection('surveys')
@@ -96,6 +111,17 @@ module.exports = {
 				version
 			});
 
+			// 1.5 微信号/手机号落到用户表(wechat_id / beta_phone / 时间 / 来源):失败不影响发奖,surveys.answers 里仍有原文可回查
+			if (wechatId || betaPhone) {
+				try {
+					const patch = { wechat_id_time: Date.now(), wechat_id_source: 'survey-' + version }
+					if (wechatId) patch.wechat_id = wechatId
+					if (betaPhone) patch.beta_phone = betaPhone
+					await db.collection('users').doc(userId).update(patch)
+				} catch (wxErr) {
+					console.warn('[survey.submit] wechat_id/beta_phone 落库失败 userId=' + userId, wxErr && wxErr.message)
+				}
+			}
 			// 2. 发放采贝奖励（额度走 meta.reward，可配）：cb_num 余额 + receive_cb_total 累计 一起涨
 			//    （与签到/邀请/看视频/补偿口径一致，否则福利中心「累计获得采贝」不更新）。
 			//    ⚠️ 这里刻意用「读改写 + || 0」而非 db.command.inc：历史/沉睡账号的 cb_num / receive_cb_total
@@ -134,6 +160,33 @@ module.exports = {
 			// 其他异常：绝不把原始(英文)数据库异常透传给用户；记录完整上下文便于云端日志排查
 			console.error('[survey.submit] 提交失败 userId=' + userId + ' version=' + version, e);
 			return { data: null, errMsg: '提交失败了，请稍后再试一次~' };
+		}
+	},
+
+	/**
+	 * 题库存档：供后台问卷页取各期题目定义（题干 / 选项 / 题型），答案字母在后台按它解码。
+	 * - 不查库、无需 userId：题目本就对用户公开展示，无敏感信息，故不设鉴权；线上旧前端不调用它，新增安全。
+	 * - versions 按 questionsMap 的 key 顺序；标题 / 时效 / 奖励 / 分段取自 metaMap，未登记的版本给空值（不报错，只是后台缺标题）。
+	 * @returns {Promise<{errMsg:string, data:{current:string, versions:Array<{version:string, title:string, startDate:string, endDate:string, reward:(number|null), sections:object[], questions:object[]}>}|null}>}
+	 */
+	async getArchive() {
+		try {
+			const versions = Object.keys(questionsMap).map((version) => {
+				const m = (metaMap && metaMap[version]) || {}
+				return {
+					version,
+					title: m.title || '',
+					startDate: m.startDate || '',
+					endDate: m.endDate || '',
+					reward: m.reward == null ? null : m.reward,
+					sections: Array.isArray(m.sections) ? m.sections : [],
+					questions: questionsMap[version] || []
+				}
+			})
+			return { errMsg: '', data: { current: meta.version, versions } }
+		} catch (e) {
+			console.error('[survey.getArchive] 题库读取失败', e)
+			return { errMsg: '题库读取失败', data: null }
 		}
 	}
 }

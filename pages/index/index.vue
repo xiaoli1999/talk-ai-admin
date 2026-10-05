@@ -10,6 +10,8 @@
             <el-button v-if="globalData.name === 'xiaoli'" type="primary" @click="goPage('/pages/migrate/migrate')">聊天迁移监控</el-button>
             <!-- 小剧场监控入口(09-08 黎令:首页只放一个入口,进去一页四分段) -->
             <el-button v-if="globalData.name === 'xiaoli'" type="success" @click="goPage('/pages/drama/drama')">小剧场监控</el-button>
+            <!-- 问卷入口(10-05):选期 → 本期总结 / 填写明细,一页两分段 -->
+            <el-button v-if="globalData.name === 'xiaoli'" type="warning" @click="goPage('/pages/survey/survey')">问卷</el-button>
         </view>
 
         <el-radio-group v-model="tab" style="margin: 20px auto;">

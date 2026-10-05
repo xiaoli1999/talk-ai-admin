@@ -118,6 +118,14 @@
 			}
 		},
 		{
+			"path" : "pages/survey/survey",
+			"style" :
+			{
+				"navigationBarTitleText" : "问卷",
+				"enablePullDownRefresh" : false
+			}
+		},
+		{
 			"path" : "pages/login/login",
 			"style" :
 			{

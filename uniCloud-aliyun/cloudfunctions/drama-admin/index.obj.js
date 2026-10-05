@@ -10,6 +10,9 @@
  *   ⑨ 总览统计台 → overview;内测招募候选与跟进 → listBetaCandidates / setBetaInvite(新表 beta_invites,09-09)
  *   ⑩ 后台通用:找用户 / 用户详情 / 赠送采贝 → findUsers / userDetail / grantCb(流水表 admin_cb_grants,09-09)
  *   ⑪ 优质老用户原始特征(只看留了联系方式的) → listQualityUsers(打分在后台 utils/quality-score.js,09-13)
+ *   ⑫ 问卷(只读 surveys + users,10-05):各期概览 / 一期统计总结 / 某题文字答案 / 答卷明细
+ *      (答卷明细可按 充值 / 联系方式 / 性别 / 来源 / 填写时间 / 注册时间 筛,按 时间 / 时长 / 充值 / 注册 / 登录 / 聊天 排)
+ *      → surveyOverview / surveySummary / surveyTexts / surveyAnswers(题目定义由后台从 survey.getArchive 取,解码在前端)
  * 设计原则:
  *   - 写口窄限:只写 drama_scripts.audit_status / visibility(+ audit_note / audit_by / audit_time 留痕)
  *     与 drama_reports.status / handler / handle_time / handle_note;其余表只读;绝不删记录。
@@ -32,7 +35,7 @@ const db = uniCloud.database()
 const dbCmd = db.command
 const $agg = dbCmd.aggregate
 
-const BUILD = '0913-3'
+const BUILD = '1005-2'
 
 const SCRIPTS = 'drama_scripts'
 const REPORTS = 'drama_reports'
@@ -452,6 +455,453 @@ async function logAdmin (operator, scriptId, creatorId, data) {
 			session_id: '', script_id: str(scriptId), data: { by: operator, ...data },
 		})
 	} catch (e) { /* 留痕失败不影响主动作 */ }
+}
+
+/* ───────────────────────── 问卷(surveyOverview / surveySummary / surveyTexts / surveyAnswers)用 ───────────────────────── */
+/*
+ * surveys 记录形态:{ _id, user_id, version, answers, duration(秒), source, created_time? }
+ *   - answers 是 KV(key = 题号 q1…qN):单选存选项字母 'A';选「其他」带补充存 'E_补充文字';多选存数组 ['A','C','E_补充文字'];问答存原文字符串。
+ *   - 记录是 survey 云对象 add() 写的,不走 schema 默认值 → created_time 多半缺失:提交时间一律走 surveyTimeOf(有就用,否则从 _id 推);
+ *     排序一律按 _id(ObjectId 前 4 字节是秒级时间戳,与提交先后单调),不按 created_time。
+ *   - 早期 v1 记录没有 version 字段(另有个别显式为 null),按 v1 处理(surveyVersionWhere 查询与 mergeSurveyGroups 概览两处同口径)。
+ *   - 题目定义(题干 / 选项文案)不在这里:后台从 survey.getArchive 取、在前端解码;本对象只给原始字母与统计。
+ * 纯计算(tallySurvey / mergeSurveyGroups / surveyPickText 等)与 DB 扫描(scanSurveys)分开,纯函数不碰 db,便于 mock 测试。
+ * ⚠️ surveys 现只有 (user_id, version) 复合唯一索引:按 version 扫 / 计数在体验版量级(几千条)无压力;放量后再评估加 version 前缀索引(线上表资源,交黎手动传)。
+ */
+const SURVEY_SCAN_PAGE = 1000          // 云函数端 limit 上限 1000(官方文档:阿里云 / 腾讯云 / 支付宝云均最大 1000)
+const SURVEY_SCAN_MAX = 20000          // 单期扫描护栏,超了标 truncated
+const SURVEY_SCAN_PARALLEL = 4         // count 后按页并行拉,单批 4 页
+const SURVEY_GROUPS_MAX = 100          // 概览分组上限(= 版本数,远不到;显式给,不依赖云端聚合默认条数)
+const SURVEY_FILL_DAYS_MAX = 120       // daily 首末日跨度超过它就不补零(防脏时间撑出几千个空日)
+const SURVEY_EXTRA_TEXTS_MAX = 100     // 每个带补充的选项最多回传多少条不同补充文字
+const SURVEY_EXTRA_TEXT_LEN = 200
+const SURVEY_SAMPLES_MAX = 20          // 每题自由文本样例条数(最近的)
+const SURVEY_SAMPLE_LEN = 300
+const SURVEY_VERSION_RE = /^v\d{1,3}$/
+const SURVEY_QID_RE = /^[A-Za-z][A-Za-z0-9_]{0,19}$/
+const SURVEY_OPT_RE = /^[A-Z]$/
+/** 选项形态的答案值:'A' 或 'E_补充文字'(下划线后是补充文字) */
+const SURVEY_OPT_VAL_RE = /^[A-Z](_|$)/
+/** 库内查「自由文本」:至少一个非空白字符、且不是选项形态——与 tallySurvey 的 text 判定同口径;对多选数组,选项元素一律不命中 */
+const SURVEY_TEXT_RE = /^(?![A-Z](?:_|$))[\s\S]*\S/
+/** 已知是问答题时(后台按题目定义传 asText / textQids):任何非空内容都算文字答案——否则恰好只填一个大写字母、或「A_xxx」形态的微信号会被误判成选项 */
+const SURVEY_ANY_TEXT_RE = /\S/
+const SURVEY_TEXT_QIDS_MAX = 200
+const SURVEY_SCAN_FIELDS = { user_id: true, answers: true, duration: true, source: true, created_time: true }
+/** 答卷明细排序(10-05 黎令扩成多角度):答卷自身字段库内可排;用户字段要先扫候选再在内存里排(user 路径) */
+const SURVEY_ROW_SORTS = new Set(['time', 'duration'])
+const SURVEY_USER_SORTS = new Set(['pay_total', 'pay_count', 'register_date', 'last_login_date', 'chat_total', 'login_count'])
+/** 旧 sort 值兼容(交付首版的前端传 time_desc 等):拆成 sort + dir */
+const SURVEY_LEGACY_SORTS = {
+	time_desc: ['time', 'desc'], time_asc: ['time', 'asc'],
+	duration_desc: ['duration', 'desc'], duration_asc: ['duration', 'asc'],
+}
+/** user 路径扫候选时的投影:不带 answers(体积大头),本页定下来后再按 _id 回查 */
+const SURVEY_CAND_FIELDS = { user_id: true, duration: true, source: true, created_time: true }
+const SURVEY_SOURCE_LEN = 40           // source 筛选入参截断长度
+const SURVEY_SOURCES_MAX = 1000        // 来源分布分组上限(显式给,不依赖云端聚合默认条数)
+const SURVEY_USER_FIELDS = {
+	nickname: true, avatar: true, gender: true, register_date: true, last_login_date: true,
+	pay_total: true, pay_count: true, chat_total: true, login_count: true, vip_end_time: true, wechat_id: true, beta_phone: true,
+}
+/** 答卷明细的用户空壳(用户已注销 / 查不到时;字段与 shapeSurveyUser 同序) */
+const SURVEY_USER_EMPTY = (id) => ({
+	_id: String(id || ''), nickname: '', avatar: '', gender: 0, register_date: 0, last_login_date: 0,
+	pay_total: 0, pay_count: 0, chat_total: 0, login_count: 0, vip_end_time: 0, wechat_id: '', beta_phone: '',
+})
+const cmpStr = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+
+/** ObjectId → 24 位小写 hex(兼容字符串 / {$oid} / 驱动 ObjectId 对象——聚合里 $min('$_id') 的返回形态未在真库核实);拿不到合法值返回 '' */
+function oidHex (v) {
+	let s = ''
+	if (typeof v === 'string') s = v
+	else if (v && typeof v === 'object') s = typeof v.$oid === 'string' ? v.$oid : (typeof v.toHexString === 'function' ? v.toHexString() : String(v))
+	s = s.trim().toLowerCase()
+	return HEX24.test(s) ? s : ''
+}
+
+/** ObjectId 前 8 位 hex = 秒级时间戳 → 毫秒;非法给 0 */
+function oidTime (v) {
+	const h = oidHex(v)
+	return h ? parseInt(h.slice(0, 8), 16) * 1000 : 0
+}
+
+/**
+ * 答卷提交时间(ms):created_time(数字毫秒)有就用,否则从 _id 推。
+ * Why:记录是云函数 add() 写的,不走 schema 默认值,created_time 多半缺失;阈值 1e12 顺带挡掉误存成秒 / 脏值的情况,回落 _id。
+ * @param {{_id:*, created_time:*}} doc
+ * @returns {number}
+ */
+function surveyTimeOf (doc) {
+	const ct = num(doc && doc.created_time)
+	return ct > 1e12 ? ct : oidTime(doc && doc._id)
+}
+
+/**
+ * 版本 → 查询条件:v1 同时命中 version 缺失或显式为 null 的早期老记录;其余版本等值。
+ * Why eq(null) 而不是 exists(false):Mongo 的 $eq:null 对「字段缺失」和「显式 null」都命中;
+ *   10-05 真库实测 v1 的 1058 条里有 1 条 version 显式为 null,exists(false) 会漏掉它(总结 1057 ≠ 概览 1058)。
+ * @param {string} version 须形如 v1 / v12 / v123
+ * @returns {object|null} 入参不合法返回 null(调用方回 errMsg)
+ */
+function surveyVersionWhere (version) {
+	const v = str(version).trim()
+	if (!SURVEY_VERSION_RE.test(v)) return null
+	return v === 'v1' ? dbCmd.or([{ version: 'v1' }, { version: dbCmd.eq(null) }]) : { version: v }
+}
+
+/** 自然序比较(q2 < q10、v9 < v10):数字段按数值比,其余按字符串比 */
+function natCmp (a, b) {
+	const ta = String(a).match(/\d+|\D+/g) || []
+	const tb = String(b).match(/\d+|\D+/g) || []
+	for (let i = 0; i < Math.min(ta.length, tb.length); i++) {
+		const x = ta[i]
+		const y = tb[i]
+		if (x === y) continue
+		if (/^\d/.test(x) && /^\d/.test(y)) return (Number(x) - Number(y)) || cmpStr(x, y)
+		return cmpStr(x, y)
+	}
+	return ta.length - tb.length
+}
+
+/** 答案值算不算「作答」:非空字符串 / 含非空字符串元素的数组 */
+const surveyAnswered = (v) => (Array.isArray(v) ? v.some((x) => typeof x === 'string' && !!x.trim()) : (typeof v === 'string' && !!v.trim()))
+/** 自由文本:非空字符串、且不是选项形态('A' / 'E_xxx') */
+const isSurveyText = (v) => typeof v === 'string' && !!v.trim() && !SURVEY_OPT_VAL_RE.test(v)
+
+/**
+ * 概览分组合并(纯函数):aggregate 按 $version 分组的结果 → 各期一行;分组键 null / 缺失 / 空串并入 v1
+ *   (total 相加、first 取小、last 取大、平均时长按人数加权——只对有平均值的组加权,整组没时长的不拉低均值)。
+ * @param {Array<{_id:*, total:number, first_id:*, last_id:*, avg_duration:*}>} groups
+ * @returns {Array<{version:string, total:number, first_time:number, last_time:number, avg_duration:number}>} 按版本自然序升序
+ */
+function mergeSurveyGroups (groups) {
+	const map = Object.create(null)
+	for (const g of groups || []) {
+		if (!g) continue
+		const v = g._id == null || g._id === '' ? 'v1' : String(g._id)
+		const r = map[v] || (map[v] = { version: v, total: 0, first: '', last: '', dsum: 0, dn: 0 })
+		const n = num(g.total)
+		r.total += n
+		const f = oidHex(g.first_id)
+		const l = oidHex(g.last_id)
+		if (f && (!r.first || f < r.first)) r.first = f
+		if (l && (!r.last || l > r.last)) r.last = l
+		const avg = Number(g.avg_duration)
+		if (g.avg_duration != null && Number.isFinite(avg) && n > 0) { r.dsum += avg * n; r.dn += n }
+	}
+	return Object.keys(map).sort(natCmp).map((v) => {
+		const r = map[v]
+		return { version: v, total: r.total, first_time: oidTime(r.first), last_time: oidTime(r.last), avg_duration: r.dn ? Math.round(r.dsum / r.dn) : 0 }
+	})
+}
+
+/**
+ * 一期答卷的统计汇总(纯函数,不碰 db)。判定规则:
+ *   值是数组 → 逐元素按选项处理(非选项形态的元素跳过);值是字符串且为 'A' / 'A_补充' → 选项;其余非空字符串 → 自由文本;
+ *   非字符串 / 非数组的脏值跳过。同一份答卷同一字母只计一次(单选 = 人数,多选 = 人次);'E_xxx' 计入 E,补充文字另记 extras。
+ * ⚠️ 计数表一律 Object.create(null):来源、补充文字、题号都来自用户提交,'constructor' / '__proto__' 之类的键不能撞原型。
+ * @param {object[]} rows surveys 记录(用到 _id / user_id / answers / duration / source / created_time)
+ * @param {string[]} [textQids] 题目定义里的问答题题号:这些题的字符串答案一律当自由文本,不做选项形态判定(没定义时不传,走形态判定)
+ * @returns {{total:number, first_time:number, last_time:number,
+ *   duration:{avg:number, median:number, min:number, max:number}, daily:Array<{day:string, n:number}>, sources:Array<{source:string, n:number}>,
+ *   questions:Array<{id:string, answered:number, multi:boolean, options:Array<{key:string, n:number}>,
+ *     extras:Array<{key:string, n:number, texts:Array<{text:string, n:number}>}>, text_n:number, samples:Array<{text:string, user_id:string, time:number}>}>}}
+ */
+function tallySurvey (rows, textQids) {
+	const list = Array.isArray(rows) ? rows : []
+	const textSet = new Set(Array.isArray(textQids) ? textQids : [])
+	const durs = []
+	const days = Object.create(null)
+	const sources = Object.create(null)
+	const qs = Object.create(null)
+	let first = 0
+	let last = 0
+	const qOf = (id) => qs[id] || (qs[id] = { answered: 0, multi: false, options: Object.create(null), extras: Object.create(null), text_n: 0, texts: [] })
+
+	for (const r of list) {
+		if (!r || typeof r !== 'object') continue
+		const t = surveyTimeOf(r)
+		if (t > 0) {
+			if (!first || t < first) first = t
+			if (t > last) last = t
+			const dk = dayKeyOf(t)
+			days[dk] = (days[dk] || 0) + 1
+		}
+		const d = Number(r.duration)
+		if (r.duration != null && r.duration !== '' && Number.isFinite(d) && d >= 0) durs.push(Math.round(d))
+		const src = r.source == null ? '' : String(r.source)
+		sources[src] = (sources[src] || 0) + 1
+
+		const a = r.answers
+		if (!a || typeof a !== 'object' || Array.isArray(a)) continue
+		for (const qid of Object.keys(a)) {
+			if (!SURVEY_QID_RE.test(qid)) continue
+			const v = a[qid]
+			const isArr = Array.isArray(v)
+			if (!isArr && typeof v !== 'string') continue
+			const q = qOf(qid)
+			if (isArr) q.multi = true
+			if (!surveyAnswered(v)) continue
+			q.answered++
+			if (!isArr && (textSet.has(qid) || isSurveyText(v))) {
+				q.text_n++
+				q.texts.push({ text: v.trim().slice(0, SURVEY_SAMPLE_LEN), user_id: str(r.user_id), time: t, _id: str(r._id) })
+				continue
+			}
+			const letters = new Set()
+			const extraSeen = new Set()
+			for (const x of isArr ? v : [v]) {
+				if (typeof x !== 'string' || !SURVEY_OPT_VAL_RE.test(x)) continue
+				const k = x[0]
+				if (!letters.has(k)) { letters.add(k); q.options[k] = (q.options[k] || 0) + 1 }
+				const extra = x.slice(2).trim().slice(0, SURVEY_EXTRA_TEXT_LEN)
+				if (extra && !extraSeen.has(k)) {
+					extraSeen.add(k)
+					const e = q.extras[k] || (q.extras[k] = { n: 0, texts: Object.create(null) })
+					e.n++
+					e.texts[extra] = (e.texts[extra] || 0) + 1
+				}
+			}
+		}
+	}
+
+	durs.sort((x, y) => x - y)
+	const dn = durs.length
+	const duration = dn
+		? {
+			avg: Math.round(durs.reduce((s, x) => s + x, 0) / dn),
+			median: Math.round(dn % 2 ? durs[(dn - 1) / 2] : (durs[dn / 2 - 1] + durs[dn / 2]) / 2),
+			min: durs[0],
+			max: durs[dn - 1],
+		}
+		: { avg: 0, median: 0, min: 0, max: 0 }
+
+	/* 北京日分布:首末日跨度 ≤ SURVEY_FILL_DAYS_MAX 时把中间没人填的日补 0(折线图连续);超了只给有数据的日 */
+	let daily = Object.keys(days).sort().map((day) => ({ day, n: days[day] }))
+	if (first && last) {
+		const span = Math.round((dayStartOf(last) - dayStartOf(first)) / DAY_MS)
+		if (span <= SURVEY_FILL_DAYS_MAX) {
+			daily = []
+			for (let i = 0, s = dayStartOf(first); i <= span; i++, s += DAY_MS) {
+				const day = dayKeyOf(s)
+				daily.push({ day, n: days[day] || 0 })
+			}
+		}
+	}
+
+	return {
+		total: list.length,
+		first_time: first,
+		last_time: last,
+		duration,
+		daily,
+		sources: Object.keys(sources).map((source) => ({ source, n: sources[source] })).sort((x, y) => y.n - x.n || cmpStr(x.source, y.source)),
+		questions: Object.keys(qs).sort(natCmp).map((id) => {
+			const q = qs[id]
+			return {
+				id,
+				answered: q.answered,
+				multi: q.multi,
+				options: Object.keys(q.options).sort().map((key) => ({ key, n: q.options[key] })),
+				extras: Object.keys(q.extras).sort().map((key) => {
+					const e = q.extras[key]
+					const texts = Object.keys(e.texts).map((text) => ({ text, n: e.texts[text] }))
+						.sort((x, y) => y.n - x.n || cmpStr(x.text, y.text)).slice(0, SURVEY_EXTRA_TEXTS_MAX)
+					return { key, n: e.n, texts }
+				}),
+				text_n: q.text_n,
+				samples: q.texts.sort((x, y) => y.time - x.time || cmpStr(y._id, x._id)).slice(0, SURVEY_SAMPLES_MAX)
+					.map((x) => ({ text: x.text, user_id: x.user_id, time: x.time })),
+			}
+		}),
+	}
+}
+
+/**
+ * 从一条答案值里取展示文本(surveyTexts 用,纯函数)
+ * @param {*} v answers[qid] 原值(字符串或数组)
+ * @param {string} opt 选项字母;空 = 取自由文本原文
+ * @param {RegExp|null} kwRe 关键字正则(可空;有多个候选时优先给命中关键字的)
+ * @param {boolean} [asText] 已知是问答题:非空即文本,不排除选项形态
+ * @returns {string} opt 模式下是去掉 'X_' 前缀的补充文字;自由文本模式下是原文(多选数组里的自由文本元素用「；」拼)
+ */
+function surveyPickText (v, opt, kwRe, asText) {
+	const arr = (Array.isArray(v) ? v : [v]).filter((x) => typeof x === 'string')
+	if (opt) {
+		const hits = arr.filter((x) => x.startsWith(opt + '_')).map((x) => x.slice(opt.length + 1).trim())
+		return (kwRe && hits.find((x) => kwRe.test(x))) || hits[0] || ''
+	}
+	return arr.filter((x) => (asText ? !!x.trim() : isSurveyText(x)) && (!kwRe || kwRe.test(x))).join('；')
+}
+
+/**
+ * 分页扫一期答卷(按 _id 升序;先 count 再按页并行拉,每批 SURVEY_SCAN_PARALLEL 页;护栏 SURVEY_SCAN_MAX 条,超了标 truncated)
+ * @param {object} where surveyVersionWhere 给的条件(可再叠加其他库内条件)
+ * @param {object} [fields] 投影,缺省 SURVEY_SCAN_FIELDS(答卷明细 user 路径只要 SURVEY_CAND_FIELDS)
+ * @returns {Promise<{rows:object[], truncated:boolean}>}
+ */
+async function scanSurveys (where, fields) {
+	const col = db.collection(SURVEYS)
+	const { total } = await col.where(where).count()
+	const want = Math.min(num(total), SURVEY_SCAN_MAX)
+	const pages = Math.ceil(want / SURVEY_SCAN_PAGE)
+	const rows = []
+	for (let p = 0; p < pages; p += SURVEY_SCAN_PARALLEL) {
+		const batch = []
+		for (let k = p; k < Math.min(pages, p + SURVEY_SCAN_PARALLEL); k++) {
+			batch.push(col.where(where).field(fields || SURVEY_SCAN_FIELDS).orderBy('_id', 'asc').skip(k * SURVEY_SCAN_PAGE).limit(SURVEY_SCAN_PAGE).get())
+		}
+		for (const r of await Promise.all(batch)) rows.push(...((r && r.data) || []))
+	}
+	return { rows: rows.slice(0, SURVEY_SCAN_MAX), truncated: num(total) > SURVEY_SCAN_MAX }
+}
+
+/** 答卷明细用户行(金额分、时间 ms 原样给,缺省 0;字段与 SURVEY_USER_EMPTY 同序) */
+function shapeSurveyUser (u) {
+	return {
+		_id: u._id, nickname: u.nickname || '', avatar: u.avatar || '', gender: num(u.gender),
+		register_date: num(u.register_date), last_login_date: num(u.last_login_date),
+		pay_total: num(u.pay_total), pay_count: num(u.pay_count), chat_total: num(u.chat_total), login_count: num(u.login_count),
+		vip_end_time: num(u.vip_end_time), wechat_id: u.wechat_id || '', beta_phone: u.beta_phone || '',
+	}
+}
+
+/** 答卷明细用户信息 map(users 只读;inChunks 分块 500 并行 in 查询;查不到的由调用方补 SURVEY_USER_EMPTY 空壳) */
+async function fetchSurveyUsers (ids) {
+	const map = Object.create(null)
+	const uniq = [...new Set((ids || []).filter(Boolean).map(String))]
+	const rows = await inChunks(uniq, 500, async (chunk) => (await db.collection(USERS).where({ _id: dbCmd.in(chunk) })
+		.field(SURVEY_USER_FIELDS).limit(chunk.length).get()).data || [])
+	for (const u of rows) map[u._id] = shapeSurveyUser(u)
+	return map
+}
+
+/** 答卷明细行(answers 原样;时间走 surveyTimeOf) */
+function shapeSurveyAnswer (d, users) {
+	return {
+		_id: d._id, user_id: d.user_id || '', user: users[d.user_id] || SURVEY_USER_EMPTY(d.user_id),
+		answers: d.answers && typeof d.answers === 'object' ? d.answers : {},
+		duration: num(d.duration), source: d.source == null ? '' : String(d.source), time: surveyTimeOf(d),
+	}
+}
+
+/** 正数入参:数字或非空数字串、有限且 > 0 才算,否则 0(= 不限) */
+function posNum (v) {
+	if (typeof v !== 'number' && !(typeof v === 'string' && v.trim())) return 0
+	const n = Number(v)
+	return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+/**
+ * 答卷明细筛选 / 排序入参规范化(纯函数),并判定走哪条路径:
+ *   db 路径 = 排序是答卷自身字段(time / duration)且没有任何用户维度筛选 → 库内分页;
+ *   user 路径 = 排序是用户字段,或带了 pay / payMin / contact / gender / regFrom / regTo 任一 → 扫候选 + 内存筛排。
+ * 校验:非法 sort 回落 time;dir 非 asc 即 desc;旧 sort 值(time_desc 等)拆成 sort + dir;payMin(元)非正数忽略;
+ *   时间戳非有限正数忽略、from > to 交换;gender 只认 0 / 1 / 2(数字或数字串),'' / 不传 / 其他 = 全部;source 只认非空字符串,截 40 字。
+ * @param {object} p surveyAnswers 入参
+ * @returns {{sort:string, dir:string, pay:string, payMinFen:number, contact:string, gender:(number|null), source:string,
+ *   timeFrom:number, timeTo:number, regFrom:number, regTo:number, mode:'db'|'user'}}
+ */
+function surveyAnswerOpts (p) {
+	const o = p || {}
+	let sort = str(o.sort).trim()
+	let dir = o.dir === 'asc' ? 'asc' : 'desc'
+	if (Object.prototype.hasOwnProperty.call(SURVEY_LEGACY_SORTS, sort)) [sort, dir] = SURVEY_LEGACY_SORTS[sort]
+	if (!SURVEY_ROW_SORTS.has(sort) && !SURVEY_USER_SORTS.has(sort)) sort = 'time'
+	const pay = o.pay === 'paid' || o.pay === 'unpaid' ? o.pay : ''
+	const payYuan = posNum(o.payMin)
+	const contact = o.contact === 'yes' || o.contact === 'no' ? o.contact : ''
+	const g = o.gender
+	const gn = typeof g === 'number' || (typeof g === 'string' && /^\s*\d\s*$/.test(g)) ? Number(g) : NaN
+	const gender = gn === 0 || gn === 1 || gn === 2 ? gn : null
+	const source = typeof o.source === 'string' ? o.source.trim().slice(0, SURVEY_SOURCE_LEN) : ''
+	let timeFrom = posNum(o.timeFrom)
+	let timeTo = posNum(o.timeTo)
+	if (timeFrom && timeTo && timeFrom > timeTo) [timeFrom, timeTo] = [timeTo, timeFrom]
+	let regFrom = posNum(o.regFrom)
+	let regTo = posNum(o.regTo)
+	if (regFrom && regTo && regFrom > regTo) [regFrom, regTo] = [regTo, regFrom]
+	const userFilter = !!(pay || payYuan || contact || gender !== null || regFrom || regTo)
+	return {
+		sort, dir, pay, payMinFen: payYuan ? Math.round(payYuan * 100) : 0, contact, gender, source,
+		timeFrom, timeTo, regFrom, regTo, mode: SURVEY_USER_SORTS.has(sort) || userFilter ? 'user' : 'db',
+	}
+}
+
+/**
+ * 提交时间范围 → _id 字符串范围条件(纯函数;含端点)。
+ * Why 用 _id 不用 created_time:surveys 全部记录都没有 created_time(10-05 真库实测),_id 是 24 位 hex 字符串、前 8 位是秒级时间戳,
+ *   字符串比较即时间比较;下界秒 hex 补 16 个 0、上界补 16 个 f,端点所在的那一秒整秒命中。
+ * @param {number} fromMs 0 = 不限
+ * @param {number} toMs 0 = 不限
+ * @returns {object|null} dbCmd 条件;两侧都不限返回 null
+ */
+function surveyIdRange (fromMs, toMs) {
+	const secHex = (ms) => Math.min(0xffffffff, Math.floor(ms / 1000)).toString(16).padStart(8, '0')
+	const lo = fromMs > 0 ? secHex(fromMs) + '0'.repeat(16) : ''
+	const hi = toMs > 0 ? secHex(toMs) + 'f'.repeat(16) : ''
+	if (lo && hi) return dbCmd.gte(lo).and(dbCmd.lte(hi))
+	if (lo) return dbCmd.gte(lo)
+	if (hi) return dbCmd.lte(hi)
+	return null
+}
+
+/**
+ * user 路径的「筛选 + 排序 + 切页」(纯函数,不碰 db)
+ *   - 用户维度筛:pay paid = pay_total > 0 / unpaid = ≤ 0;payMinFen = pay_total ≥ 它(分);contact yes = 微信号或手机号非空 / no = 都空;
+ *     gender 等值;注册时间范围含端点,注册时间未知(0)一律不命中——用户不存在(空壳)时同理:unpaid 命中、contact no 命中、注册时间不命中、gender 按 0。
+ *   - 排序:缺省值按 0;同值按 _id 倒序(翻页稳定);time 直接比 _id。
+ * @param {object[]} rows 候选答卷(_id / user_id / duration / source / created_time)
+ * @param {Object<string,object>} users fetchSurveyUsers 给的 map
+ * @param {object} o surveyAnswerOpts 的结果
+ * @param {{skip:number, size:number}} pg pageOf 的结果
+ * @returns {{total:number, list:object[]}} total = 筛后条数;list = 本页候选(原对象)
+ */
+function pageSurveyRows (rows, users, o, pg) {
+	const shell = SURVEY_USER_EMPTY('')
+	const items = []
+	for (const r of rows || []) {
+		if (!r) continue
+		const u = users[r.user_id] || shell
+		const paid = num(u.pay_total)
+		if (o.pay === 'paid' && !(paid > 0)) continue
+		if (o.pay === 'unpaid' && paid > 0) continue
+		if (o.payMinFen > 0 && !(paid >= o.payMinFen)) continue
+		if (o.contact && !!(str(u.wechat_id).trim() || str(u.beta_phone).trim()) !== (o.contact === 'yes')) continue
+		if (o.gender != null && num(u.gender) !== o.gender) continue
+		if (o.regFrom || o.regTo) {
+			const rd = num(u.register_date)
+			if (!(rd > 0) || (o.regFrom && rd < o.regFrom) || (o.regTo && rd > o.regTo)) continue
+		}
+		items.push({ r, id: str(r._id), v: o.sort === 'duration' ? num(r.duration) : (SURVEY_USER_SORTS.has(o.sort) ? num(u[o.sort]) : 0) })
+	}
+	const sgn = o.dir === 'asc' ? 1 : -1
+	items.sort((a, b) => (o.sort === 'time' ? sgn * cmpStr(a.id, b.id) : sgn * (a.v - b.v)) || cmpStr(b.id, a.id))
+	return { total: items.length, list: items.slice(pg.skip, pg.skip + pg.size).map((x) => x.r) }
+}
+
+/** 来源分组合并(纯函数):null / 缺失与空串都记 '';按人数降序、同数按来源字典序 */
+function mergeSourceGroups (groups) {
+	const map = Object.create(null)
+	for (const g of groups || []) {
+		if (!g) continue
+		const k = g._id == null ? '' : String(g._id)
+		map[k] = (map[k] || 0) + num(g.n)
+	}
+	return Object.keys(map).map((source) => ({ source, n: map[source] })).sort((x, y) => y.n - x.n || cmpStr(x.source, y.source))
+}
+
+/** 一期的来源分布(只按版本,不受其他筛选影响;给筛选下拉用);聚合失败降级 [] 不碍列表 */
+async function surveySourceDist (versionWhere) {
+	try {
+		const { data } = await db.collection(SURVEYS).aggregate().match(versionWhere)
+			.group({ _id: '$source', n: $agg.sum(1) }).limit(SURVEY_SOURCES_MAX).end()
+		return mergeSourceGroups(data)
+	} catch (e) {
+		console.log('[drama-admin][surveySourceDist]', e && e.message)
+		return []
+	}
 }
 
 /* ═══════════════════════════════ 云对象 ═══════════════════════════════ */
@@ -1302,6 +1752,183 @@ module.exports = {
 			return { errMsg: '', data: { user: shapeUser((fresh && fresh[0]) || { _id: uid, ...u, ...after }), grant: { amount: amt, note: n, operator: this.operator, before, after, create_time: now, logged }, grants: await fetchGrants(uid, 10) } }
 		} catch (e) {
 			return { errMsg: errText(e, 'grantCb') }
+		}
+	},
+
+	/**
+	 * @function surveyOverview 问卷各期概览(数据驱动:库里出现什么版本就列什么,自动兼容未来 v4 / v5)——
+	 *   一条 aggregate 按 $version 分组(人数 / 最早最晚 _id / 平均时长),缺 version 的早期记录并入 v1(mergeSurveyGroups)。
+	 *   各期标题 / 题目定义不在这里,后台从 survey.getArchive 取后按 version 对上。
+	 * @param {object} p { token }
+	 * @returns {{errMsg:string, data?:{build:string, versions:Array<{version:string, total:number, first_time:number, last_time:number, avg_duration:number}>}}}
+	 */
+	async surveyOverview () {
+		try {
+			const { data } = await db.collection(SURVEYS).aggregate()
+				.group({ _id: '$version', total: $agg.sum(1), first_id: $agg.min('$_id'), last_id: $agg.max('$_id'), avg_duration: $agg.avg('$duration') })
+				.limit(SURVEY_GROUPS_MAX).end()
+			const versions = mergeSurveyGroups(data || [])
+			/* 兜底:聚合里 _id 的返回形态没在真库核实过,万一拿不到合法 hex,就按 _id 单查该期首末各一条(每期 2 次 limit 1,版本数个位数) */
+			await Promise.all(versions.filter((r) => r.total > 0 && (!r.first_time || !r.last_time)).map(async (r) => {
+				const w = surveyVersionWhere(r.version)
+				if (!w) return
+				const edge = (dir) => db.collection(SURVEYS).where(w).field({ created_time: true }).orderBy('_id', dir).limit(1).get()
+					.then((x) => (x && x.data && x.data[0] ? surveyTimeOf(x.data[0]) : 0)).catch(() => 0)
+				const [f, l] = await Promise.all([edge('asc'), edge('desc')])
+				if (!r.first_time) r.first_time = f
+				if (!r.last_time) r.last_time = l
+			}))
+			return { errMsg: '', data: { build: BUILD, versions } }
+		} catch (e) {
+			return { errMsg: errText(e, 'surveyOverview') }
+		}
+	},
+
+	/**
+	 * @function surveySummary 一期问卷的统计总结:分页扫该期全部答卷(_id 升序,每页 1000,护栏 2 万条,超了 truncated:true),
+	 *   在内存里用纯函数 tallySurvey 汇总——时长分布 / 北京日分布 / 来源 / 每题选项计数 + 「其他」补充文字 + 自由文本最近样例。
+	 * @param {object} p { token, version:'v1'|'v2'|…, textQids?:string[] 题目定义里的问答题题号(这些题不做选项形态判定) }
+	 * @returns {{errMsg:string, data?:{version:string, total:number, truncated:boolean, first_time:number, last_time:number,
+	 *   duration:object, daily:object[], sources:object[], questions:object[]}}}
+	 */
+	async surveySummary ({ version, textQids } = {}) {
+		try {
+			const v = str(version).trim()
+			const where = surveyVersionWhere(v)
+			if (!where) return { errMsg: '问卷版本无效' }
+			const tq = (Array.isArray(textQids) ? textQids : []).slice(0, SURVEY_TEXT_QIDS_MAX).map((x) => str(x).trim()).filter((x) => SURVEY_QID_RE.test(x))
+			const { rows, truncated } = await scanSurveys(where)
+			return { errMsg: '', data: { version: v, truncated, ...tallySurvey(rows, tq) } }
+		} catch (e) {
+			return { errMsg: errText(e, 'surveySummary') }
+		}
+	},
+
+	/**
+	 * @function surveyTexts 某题的文字答案分页(_id 倒序):
+	 *   不传 opt → 问答题自由文本全文(非空且非选项形态;asText=true 表示题目定义就是问答题,非空即算);
+	 *   传 opt → 该「其他」选项的补充文字(去掉 'X_' 前缀,单选字符串与多选数组元素都命中)。
+	 *   kw 模糊匹配文字内容(不区分大小写,元字符已转义)。
+	 * @param {object} p { token, version, qid, opt?:'A'…'Z', asText?:boolean, kw?, page, size }
+	 * @returns {{errMsg:string, data?:{list:Array<{_id:string, user_id:string, user:object, text:string, time:number}>, total:number, page:number, size:number}}}
+	 */
+	async surveyTexts ({ version, qid, opt, asText, kw, page = 1, size = 20 } = {}) {
+		try {
+			const vw = surveyVersionWhere(version)
+			if (!vw) return { errMsg: '问卷版本无效' }
+			const q = str(qid).trim()
+			if (!SURVEY_QID_RE.test(q)) return { errMsg: '题号无效' }
+			const o = str(opt).trim()
+			if (o && !SURVEY_OPT_RE.test(o)) return { errMsg: '选项无效' }
+			const kre = keywordRe(kw)
+			const f = 'answers.' + q
+			const conds = [vw]
+			if (o) conds.push({ [f]: new RegExp('^' + o + '_' + (kre ? '[\\s\\S]*' + kre.source : ''), kre ? 'i' : '') })
+			else {
+				conds.push({ [f]: asText ? SURVEY_ANY_TEXT_RE : SURVEY_TEXT_RE })
+				if (kre) conds.push({ [f]: kre })
+			}
+			const where = dbCmd.and(conds)
+			const pg = pageOf(page, size)
+			const col = db.collection(SURVEYS)
+			const [{ total }, { data }] = await Promise.all([
+				col.where(where).count(),
+				col.where(where).field({ user_id: true, answers: true, created_time: true }).orderBy('_id', 'desc').skip(pg.skip).limit(pg.size).get(),
+			])
+			const rows = data || []
+			const users = await fetchUsers(rows.map((d) => d.user_id))
+			return {
+				errMsg: '',
+				data: {
+					list: rows.map((d) => ({
+						_id: d._id, user_id: d.user_id || '', user: userOf(users, d.user_id),
+						text: surveyPickText((d.answers || {})[q], o, kre, !!asText), time: surveyTimeOf(d),
+					})),
+					total: num(total), page: pg.page, size: pg.size,
+				},
+			}
+		} catch (e) {
+			return { errMsg: errText(e, 'surveyTexts') }
+		}
+	},
+
+	/**
+	 * @function surveyAnswers 一期问卷的答卷明细分页(10-05 黎令扩成多角度筛选 + 排序):answers 原样下发(解码在前端做,题目定义由前端从 survey.getArchive 拿)。
+	 *   库内条件:version / kw(24 位 hex = user_id 精确,否则昵称模糊找 ≤200 人再 user_id in,找不到直接空列表)/ qid + opt(选了该选项的人,含带补充的)
+	 *     / source 等值 / timeFrom~timeTo 提交时间(按 _id 字符串范围,见 surveyIdRange)。
+	 *   两条路径(surveyAnswerOpts 判定,mode 回显):
+	 *     db   = sort 是 time / duration 且无用户维度筛选 → 库内 count + 分页(duration 同值按 _id 倒序);
+	 *     user = sort 是用户字段或带了 pay / payMin / contact / gender / regFrom / regTo → 按库内条件扫候选(不带 answers,护栏 2 万超了 truncated)
+	 *            → 分块取用户 → 纯函数 pageSurveyRows 筛 + 排 + 切页 → 只对本页 _id 回查 answers。
+	 *   page === 1 时附该期来源分布 sources(只按版本,给筛选下拉用;失败降级 [])。
+	 * @param {object} p { token, version, page, size, kw?, qid?, opt?,
+	 *   sort?:'time'|'duration'|'pay_total'|'pay_count'|'register_date'|'last_login_date'|'chat_total'|'login_count'(兼容旧 time_desc / time_asc / duration_desc / duration_asc),
+	 *   dir?:'desc'|'asc', pay?:''|'paid'|'unpaid', payMin?:number(元), contact?:''|'yes'|'no', gender?:''|0|1|2, source?:string,
+	 *   timeFrom?, timeTo?, regFrom?, regTo?(ms,含端点) }
+	 * @returns {{errMsg:string, data?:{list:Array<{_id:string, user_id:string, user:object, answers:object, duration:number, source:string, time:number}>,
+	 *   total:number, page:number, size:number, sort:string, dir:string, mode:'db'|'user', truncated:boolean, sources?:Array<{source:string, n:number}>}}}
+	 */
+	async surveyAnswers ({ version, page = 1, size = 20, kw, qid, opt, sort, dir, pay, payMin, contact, gender, source, timeFrom, timeTo, regFrom, regTo } = {}) {
+		try {
+			const vw = surveyVersionWhere(version)
+			if (!vw) return { errMsg: '问卷版本无效' }
+			const q = str(qid).trim()
+			const o = str(opt).trim()
+			if (q && !SURVEY_QID_RE.test(q)) return { errMsg: '题号无效' }
+			if (o && !SURVEY_OPT_RE.test(o)) return { errMsg: '选项无效' }
+			const f = surveyAnswerOpts({ sort, dir, pay, payMin, contact, gender, source, timeFrom, timeTo, regFrom, regTo })
+			const pg = pageOf(page, size)
+			const srcTask = pg.page === 1 ? surveySourceDist(vw) : null // 内部已兜错,不会 reject
+			const finish = async (list, total, truncated) => ({
+				errMsg: '',
+				data: {
+					list, total, page: pg.page, size: pg.size, sort: f.sort, dir: f.dir, mode: f.mode, truncated,
+					...(srcTask ? { sources: await srcTask } : {}),
+				},
+			})
+
+			const conds = [vw]
+			if (f.source) conds.push({ source: f.source })
+			const idRange = surveyIdRange(f.timeFrom, f.timeTo)
+			if (idRange) conds.push({ _id: idRange })
+			const k = str(kw, 60).trim()
+			if (k) {
+				if (HEX24.test(k)) conds.push({ user_id: k.toLowerCase() })
+				else {
+					const { data: us } = await db.collection(USERS).where({ nickname: keywordRe(k) }).field({ _id: true }).limit(200).get()
+					const ids = (us || []).map((u) => u._id).filter(Boolean)
+					if (!ids.length) return finish([], 0, false)
+					conds.push({ user_id: dbCmd.in(ids) })
+				}
+			}
+			if (q && o) conds.push({ ['answers.' + q]: new RegExp('^' + o + '(_|$)') })
+			const where = conds.length === 1 ? vw : dbCmd.and(conds)
+			const col = db.collection(SURVEYS)
+
+			if (f.mode === 'db') {
+				let query = col.where(where).field(SURVEY_SCAN_FIELDS)
+				query = f.sort === 'duration' ? query.orderBy('duration', f.dir).orderBy('_id', 'desc') : query.orderBy('_id', f.dir)
+				const [{ total }, { data }] = await Promise.all([
+					col.where(where).count(),
+					query.skip(pg.skip).limit(pg.size).get(),
+				])
+				const rows = data || []
+				const users = await fetchSurveyUsers(rows.map((d) => d.user_id))
+				return finish(rows.map((d) => shapeSurveyAnswer(d, users)), num(total), false)
+			}
+
+			/* user 路径:扫候选(不带 answers)→ 取用户 → 内存筛排切页 → 本页回查 answers */
+			const { rows, truncated } = await scanSurveys(where, SURVEY_CAND_FIELDS)
+			const users = await fetchSurveyUsers(rows.map((d) => d.user_id))
+			const { total, list } = pageSurveyRows(rows, users, f, pg)
+			const answers = Object.create(null)
+			if (list.length) {
+				const { data } = await col.where({ _id: dbCmd.in(list.map((d) => d._id)) }).field({ answers: true }).limit(list.length).get()
+				for (const d of data || []) answers[d._id] = d.answers
+			}
+			return finish(list.map((d) => shapeSurveyAnswer({ ...d, answers: answers[d._id] }, users)), total, truncated)
+		} catch (e) {
+			return { errMsg: errText(e, 'surveyAnswers') }
 		}
 	},
 }
